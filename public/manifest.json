@@ -1,0 +1,57 @@
+{
+   "action": {
+      "default_icon": {
+         "128": "icons/icon128.png",
+         "16": "icons/icon16.png",
+         "32": "icons/icon32.png",
+         "48": "icons/icon48.png"
+      },
+      "default_title": "DupeYak Duplicate Remover"
+   },
+   "background": {
+        "service_worker": "background.js",
+	   "type": "module"
+   },
+   "content_scripts": [ {
+      "css": ["css/content.css", "css/tailwind.css"],
+      "matches": [ "https://photos.google.com/*" ],
+      "js": [ "libs/jquery.dom-outline-1.0.js","libs/exceljs.min.js","libs/FileSaver.min.js","libs/numbro.js","libs/languages.min.js","libs/face-api.min.js", "libs/image-matcher.js","libs/twl.min.js","content.js"],
+      "run_at": "document_end"
+   } ],
+   "content_security_policy": {
+      "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self'"
+   },
+   "description": "DupeYak Duplicate Remover",
+   "host_permissions": [ "https://photos.google.com/*", "https://www.googleapis.com/*", "https://api.gpdrm.com/*", "https://accounts.google.com/*", "\u003Call_urls>" ],
+   "icons": {
+      "128": "icons/icon128.png",
+      "16": "icons/icon16.png",
+      "32": "icons/icon32.png",
+      "48": "icons/icon48.png"
+   },
+ 
+   "manifest_version": 3,
+   "name": "DupeYak Duplicate Remover",
+   "permissions": [ "activeTab", "storage", "unlimitedStorage", "tabs", "windows", "identity" ],
+
+   "version": "1.0.1",
+   "web_accessible_resources": [{
+  "matches": ["https://photos.google.com/*"],
+  "resources": [
+    "models/*",
+    "html/*",
+    "images/*",
+    "icons/*"
+  ]
+}],
+
+   "key":"MIIEvAIBADANBgkqhkiG9w0BAQEFAASCBKYwggSiAgEAAoIBAQCnWrVfGCZnV5WDlk+Fd5m3wAZXogyJOjn6lXRuW5e3VuScwprBGULKKO481UXNNAOD1h6uGUkTZNU2vEfiaRuQhOom92rbZoz8d2eMoRkeJuj7QNh7xJI55Wz30isxeJQFXO4TF2E9Rz3lCJUS6Xypaqq1GJqRNv5iZHV3JIbvSdjEYZZQQV+d43Ac5qc8ng3WkDjrImCt6KHgKlwnGKFfDzTOVg7lArmM23OQn5cNUntDgwMNH5btkcWwhPbp9uJZ4wt/6wFKa0DaTN1dpg3ED1xpcBNGlyXl/KRYj2I2hT/ayAzHRZi7/SsNcul3lGHFG8VWXTouxc146+J0n3ijAgMBAAECggEAMkDXSLxoP8z5jR90NphQ9O/5F5SGHij5YwlBAqiHWNsDYB1Bui1bNHhw/ZxvTuzJB2wjH1Vhb6zuJ3cHQPIeAFohM91E3aggOumiEwUHFVpKyLPSreu7mx4NCCe4p6zVCf07UklJfkynxeA7X4f0Uq1AoIvIUkXIwoP3D/VMfYrbYPqAzEwlJFlEycMY+7OnmiGOHHnELD2DMrTxEQpYlqgOSIVn2E2H1KdMJ8MS58bH3qQadOlV+3qLs+6L5Y2KuCTMGq0W0WdJyAV0SRvf9l3l9vaz5H38INejvb9X31CZc+OujcRqek36f+ovCKqSBjpQViwMxTM6hQn0KYT3mQKBgQDXMzEhmFeqI0FnNP2/z6GNzz+ftgRm3YFqzZZaggNP7Zb3R8dihZ4aL9JEPRv5FSIWlqvvN1PEpF4W/GnuuMn9X8lc3EJOmnUuKhSD3kgxWv1xfPV14SDvDqjowTfsVOaIpHloapSgTLsqylL6dKyReZVfhxc4X2wNoogqnre8iwKBgQDHFU+t3FSyoVjn7Cvp9V8qUzrsWBrdaPbIp2ZN3JXDEnXkoZzKDHjk+3iDhdCa/76Zj+PiDt3zOcysLiDSr98/+ahmupci+6Sf53hx3jjlgbdhh7nsIKRhMuw0MAVWJSddts2SpSzBejzOg0K0t0Q3fmc3MAF/rt5UKAzsTI2/SQKBgHa0ICe91q1coRkC2+1P5HdKmHfKeQccq+Rz3rmx+Y2/KoTgLRUlSx56vmsxohp1E8aN+e0MAcL4P4ZCWVR6zcBbc8ErJdAh1v1N7N8IX54J6L8PBH6vXfE/juBEpEpSUo+Q2f9EuxLpAF0MGVVZwk7EWCbHZ4GK8RlcS+vmfMcdAoGAJTDbALy/adtwc2sQTRWUoKCJymsvIZuhNpznJLaHl7iUI5D5bFlmIEjGG7Pc44fRQHi79pgWaICstqGrahCG4Tmvdvl2kId4GpMwUf1UnbNc4bBsUCtM6geMTreF17D7KKukvbdzo/VE9MNaq83sxX0spQen0AWH7SrKNz6Z4FkCgYA0EkeEqqDN1YxvQnESe/5DkesFiMZW2zhFCWCsvVfd5e/DxYgZvM6rvdDVNUVSIj1HKkaalOAjqyoD/c/gty/InKeVaagBs0nf4EYPOAY+lW7vpEH6ilNygB1jOj65Rs7tzw3BG+v4ynU2wRnAdMxFkHDFJGY9q/m8y2Rcp74rBw==",
+   "oauth2": {
+      "client_id": "904093800226-gdsb17l40m0cljstenr7muviigs5qa9k.apps.googleusercontent.com",
+      "scopes": [
+         "email",
+         "profile",
+         "openid"
+      ]
+   }
+}
