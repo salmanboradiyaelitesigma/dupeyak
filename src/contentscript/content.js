@@ -1278,7 +1278,6 @@ The extension page will open in a new tab and this scanning window will close.
 
     const statusElement = $('<div>', { id: 'pc-floating-status' }).html(`
         <div id="pc-floating-status" class="g-btn absolute left-[20px] top-[20px]">
-        
         </div>
         `);
         // const premiumIconUrl = chrome.runtime.getURL('../icons/icon/premium.svg');
@@ -1287,16 +1286,16 @@ The extension page will open in a new tab and this scanning window will close.
   const panel = $(`
 <div id="photo-cleaner-panel" class="analysis-pesults-popup fixed !top-0 !right-0 w-full h-full">
     <div class="relative w-full">
-        
+          <div class="popup-wrapper">
         <!-- Close / back button -->
-        <div class="g-btn absolute left-[20px] top-[20px]">
+        <div id="Intial_PopUp_button" class="g-btn absolute left-[20px] top-[20px]">
             <a href="#" class="whitespace-nowrap background-one text-white py-[6px] px-[16px] inline-flex rounded-full font-medium gap-1 items-center">
                 <i class="fa-solid fa-angle-left"></i> Click scan to start
             </a>
         </div>
 
         <!-- Main popup box -->
-        <div class="dark-background rounded-[20px] p-4 relative w-[400px] absolute right-[20px] top-[20px] ml-auto border-color-two border shadow-[4px_4px_8px_#f5f8ff]">
+        <div id="Intial_PopUp" class="dark-background rounded-[20px] p-4 relative w-[400px] absolute right-[20px] top-[20px] ml-auto border-color-two border shadow-[4px_4px_8px_#f5f8ff]">
             
             <div class="mb-2" id="pc-version-wrap">
                 <!-- Version badge and button -->
@@ -1327,6 +1326,7 @@ The extension page will open in a new tab and this scanning window will close.
                     class="w-[70%] accent-blue-500" 
                     min="0.1" max="1.0" value="0.75" step="0.01">
             </div>
+        </div>
         </div>
     </div>
 </div>
@@ -1543,7 +1543,14 @@ The extension page will open in a new tab and this scanning window will close.
         this.isInitialized = false;
         this.scanComplete = false;
     }
- 
+
+  closeInitialPopup() {
+        // const PopUp = $('#Intial_PopUp,#Intial_PopUp_button');
+          const PopUp = $('.popup-wrapper');
+        if (PopUp.length) {
+            PopUp.remove();
+        }
+    }
      
     setupObserver() {
         // Setup observer to detect new photos being loaded during scanning
@@ -2113,7 +2120,7 @@ The extension page will open in a new tab and this scanning window will close.
                 countElement.innerHTML = 'Scanning';
             } else {
           //      console.log(`🔄 updateScanProgress: Updating display to ${this.photos.length} photos and ${this.videos.length} videos found`);
-                countElement.innerHTML = `${this.photos.length} photos found<br/>${this.videos.length} videos found`;
+        //        countElement.innerHTML = `${this.photos.length} photos found<br/>${this.videos.length} videos found`;
             }
             countElement.className = ''; // Remove examining styling
             countElement.style.color = '';
@@ -3026,7 +3033,7 @@ The extension page will open in a new tab and this scanning window will close.
                 countElement.innerHTML = 'Idle';
             } else {
                 console.log(`📊 updatePhotoCount: Updating display to ${this.photos.length} photos and ${this.videos.length} videos found`);
-                countElement.innerHTML = `${this.photos.length} photos found<br/>${this.videos.length} videos found`;
+          //      countElement.innerHTML = `${this.photos.length} photos found<br/>${this.videos.length} videos found`;
             }
 
             // Reset styling in case it was changed during scanning
@@ -3581,8 +3588,9 @@ The extension page will open in a new tab and this scanning window will close.
 
     showScreenshotArea(layout) {
         // Show window warning during screenshot phase
-        this.showWindowWarning(true);
-
+        // this.showWindowWarning(true);
+    //  this.closePanel()
+        this.closeInitialPopup()
         const screenshotArea = document.getElementById('pc-screenshot-area');
         if (screenshotArea) {
             // Use dynamic layout instead of fixed dimensions
@@ -3604,7 +3612,7 @@ The extension page will open in a new tab and this scanning window will close.
             screenshotArea.style.top = `${SCREENSHOT_Y}px`;
 
             // Force left positioning with !important by setting via cssText
-            const leftStyle = `left: ${SCREENSHOT_X}px !important`;
+            const leftStyle = `left: ${SCREENSHOT_X}px `;
             const existingStyle = screenshotArea.style.cssText;
             screenshotArea.style.cssText = existingStyle + '; ' + leftStyle;
             screenshotArea.style.width = `${SCREENSHOT_WIDTH}px`;
@@ -7305,25 +7313,52 @@ The extension page will open in a new tab and this scanning window will close.
         }
     }
 
-    showWindowWarning(show) {
-        let warningElement = document.getElementById('pc-window-warning');
+    // showWindowWarning(show) {
+    //     let warningElement = document.getElementById('pc-window-warning');
 
-        if (show) {
-            // Create warning element if it doesn't exist
-            if (!warningElement) {
-                warningElement = document.createElement('div');
-                warningElement.id = 'pc-window-warning';
-                warningElement.innerHTML = 'Please keep this window active — resizing may interrupt your task';
-                document.body.appendChild(warningElement);
-            }
-            warningElement.style.display = 'block';
-        } else {
-            // Hide warning element
-            if (warningElement) {
-                warningElement.style.display = 'none';
-            }
+    //     if (show) {
+    //         // Create warning element if it doesn't exist
+    //         if (!warningElement) {
+    //             warningElement = document.createElement('div');
+    //             warningElement.id = 'pc-window-warning';
+                
+    //             warningElement.innerHTML = 'Please keep this window active — resizing may interrupt your task';
+    //             document.body.appendChild(warningElement);
+    //         }
+    //         warningElement.style.display = 'block';
+    //     } else {
+    //         // Hide warning element
+    //         if (warningElement) {
+    //             warningElement.style.display = 'none';
+    //         }
+    //     }
+    // }
+
+    showWindowWarning(show) {
+    let warningElement = $('#pc-window-warning');
+
+    if (show) {
+        if (!warningElement.length) {
+            const warningIconUrl = chrome.runtime.getURL('../icons/warning.svg');
+
+            warningElement = $(`
+                <div id="pc-window-warning" class="!bg-[#fffcea] rounded-[17px] p-4 relative  ml-auto !border-[#fce4b1] border ">
+                    <a href="#" class="flex items-center gap-[5px] font-bold dark-color">
+                        <span class="new-128 flex w-[45px] max-[767px]:w-[45px] items-center justify-center rounded-[10px]" src="chrome-extension://flcmckdkmfkfebllbphddhghjkmoijfl/icons/new128.png"><img class="pc-warning-icon new-128 rounded-[10px]" alt="warning icon" src="chrome-extension://flcmckdkmfkfebllbphddhghjkmoijfl/icons/new128.png" alt="logo" data-iml="50074.300000190735"></span>
+                    </a><p class="dark-color !leading-[17px]">Please keep this window active — resizing may interrupt your task</p></div>
+            `);
+
+            // Set icon src just like your paush-img example
+            warningElement.find('.pc-warning-icon').attr('src', warningIconUrl);
+
+            $('body').append(warningElement);
         }
+        warningElement.show();
+    } else {
+        warningElement.hide();
     }
+}
+
 
     updateProgress(percent, text) {
         const textElement = document.getElementById('pc-progress-text');
@@ -8823,19 +8858,26 @@ function showInfoMessage() {
     if (window.infoMessageDismissed) {
         return;
     }
-
+   const newMagnifierIconUrl = chrome.runtime.getURL('../icons/magnifier.svg');
     const infoMessage = $(`
         <div id="pc-info-message" class="pc-info-message">
-            <div class="pc-info-content">
-                <div class="pc-info-icon">🔍</div>
-                <div class="pc-info-text">
+            <div class="pc-info-content !bg-[#e6f4ff] rounded-[20px] p-4 relative  ml-auto !border-[#addaff] border shadow-[4px_4px_8px_#f5f8ff]">
+                <div class="pc-info-icon">
+                    <a href="#" class="rounded-[10px] flex items-center gap-[5px] font-bold dark-color">
+                        <span class="rounded-[10px] new-Magnifier flex w-[40px] max-[767px]:w-[45px] items-center justify-center"><img class="new-Magnifier" src="icons/tricon128.png" alt="logo"></span>
+                    </a>
+                </div>
+                <div class="pc-info-text  colorone font16 font-normal	">
                     To check for duplicate or similar photos, go to an album, shared album, or search results  page and use the duplicate finder
                 </div>
-                <button class="pc-info-close">×</button>
+                <button href="#" id="pc-close" class="pc-info-close font-semibold w-[30px] h-[30px] !rounded-full !bg-white flex justify-center items-center">
+                    <i class="fa-solid fa-xmark text-white"></i>
+                </button>
             </div>
         </div>
     `);
-
+     infoMessage.find('.new-Magnifier').attr('src', newMagnifierIconUrl);
+     //   panel.find('.play-img').attr('src', playIconUrl);
     // Add close event
     infoMessage.find('.pc-info-close').on('click', function () {
         infoMessage.remove();
