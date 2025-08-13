@@ -867,7 +867,7 @@ div#pc-window-warning {
     border: 1px solid #00152b !important;
     box-shadow: 0px 0px 10px #a2a2a2;
     border-radius: 20px !important;
-    height: 94vh !important;
+    height: 80vh !important;
     top: 20px !important;
 }
 #pc-screenshot-container .pc-screenshot-slot {
@@ -1888,3 +1888,54 @@ div#photo-cleaner-panel {
     box-shadow: none !important;
     border: 0 !important;
 }
+
+div#pc-screenshot-area {
+    top: 110px !important;
+    height: 80vh !important;
+    border-color: rgba(102, 126, 234, 0.4) !important;
+}
+
+.pc-floating-Main{
+    left: 0 !important;
+    width: 100% !important;
+}
+
+.pc-floating-Main div#pc-floating-status {
+    background: linear-gradient(0deg, rgb(245, 248, 255) 0%, rgb(249, 250, 255) 93%) !important;
+    left: 50% !important;
+    width: 92% !important;
+}
+.pc-floating-Main span#pc-progress-text {
+    padding: 15px 20px !important;
+    display: flex !important;
+    flex-direction: column !important;
+}
+
+.pc-floating-Main span#pc-progress-text label.labelrange {
+    text-align: left;
+    color: #1e293b !important;
+    font-weight: 400 !important;
+    font-size: 20px !important;
+    line-height: 12px;
+    margin-bottom: 9px;
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+
+
+.pc-floating-Main div#pc-floating-status {
+    border-radius: 15px !important;
+    border: 0 !important;
+}
+
+.pc-floating-Main label.labelrange+div {
+    background: #fff !important;
+    border-radius: 5px;
+}
+
+span.percent-value {
+    color: #fff !important;
+}
+.progress-done {width: 0;opacity: 0;transition: 1s ease 0.3s;}

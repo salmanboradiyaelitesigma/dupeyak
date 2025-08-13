@@ -328,8 +328,8 @@ class FrontendSessionManager {
             console.log(`  📁 Similar groups found: ${similarGroups.length}`);
             console.log(`  ⏱️ Analysis time: ${analysisTime}ms`);
 
-         const quality = await this.assessImageQuality(session, 300);
-         console.log('quality__assessImageQuality',quality);
+        //  const quality = await this.assessImageQuality(session, 300);
+        //  console.log('quality__assessImageQuality',quality);
             return {
                 success: true,
                 session_id: sessionId,
@@ -349,524 +349,524 @@ class FrontendSessionManager {
     }
 
     
-  async assessImageQuality(imageFile, processingSize = 300) {
-    // await this.initializeFaceApi();
-
-    const technical = await this.analyzeTechnicalQuality(imageFile, processingSize);
-   console.log("technical >>>",technical);
-   return;
-    const faces = await this.analyzeFaceQuality(imageFile);
-
-    const overallScore = this.calculateOverallScore(technical, faces);
-    const qualityTier = this.getQualityTier(overallScore);
-
-    return {
-      overallScore,
-      qualityTier,
-      technical,
-      faces,
-    };
-  }
-
-  analyzeTechnicalQuality(imageFile, processingSize = 300) {
-    return new Promise((resolve, reject) => {
-      if (!imageFile || !imageFile.type || !imageFile.type.startsWith('image/') || !imageFile.size || !imageFile.name) {
-        reject(new Error('Invalid file object or not an image'));
-        return;
-      }
-
-      const img = new Image();
-      let objectUrl = null;
-
-      img.onload = () => {
-        try {
-          const canvas = document.createElement('canvas');
-          const ctx = canvas.getContext('2d');
-
-          canvas.width = processingSize;
-          canvas.height = processingSize;
-
-          ctx.imageSmoothingEnabled = true;
-          ctx.imageSmoothingQuality = 'high';
-          ctx.drawImage(img, 0, 0, processingSize, processingSize);
-
-          const imageData = ctx.getImageData(0, 0, processingSize, processingSize);
-
-          const blurScore = this.calculateBlurScore(imageData);
-          const exposureQuality = this.calculateExposureQuality(imageData);
-          const contrastScore = this.calculateContrastScore(imageData);
-          const noiseLevel = this.calculateNoiseLevel(imageData);
-          const sharpnessScore = this.calculateSharpnessScore(imageData);
-          const colorBalance = this.calculateColorBalance(imageData);
-
-          if (objectUrl) {
-            URL.revokeObjectURL(objectUrl);
-          }
-
-          resolve({
-            blurScore,
-            exposureQuality,
-            contrastScore,
-            noiseLevel,
-            sharpnessScore,
-            colorBalance,
-          });
-        } catch (error) {
-          if (objectUrl) {
-            URL.revokeObjectURL(objectUrl);
-          }
-          reject(error);
-        }
-      };
-
-      img.onerror = (error) => {
-        if (objectUrl) {
-          URL.revokeObjectURL(objectUrl);
-        }
-        reject(error);
-      };
-
-      try {
-        objectUrl = URL.createObjectURL(imageFile);
-        img.src = objectUrl;
-      } catch (error) {
-        reject(new Error(`Failed to create object URL for file: ${imageFile.name}`));
-      }
-    });
-  }
-
-  async analyzeFaceQuality(imageFile) {
-    if (!this.faceapiInitialized) {
-      console.log('Face-api.js not initialized, skipping face detection');
-      return undefined;
-    }
-
-    try {
-      const img = await this.loadImageElement(imageFile);
-
-      console.log('Running Tiny Face Detector with facial landmarks...');
-      let detectionsWithLandmarks = await faceapi.detectAllFaces(img, new faceapi.TinyFaceDetectorOptions({
-        scoreThreshold: 0.2,
-        inputSize: 416
-      })).withFaceLandmarks(true);
-
-      if (detectionsWithLandmarks.length === 0) {
-        console.log('No faces with default settings, trying more sensitive detection...');
-        detectionsWithLandmarks = await faceapi.detectAllFaces(img, new faceapi.TinyFaceDetectorOptions({
-          scoreThreshold: 0.1,
-          inputSize: 320
-        })).withFaceLandmarks(true);
-      }
-
-      if (detectionsWithLandmarks.length === 0) {
-        console.log('Still no faces, trying largest input size...');
-        detectionsWithLandmarks = await faceapi.detectAllFaces(img, new faceapi.TinyFaceDetectorOptions({
-          scoreThreshold: 0.1,
-          inputSize: 512
-        })).withFaceLandmarks(true);
-      }
-
-      if (detectionsWithLandmarks.length === 0) {
-        console.log('No faces detected by Tiny Face Detector');
-        return undefined;
-      }
-
-      console.log(`✅ Detected ${detectionsWithLandmarks.length} face(s) with landmarks using Tiny Face Detector!`);
-
-      const faceWithLandmarks = detectionsWithLandmarks[0];
-      const box = faceWithLandmarks.detection.box;
-      const landmarks = faceWithLandmarks.landmarks;
-
-      const faceSize = this.calculateFaceSize(box, img.width, img.height);
-      const faceCentering = this.calculateFaceCentering(box, img.width, img.height);
-      const lightingQuality = await this.calculateFaceLighting(img, box);
-      const eyeContactScore = this.calculateEyeContactScore(landmarks);
-
-      const portraitScore = (faceSize + faceCentering + lightingQuality + eyeContactScore) / 4;
-
-      return {
-        faceCount: detectionsWithLandmarks.length,
-        eyeContactScore,
-        faceCentering,
-        faceSize,
-        lightingQuality,
-        portraitScore,
-      };
-    } catch (error) {
-      console.error('Face detection with landmarks failed:', error);
-      console.error('Error details:', error instanceof Error ? error.message : String(error));
-      return undefined;
-    }
-  }
-
-  async detectFaceSimplified(img) {
-    const canvas = document.createElement('canvas');
-    const ctx = canvas.getContext('2d');
-
-    canvas.width = 300;
-    canvas.height = 300;
-
-    ctx.drawImage(img, 0, 0, 300, 300);
-    const imageData = ctx.getImageData(0, 0, 300, 300);
-
-    const faceIndicators = this.calculateFaceIndicators(imageData);
-
-    const hasFace = faceIndicators.confidence > 0.3;
-
-    if (!hasFace) {
-      return {
-        hasFace: false,
-        eyeContactScore: 0,
-        faceCentering: 0,
-        faceSize: 0,
-        lightingQuality: 0,
-        portraitScore: 0,
-      };
-    }
-
-    const faceCentering = faceIndicators.centerWeight;
-    const faceSize = faceIndicators.faceSize;
-    const lightingQuality = faceIndicators.lightingQuality;
-    const eyeContactScore = faceIndicators.eyeRegionQuality;
-    const portraitScore = (faceCentering + faceSize + lightingQuality + eyeContactScore) / 4;
-
-    return {
-      hasFace: true,
-      eyeContactScore,
-      faceCentering,
-      faceSize,
-      lightingQuality,
-      portraitScore,
-    };
-  }
-
-  calculateFaceIndicators(imageData) {
-    const data = imageData.data;
-    const width = imageData.width;
-    const height = imageData.height;
-
-    const centerRegion = this.analyzeRegion(data, width, height, 0.25, 0.25, 0.5, 0.5);
-    const upperCenterRegion = this.analyzeRegion(data, width, height, 0.2, 0.15, 0.6, 0.4);
-    const eyeRegion = this.analyzeRegion(data, width, height, 0.15, 0.2, 0.7, 0.3);
-
-    let confidence = 0;
-
-    if (centerRegion.avgBrightness > 80 && centerRegion.avgBrightness < 200) {
-      confidence += 0.3;
-    }
-
-    if (centerRegion.contrast > 15) {
-      confidence += 0.2;
-    }
-
-    const lowerCenterRegion = this.analyzeRegion(data, width, height, 0.25, 0.5, 0.5, 0.4);
-    if (upperCenterRegion.avgBrightness > lowerCenterRegion.avgBrightness) {
-      confidence += 0.2;
-    }
-
-    if (eyeRegion.darkPixelRatio > 0.1) {
-      confidence += 0.3;
-    }
-
-    const centerWeight = Math.min(100, confidence * 100 + 50);
-    const faceSize = Math.min(100, (centerRegion.pixelCount / (width * height)) * 400);
-    const lightingQuality = Math.min(100, 100 - Math.abs(centerRegion.avgBrightness - 140) / 2);
-    const eyeRegionQuality = Math.min(100, eyeRegion.contrast * 2 + 40);
-
-    return {
-      confidence,
-      centerWeight,
-      faceSize,
-      lightingQuality,
-      eyeRegionQuality,
-    };
-  }
-
-  analyzeRegion(data, width, height, x, y, w, h) {
-    const startX = Math.floor(x * width);
-    const startY = Math.floor(y * height);
-    const endX = Math.floor((x + w) * width);
-    const endY = Math.floor((y + h) * height);
-
-    let totalBrightness = 0;
-    let brightnessValues = [];
-    let darkPixels = 0;
-    let pixelCount = 0;
-
-    for (let py = startY; py < endY; py++) {
-      for (let px = startX; px < endX; px++) {
-        const idx = (py * width + px) * 4;
-        const brightness = 0.299 * data[idx] + 0.587 * data[idx + 1] + 0.114 * data[idx + 2];
-
-        totalBrightness += brightness;
-        brightnessValues.push(brightness);
-        if (brightness < 80) darkPixels++;
-        pixelCount++;
-      }
-    }
-
-    const avgBrightness = pixelCount > 0 ? totalBrightness / pixelCount : 0;
-
-    let variance = 0;
-    for (const brightness of brightnessValues) {
-      variance += Math.pow(brightness - avgBrightness, 2);
-    }
-    const contrast = pixelCount > 0 ? Math.sqrt(variance / pixelCount) : 0;
-
-    const darkPixelRatio = pixelCount > 0 ? darkPixels / pixelCount : 0;
-
-    return {
-      avgBrightness,
-      contrast,
-      darkPixelRatio,
-      pixelCount,
-    };
-  }
-
-  loadImageElement(imageFile) {
-    return new Promise((resolve, reject) => {
-      const img = new Image();
-      let objectUrl = null;
-
-      img.onload = () => {
-        if (objectUrl) {
-          URL.revokeObjectURL(objectUrl);
-        }
-        resolve(img);
-      };
-
-      img.onerror = (error) => {
-        if (objectUrl) {
-          URL.revokeObjectURL(objectUrl);
-        }
-        reject(error);
-      };
-
-      try {
-        objectUrl = URL.createObjectURL(imageFile);
-        img.src = objectUrl;
-      } catch (error) {
-        reject(error);
-      }
-    });
-  }
-
-  calculateFaceSize(box, imgWidth, imgHeight) {
-    const faceArea = box.width * box.height;
-    const imageArea = imgWidth * imgHeight;
-    const faceRatio = faceArea / imageArea;
-
-    if (faceRatio >= 0.15 && faceRatio <= 0.25) {
-      return 100;
-    } else if (faceRatio >= 0.10 && faceRatio <= 0.35) {
-      return 80;
-    } else if (faceRatio >= 0.05 && faceRatio <= 0.45) {
-      return 60;
-    } else {
-      return 40;
-    }
-  }
-
-  calculateFaceCentering(box, imgWidth, imgHeight) {
-    const faceCenterX = box.x + box.width / 2;
-    const faceCenterY = box.y + box.height / 2;
-    const imageCenterX = imgWidth / 2;
-    const imageCenterY = imgHeight / 2;
-
-    const distanceFromCenter = Math.sqrt(
-      Math.pow(faceCenterX - imageCenterX, 2) + Math.pow(faceCenterY - imageCenterY, 2)
-    );
-
-    const maxDistance = Math.sqrt(Math.pow(imgWidth / 2, 2) + Math.pow(imgHeight / 2, 2));
-    const centeringScore = Math.max(0, 100 - (distanceFromCenter / maxDistance) * 100);
-
-    return centeringScore;
-  }
-
-  async calculateFaceLighting(img, box) {
-    const canvas = document.createElement('canvas');
-    const ctx = canvas.getContext('2d');
-
-    canvas.width = box.width;
-    canvas.height = box.height;
-
-    ctx.drawImage(img, box.x, box.y, box.width, box.height, 0, 0, box.width, box.height);
-    const imageData = ctx.getImageData(0, 0, box.width, box.height);
-
-    const data = imageData.data;
-    let totalBrightness = 0;
-    let brightnessValues = [];
-
-    for (let i = 0; i < data.length; i += 4) {
-      const brightness = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
-      totalBrightness += brightness;
-      brightnessValues.push(brightness);
-    }
-
-    const avgBrightness = totalBrightness / brightnessValues.length;
-
-    let variance = 0;
-    for (const brightness of brightnessValues) {
-      variance += Math.pow(brightness - avgBrightness, 2);
-    }
-    const stdDev = Math.sqrt(variance / brightnessValues.length);
-
-    let lightingScore = 50;
-
-    if (avgBrightness >= 80 && avgBrightness <= 160) {
-      lightingScore += 30;
-    } else if (avgBrightness >= 60 && avgBrightness <= 180) {
-      lightingScore += 20;
-    } else {
-      lightingScore += 10;
-    }
-
-    if (stdDev >= 20 && stdDev <= 50) {
-      lightingScore += 20;
-    } else if (stdDev >= 15 && stdDev <= 60) {
-      lightingScore += 15;
-    } else {
-      lightingScore += 5;
-    }
-
-    return Math.min(100, lightingScore);
-  }
-
-  calculateEyeContactScore(landmarks) {
-    const leftEye = landmarks.getLeftEye();
-    const rightEye = landmarks.getRightEye();
-
-    if (!leftEye || !rightEye || leftEye.length === 0 || rightEye.length === 0) {
-      return 50;
-    }
-
-    let eyeContactScore = 0;
-
-    const leftEyeOpenness = this.calculateEyeOpenness(leftEye);
-    const rightEyeOpenness = this.calculateEyeOpenness(rightEye);
-    const avgEyeOpenness = (leftEyeOpenness + rightEyeOpenness) / 2;
-
-    if (avgEyeOpenness > 0.3) {
-      eyeContactScore += 40;
-    } else if (avgEyeOpenness > 0.2) {
-      eyeContactScore += 25;
-    } else if (avgEyeOpenness > 0.1) {
-      eyeContactScore += 10;
-    }
-
-    const eyeSymmetry = 1 - Math.abs(leftEyeOpenness - rightEyeOpenness);
-    eyeContactScore += eyeSymmetry * 30;
-
-    const jawLine = landmarks.getJawOutline();
-    if (jawLine && jawLine.length > 0) {
-      const eyeAlignment = this.calculateEyeAlignment(leftEye, rightEye, jawLine);
-      eyeContactScore += eyeAlignment * 20;
-    } else {
-      eyeContactScore += 15;
-    }
-
-    const gazeScore = this.approximateGazeDirection(leftEye, rightEye);
-    eyeContactScore += gazeScore * 10;
-
-    console.log('Eye contact analysis:', {
-      leftEyeOpenness: leftEyeOpenness.toFixed(3),
-      rightEyeOpenness: rightEyeOpenness.toFixed(3),
-      eyeSymmetry: eyeSymmetry.toFixed(3),
-      finalScore: Math.min(100, eyeContactScore).toFixed(2)
-    });
-
-    return Math.min(100, eyeContactScore);
-  }
-
-  calculateEyeOpenness(eyePoints) {
-    if (eyePoints.length < 6) return 0;
-
-    const p1 = eyePoints[0];
-    const p2 = eyePoints[1];
-    const p3 = eyePoints[2];
-    const p4 = eyePoints[3];
-    const p5 = eyePoints[4];
-    const p6 = eyePoints[5];
-
-    const d1 = Math.sqrt(Math.pow(p2.x - p6.x, 2) + Math.pow(p2.y - p6.y, 2));
-    const d2 = Math.sqrt(Math.pow(p3.x - p5.x, 2) + Math.pow(p3.y - p5.y, 2));
-    const d3 = Math.sqrt(Math.pow(p1.x - p4.x, 2) + Math.pow(p1.y - p4.y, 2));
-
-    if (d3 === 0) return 0;
-
-    const ear = (d1 + d2) / (2 * d3);
-
-    return Math.min(1, Math.max(0, ear / 0.3));
-  }
-
-calculateEyeAlignment(leftEye, rightEye, jawLine) {
-  if (leftEye.length === 0 || rightEye.length === 0 || jawLine.length === 0) return 0.75;
-
-  // Get eye centers
-  const leftEyeCenter = this.getEyeCenter(leftEye);
-  const rightEyeCenter = this.getEyeCenter(rightEye);
-
-  // Calculate the angle between the eyes
-  const eyeAngle = Math.atan2(
-    rightEyeCenter.y - leftEyeCenter.y,
-    rightEyeCenter.x - leftEyeCenter.x
-  );
-
-  // Good alignment is when eyes are roughly horizontal (angle close to 0)
-  const angleDifference = Math.abs(eyeAngle);
-  const alignmentScore = Math.max(0, 1 - (angleDifference / (Math.PI / 6))); // Penalize angles > 30 degrees
-
-  return alignmentScore;
-}
-calculateOverallScore(technical, faces) {
-  let score = 0;
-
-  // Base technical quality weights
-  const baseWeights = {
-    blur: 0.20,      // Reduced from 25% to 20%
-    sharpness: 0.15, // Reduced from 20% to 15%
-    exposure: 0.15,
-    contrast: 0.12,
-    noise: 0.08,
-    colorBalance: 0.05
-  };
-
-  // Apply base technical scores (85% total weight)
-  score += technical.blurScore * baseWeights.blur;
-  score += technical.sharpnessScore * baseWeights.sharpness;
-  score += technical.exposureQuality * baseWeights.exposure;
-  score += technical.contrastScore * baseWeights.contrast;
-  score += technical.noiseLevel * baseWeights.noise;
-  score += technical.colorBalance * baseWeights.colorBalance;
-
-  // Face quality bonus (27% weight if faces present)
-  if (faces && faces.faceCount > 0) {
-    const faceBonus = (
-      faces.faceCentering * 0.05 +
-      faces.faceSize * 0.04 +
-      faces.lightingQuality * 0.03 +
-      faces.portraitScore * 0.02 +
-      faces.eyeContactScore * 0.13
-    );
-    score += faceBonus;
-
-    console.log('Face quality detected:', {
-      faceCount: faces.faceCount,
-      faceCentering: faces.faceCentering.toFixed(2),
-      faceSize: faces.faceSize.toFixed(2),
-      lightingQuality: faces.lightingQuality.toFixed(2),
-      faceBonus: faceBonus.toFixed(4)
-    });
-  }
-
-  return Math.max(0, Math.min(100, score));
-}
-getQualityTier(score) {
-  if (score >= 85) return 'excellent';
-  if (score >= 70) return 'good';
-  if (score >= 50) return 'fair';
-  return 'poor';
-}
+//   async assessImageQuality(imageFile, processingSize = 300) {
+//     // await this.initializeFaceApi();
+
+//     const technical = await this.analyzeTechnicalQuality(imageFile, processingSize);
+//    console.log("technical >>>",technical);
+//    return;
+//     const faces = await this.analyzeFaceQuality(imageFile);
+
+//     const overallScore = this.calculateOverallScore(technical, faces);
+//     const qualityTier = this.getQualityTier(overallScore);
+
+//     return {
+//       overallScore,
+//       qualityTier,
+//       technical,
+//       faces,
+//     };
+//   }
+
+//   analyzeTechnicalQuality(imageFile, processingSize = 300) {
+//     return new Promise((resolve, reject) => {
+//       if (!imageFile || !imageFile.type || !imageFile.type.startsWith('image/') || !imageFile.size || !imageFile.name) {
+//         reject(new Error('Invalid file object or not an image'));
+//         return;
+//       }
+
+//       const img = new Image();
+//       let objectUrl = null;
+
+//       img.onload = () => {
+//         try {
+//           const canvas = document.createElement('canvas');
+//           const ctx = canvas.getContext('2d');
+
+//           canvas.width = processingSize;
+//           canvas.height = processingSize;
+
+//           ctx.imageSmoothingEnabled = true;
+//           ctx.imageSmoothingQuality = 'high';
+//           ctx.drawImage(img, 0, 0, processingSize, processingSize);
+
+//           const imageData = ctx.getImageData(0, 0, processingSize, processingSize);
+
+//           const blurScore = this.calculateBlurScore(imageData);
+//           const exposureQuality = this.calculateExposureQuality(imageData);
+//           const contrastScore = this.calculateContrastScore(imageData);
+//           const noiseLevel = this.calculateNoiseLevel(imageData);
+//           const sharpnessScore = this.calculateSharpnessScore(imageData);
+//           const colorBalance = this.calculateColorBalance(imageData);
+
+//           if (objectUrl) {
+//             URL.revokeObjectURL(objectUrl);
+//           }
+
+//           resolve({
+//             blurScore,
+//             exposureQuality,
+//             contrastScore,
+//             noiseLevel,
+//             sharpnessScore,
+//             colorBalance,
+//           });
+//         } catch (error) {
+//           if (objectUrl) {
+//             URL.revokeObjectURL(objectUrl);
+//           }
+//           reject(error);
+//         }
+//       };
+
+//       img.onerror = (error) => {
+//         if (objectUrl) {
+//           URL.revokeObjectURL(objectUrl);
+//         }
+//         reject(error);
+//       };
+
+//       try {
+//         objectUrl = URL.createObjectURL(imageFile);
+//         img.src = objectUrl;
+//       } catch (error) {
+//         reject(new Error(`Failed to create object URL for file: ${imageFile.name}`));
+//       }
+//     });
+//   }
+
+//   async analyzeFaceQuality(imageFile) {
+//     if (!this.faceapiInitialized) {
+//       console.log('Face-api.js not initialized, skipping face detection');
+//       return undefined;
+//     }
+
+//     try {
+//       const img = await this.loadImageElement(imageFile);
+
+//       console.log('Running Tiny Face Detector with facial landmarks...');
+//       let detectionsWithLandmarks = await faceapi.detectAllFaces(img, new faceapi.TinyFaceDetectorOptions({
+//         scoreThreshold: 0.2,
+//         inputSize: 416
+//       })).withFaceLandmarks(true);
+
+//       if (detectionsWithLandmarks.length === 0) {
+//         console.log('No faces with default settings, trying more sensitive detection...');
+//         detectionsWithLandmarks = await faceapi.detectAllFaces(img, new faceapi.TinyFaceDetectorOptions({
+//           scoreThreshold: 0.1,
+//           inputSize: 320
+//         })).withFaceLandmarks(true);
+//       }
+
+//       if (detectionsWithLandmarks.length === 0) {
+//         console.log('Still no faces, trying largest input size...');
+//         detectionsWithLandmarks = await faceapi.detectAllFaces(img, new faceapi.TinyFaceDetectorOptions({
+//           scoreThreshold: 0.1,
+//           inputSize: 512
+//         })).withFaceLandmarks(true);
+//       }
+
+//       if (detectionsWithLandmarks.length === 0) {
+//         console.log('No faces detected by Tiny Face Detector');
+//         return undefined;
+//       }
+
+//       console.log(`✅ Detected ${detectionsWithLandmarks.length} face(s) with landmarks using Tiny Face Detector!`);
+
+//       const faceWithLandmarks = detectionsWithLandmarks[0];
+//       const box = faceWithLandmarks.detection.box;
+//       const landmarks = faceWithLandmarks.landmarks;
+
+//       const faceSize = this.calculateFaceSize(box, img.width, img.height);
+//       const faceCentering = this.calculateFaceCentering(box, img.width, img.height);
+//       const lightingQuality = await this.calculateFaceLighting(img, box);
+//       const eyeContactScore = this.calculateEyeContactScore(landmarks);
+
+//       const portraitScore = (faceSize + faceCentering + lightingQuality + eyeContactScore) / 4;
+
+//       return {
+//         faceCount: detectionsWithLandmarks.length,
+//         eyeContactScore,
+//         faceCentering,
+//         faceSize,
+//         lightingQuality,
+//         portraitScore,
+//       };
+//     } catch (error) {
+//       console.error('Face detection with landmarks failed:', error);
+//       console.error('Error details:', error instanceof Error ? error.message : String(error));
+//       return undefined;
+//     }
+//   }
+
+//   async detectFaceSimplified(img) {
+//     const canvas = document.createElement('canvas');
+//     const ctx = canvas.getContext('2d');
+
+//     canvas.width = 300;
+//     canvas.height = 300;
+
+//     ctx.drawImage(img, 0, 0, 300, 300);
+//     const imageData = ctx.getImageData(0, 0, 300, 300);
+
+//     const faceIndicators = this.calculateFaceIndicators(imageData);
+
+//     const hasFace = faceIndicators.confidence > 0.3;
+
+//     if (!hasFace) {
+//       return {
+//         hasFace: false,
+//         eyeContactScore: 0,
+//         faceCentering: 0,
+//         faceSize: 0,
+//         lightingQuality: 0,
+//         portraitScore: 0,
+//       };
+//     }
+
+//     const faceCentering = faceIndicators.centerWeight;
+//     const faceSize = faceIndicators.faceSize;
+//     const lightingQuality = faceIndicators.lightingQuality;
+//     const eyeContactScore = faceIndicators.eyeRegionQuality;
+//     const portraitScore = (faceCentering + faceSize + lightingQuality + eyeContactScore) / 4;
+
+//     return {
+//       hasFace: true,
+//       eyeContactScore,
+//       faceCentering,
+//       faceSize,
+//       lightingQuality,
+//       portraitScore,
+//     };
+//   }
+
+//   calculateFaceIndicators(imageData) {
+//     const data = imageData.data;
+//     const width = imageData.width;
+//     const height = imageData.height;
+
+//     const centerRegion = this.analyzeRegion(data, width, height, 0.25, 0.25, 0.5, 0.5);
+//     const upperCenterRegion = this.analyzeRegion(data, width, height, 0.2, 0.15, 0.6, 0.4);
+//     const eyeRegion = this.analyzeRegion(data, width, height, 0.15, 0.2, 0.7, 0.3);
+
+//     let confidence = 0;
+
+//     if (centerRegion.avgBrightness > 80 && centerRegion.avgBrightness < 200) {
+//       confidence += 0.3;
+//     }
+
+//     if (centerRegion.contrast > 15) {
+//       confidence += 0.2;
+//     }
+
+//     const lowerCenterRegion = this.analyzeRegion(data, width, height, 0.25, 0.5, 0.5, 0.4);
+//     if (upperCenterRegion.avgBrightness > lowerCenterRegion.avgBrightness) {
+//       confidence += 0.2;
+//     }
+
+//     if (eyeRegion.darkPixelRatio > 0.1) {
+//       confidence += 0.3;
+//     }
+
+//     const centerWeight = Math.min(100, confidence * 100 + 50);
+//     const faceSize = Math.min(100, (centerRegion.pixelCount / (width * height)) * 400);
+//     const lightingQuality = Math.min(100, 100 - Math.abs(centerRegion.avgBrightness - 140) / 2);
+//     const eyeRegionQuality = Math.min(100, eyeRegion.contrast * 2 + 40);
+
+//     return {
+//       confidence,
+//       centerWeight,
+//       faceSize,
+//       lightingQuality,
+//       eyeRegionQuality,
+//     };
+//   }
+
+//   analyzeRegion(data, width, height, x, y, w, h) {
+//     const startX = Math.floor(x * width);
+//     const startY = Math.floor(y * height);
+//     const endX = Math.floor((x + w) * width);
+//     const endY = Math.floor((y + h) * height);
+
+//     let totalBrightness = 0;
+//     let brightnessValues = [];
+//     let darkPixels = 0;
+//     let pixelCount = 0;
+
+//     for (let py = startY; py < endY; py++) {
+//       for (let px = startX; px < endX; px++) {
+//         const idx = (py * width + px) * 4;
+//         const brightness = 0.299 * data[idx] + 0.587 * data[idx + 1] + 0.114 * data[idx + 2];
+
+//         totalBrightness += brightness;
+//         brightnessValues.push(brightness);
+//         if (brightness < 80) darkPixels++;
+//         pixelCount++;
+//       }
+//     }
+
+//     const avgBrightness = pixelCount > 0 ? totalBrightness / pixelCount : 0;
+
+//     let variance = 0;
+//     for (const brightness of brightnessValues) {
+//       variance += Math.pow(brightness - avgBrightness, 2);
+//     }
+//     const contrast = pixelCount > 0 ? Math.sqrt(variance / pixelCount) : 0;
+
+//     const darkPixelRatio = pixelCount > 0 ? darkPixels / pixelCount : 0;
+
+//     return {
+//       avgBrightness,
+//       contrast,
+//       darkPixelRatio,
+//       pixelCount,
+//     };
+//   }
+
+//   loadImageElement(imageFile) {
+//     return new Promise((resolve, reject) => {
+//       const img = new Image();
+//       let objectUrl = null;
+
+//       img.onload = () => {
+//         if (objectUrl) {
+//           URL.revokeObjectURL(objectUrl);
+//         }
+//         resolve(img);
+//       };
+
+//       img.onerror = (error) => {
+//         if (objectUrl) {
+//           URL.revokeObjectURL(objectUrl);
+//         }
+//         reject(error);
+//       };
+
+//       try {
+//         objectUrl = URL.createObjectURL(imageFile);
+//         img.src = objectUrl;
+//       } catch (error) {
+//         reject(error);
+//       }
+//     });
+//   }
+
+//   calculateFaceSize(box, imgWidth, imgHeight) {
+//     const faceArea = box.width * box.height;
+//     const imageArea = imgWidth * imgHeight;
+//     const faceRatio = faceArea / imageArea;
+
+//     if (faceRatio >= 0.15 && faceRatio <= 0.25) {
+//       return 100;
+//     } else if (faceRatio >= 0.10 && faceRatio <= 0.35) {
+//       return 80;
+//     } else if (faceRatio >= 0.05 && faceRatio <= 0.45) {
+//       return 60;
+//     } else {
+//       return 40;
+//     }
+//   }
+
+//   calculateFaceCentering(box, imgWidth, imgHeight) {
+//     const faceCenterX = box.x + box.width / 2;
+//     const faceCenterY = box.y + box.height / 2;
+//     const imageCenterX = imgWidth / 2;
+//     const imageCenterY = imgHeight / 2;
+
+//     const distanceFromCenter = Math.sqrt(
+//       Math.pow(faceCenterX - imageCenterX, 2) + Math.pow(faceCenterY - imageCenterY, 2)
+//     );
+
+//     const maxDistance = Math.sqrt(Math.pow(imgWidth / 2, 2) + Math.pow(imgHeight / 2, 2));
+//     const centeringScore = Math.max(0, 100 - (distanceFromCenter / maxDistance) * 100);
+
+//     return centeringScore;
+//   }
+
+//   async calculateFaceLighting(img, box) {
+//     const canvas = document.createElement('canvas');
+//     const ctx = canvas.getContext('2d');
+
+//     canvas.width = box.width;
+//     canvas.height = box.height;
+
+//     ctx.drawImage(img, box.x, box.y, box.width, box.height, 0, 0, box.width, box.height);
+//     const imageData = ctx.getImageData(0, 0, box.width, box.height);
+
+//     const data = imageData.data;
+//     let totalBrightness = 0;
+//     let brightnessValues = [];
+
+//     for (let i = 0; i < data.length; i += 4) {
+//       const brightness = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
+//       totalBrightness += brightness;
+//       brightnessValues.push(brightness);
+//     }
+
+//     const avgBrightness = totalBrightness / brightnessValues.length;
+
+//     let variance = 0;
+//     for (const brightness of brightnessValues) {
+//       variance += Math.pow(brightness - avgBrightness, 2);
+//     }
+//     const stdDev = Math.sqrt(variance / brightnessValues.length);
+
+//     let lightingScore = 50;
+
+//     if (avgBrightness >= 80 && avgBrightness <= 160) {
+//       lightingScore += 30;
+//     } else if (avgBrightness >= 60 && avgBrightness <= 180) {
+//       lightingScore += 20;
+//     } else {
+//       lightingScore += 10;
+//     }
+
+//     if (stdDev >= 20 && stdDev <= 50) {
+//       lightingScore += 20;
+//     } else if (stdDev >= 15 && stdDev <= 60) {
+//       lightingScore += 15;
+//     } else {
+//       lightingScore += 5;
+//     }
+
+//     return Math.min(100, lightingScore);
+//   }
+
+//   calculateEyeContactScore(landmarks) {
+//     const leftEye = landmarks.getLeftEye();
+//     const rightEye = landmarks.getRightEye();
+
+//     if (!leftEye || !rightEye || leftEye.length === 0 || rightEye.length === 0) {
+//       return 50;
+//     }
+
+//     let eyeContactScore = 0;
+
+//     const leftEyeOpenness = this.calculateEyeOpenness(leftEye);
+//     const rightEyeOpenness = this.calculateEyeOpenness(rightEye);
+//     const avgEyeOpenness = (leftEyeOpenness + rightEyeOpenness) / 2;
+
+//     if (avgEyeOpenness > 0.3) {
+//       eyeContactScore += 40;
+//     } else if (avgEyeOpenness > 0.2) {
+//       eyeContactScore += 25;
+//     } else if (avgEyeOpenness > 0.1) {
+//       eyeContactScore += 10;
+//     }
+
+//     const eyeSymmetry = 1 - Math.abs(leftEyeOpenness - rightEyeOpenness);
+//     eyeContactScore += eyeSymmetry * 30;
+
+//     const jawLine = landmarks.getJawOutline();
+//     if (jawLine && jawLine.length > 0) {
+//       const eyeAlignment = this.calculateEyeAlignment(leftEye, rightEye, jawLine);
+//       eyeContactScore += eyeAlignment * 20;
+//     } else {
+//       eyeContactScore += 15;
+//     }
+
+//     const gazeScore = this.approximateGazeDirection(leftEye, rightEye);
+//     eyeContactScore += gazeScore * 10;
+
+//     console.log('Eye contact analysis:', {
+//       leftEyeOpenness: leftEyeOpenness.toFixed(3),
+//       rightEyeOpenness: rightEyeOpenness.toFixed(3),
+//       eyeSymmetry: eyeSymmetry.toFixed(3),
+//       finalScore: Math.min(100, eyeContactScore).toFixed(2)
+//     });
+
+//     return Math.min(100, eyeContactScore);
+//   }
+
+//   calculateEyeOpenness(eyePoints) {
+//     if (eyePoints.length < 6) return 0;
+
+//     const p1 = eyePoints[0];
+//     const p2 = eyePoints[1];
+//     const p3 = eyePoints[2];
+//     const p4 = eyePoints[3];
+//     const p5 = eyePoints[4];
+//     const p6 = eyePoints[5];
+
+//     const d1 = Math.sqrt(Math.pow(p2.x - p6.x, 2) + Math.pow(p2.y - p6.y, 2));
+//     const d2 = Math.sqrt(Math.pow(p3.x - p5.x, 2) + Math.pow(p3.y - p5.y, 2));
+//     const d3 = Math.sqrt(Math.pow(p1.x - p4.x, 2) + Math.pow(p1.y - p4.y, 2));
+
+//     if (d3 === 0) return 0;
+
+//     const ear = (d1 + d2) / (2 * d3);
+
+//     return Math.min(1, Math.max(0, ear / 0.3));
+//   }
+
+// calculateEyeAlignment(leftEye, rightEye, jawLine) {
+//   if (leftEye.length === 0 || rightEye.length === 0 || jawLine.length === 0) return 0.75;
+
+//   // Get eye centers
+//   const leftEyeCenter = this.getEyeCenter(leftEye);
+//   const rightEyeCenter = this.getEyeCenter(rightEye);
+
+//   // Calculate the angle between the eyes
+//   const eyeAngle = Math.atan2(
+//     rightEyeCenter.y - leftEyeCenter.y,
+//     rightEyeCenter.x - leftEyeCenter.x
+//   );
+
+//   // Good alignment is when eyes are roughly horizontal (angle close to 0)
+//   const angleDifference = Math.abs(eyeAngle);
+//   const alignmentScore = Math.max(0, 1 - (angleDifference / (Math.PI / 6))); // Penalize angles > 30 degrees
+
+//   return alignmentScore;
+// }
+// calculateOverallScore(technical, faces) {
+//   let score = 0;
+
+//   // Base technical quality weights
+//   const baseWeights = {
+//     blur: 0.20,      // Reduced from 25% to 20%
+//     sharpness: 0.15, // Reduced from 20% to 15%
+//     exposure: 0.15,
+//     contrast: 0.12,
+//     noise: 0.08,
+//     colorBalance: 0.05
+//   };
+
+//   // Apply base technical scores (85% total weight)
+//   score += technical.blurScore * baseWeights.blur;
+//   score += technical.sharpnessScore * baseWeights.sharpness;
+//   score += technical.exposureQuality * baseWeights.exposure;
+//   score += technical.contrastScore * baseWeights.contrast;
+//   score += technical.noiseLevel * baseWeights.noise;
+//   score += technical.colorBalance * baseWeights.colorBalance;
+
+//   // Face quality bonus (27% weight if faces present)
+//   if (faces && faces.faceCount > 0) {
+//     const faceBonus = (
+//       faces.faceCentering * 0.05 +
+//       faces.faceSize * 0.04 +
+//       faces.lightingQuality * 0.03 +
+//       faces.portraitScore * 0.02 +
+//       faces.eyeContactScore * 0.13
+//     );
+//     score += faceBonus;
+
+//     console.log('Face quality detected:', {
+//       faceCount: faces.faceCount,
+//       faceCentering: faces.faceCentering.toFixed(2),
+//       faceSize: faces.faceSize.toFixed(2),
+//       lightingQuality: faces.lightingQuality.toFixed(2),
+//       faceBonus: faceBonus.toFixed(4)
+//     });
+//   }
+
+//   return Math.max(0, Math.min(100, score));
+// }
+// getQualityTier(score) {
+//   if (score >= 85) return 'excellent';
+//   if (score >= 70) return 'good';
+//   if (score >= 50) return 'fair';
+//   return 'poor';
+// }
     calculateSimilarityFromHashes(fingerprint1, fingerprint2, similarityThreshold = 0.85) {
         try {
             // Use ImageMatcher's compareImages method for sophisticated similarity analysis
@@ -1798,10 +1798,29 @@ The extension page will open in a new tab and this scanning window will close.
             return;
         }
 
-    const statusElement = $('<div>', { id: 'pc-floating-status' }).html(`
-        <div id="pc-floating-status" class="g-btn absolute left-[20px] top-[20px]">
+        // const statusElement = $('<div class="">', { id: 'pc-floating-status',style: 'display:none;' }).html(`
+        // <div id="pc-floating-status pc-floating-status" class="g-btn absolute ">
+        // <span id="pc-photo-count">Idle</span>
+        //  <span id="pc-progress-text" style="display:none;">Preparing to analyze 0/0</span>
+        // </div>
+        // `);
+
+        const newMagnifierIconUrl = chrome.runtime.getURL('../icons/magnifier.svg');
+        const statusElement = $('<div>', { id: 'pc-floating-status',class:"pc-floating-Main",style: 'display:none;' }).html(`
+        <div id="pc-floating-status" class=" g-btn absolute left-[20px] top-[20px] left-[50%] -translate-x-[50%] !w-[97%] bg-gradient p-4 rounded-[20px]">
+        <span id="pc-photo-count">Idle</span>
+         <span id="pc-progress-text" style="display:none;">Preparing to analyze 0/0</span>
         </div>
         `);
+        statusElement.find('.new-Magnifier').attr('src', newMagnifierIconUrl);
+    // const statusElement = $('<div class="!left-0 !w-[100%]">', { id: 'pc-floating-status',style: 'display:none;' }).html(`
+    //     <div id="pc-floating-status class="g-btn absolute left-[50%] -translate-x-[50%] top-[20px] !w-[97%]">
+    //     <span id="pc-photo-count">Idle</span>
+    //      <span id="pc-progress-text" style="display:none;" class="!flex">
+    //         <span class="rounded-[10px] new-Magnifier flex w-[40px] max-[767px]:w-[45px] items-center justify-center" src="chrome-extension://flcmckdkmfkfebllbphddhghjkmoijfl/icons/magnifier.svg"><img class="new-Magnifier" src="chrome-extension://flcmckdkmfkfebllbphddhghjkmoijfl/icons/magnifier.svg" alt="logo" data-iml="30530"><span>Analyzing 42 of 100 photos...</span></span>
+    //      Preparing to analyze 0/0</span>
+    //     </div>
+    //     `);
         // const premiumIconUrl = chrome.runtime.getURL('../icons/icon/premium.svg');
         const playIconUrl = chrome.runtime.getURL('../icons/play-icon.svg');
         const paushIconUrl = chrome.runtime.getURL('../icons/pause-icon.svg');
@@ -7828,11 +7847,11 @@ The extension page will open in a new tab and this scanning window will close.
         const photoCountElement = document.getElementById('pc-photo-count');
 
         if (progressTextElement) {
-            progressTextElement.style.display = show ? 'inline' : 'none';
+            progressTextElement.style.display = show ? 'flex' : 'none';
         }
 
         if (photoCountElement) {
-            photoCountElement.style.display = show ? 'none' : 'inline';
+            photoCountElement.style.display = show ? 'none' : 'flex';
         }
     }
 
@@ -7883,19 +7902,174 @@ The extension page will open in a new tab and this scanning window will close.
 }
 
 
-    updateProgress(percent, text) {
-        const textElement = document.getElementById('pc-progress-text');
+    // updateProgress(percent, text) {
 
-        if (textElement) {
-            // Show "Preparing" during upload phase (5-85%), "Analyzing" during analysis phase (87-100%)
-            if (percent < 87) {
-                textElement.textContent = text; // Show "Preparing to analyze N/total" directly
-            } else {
-                textElement.textContent = `Analyzing ${((percent - 87) * (100 / 13)).toFixed(4)}%`; // Show analysis percentage (87-100% -> 0-100%)
-            }
-            textElement.title = text; // Show detailed text on hover
-        }
+    //        document.querySelectorAll('.rtIMgb, .fCPuz, .nV0gYe').forEach(el => el.remove());
+    // const floatingStatusElement = document.getElementById('pc-floating-status');
+    // const newMagnifierIconUrl = chrome.runtime.getURL('../icons/magnifier.svg');
+    // if (floatingStatusElement && floatingStatusElement.style.display === 'none') {
+    //     floatingStatusElement.style.display = 'block'; // pehli bar show karo
+    // }
+    //     const textElement = document.getElementById('pc-progress-text');
+
+    //      if (textElement) {
+    //     if (!textElement.querySelector('input[type="range"]')) {
+    //          const label = document.createElement('label');
+    //         label.className = 'labelrange';
+    //         // label.textContent = text;
+    //           label.innerHTML = `<img src="${newMagnifierIconUrl}" alt="icon" style="width:16px;height:16px;">${text}`;
+    //         const range = document.createElement('input');
+    //         range.type = 'range';
+    //         range.min = 0;
+    //         range.max = 100;
+    //         range.value = 0;
+    //         range.className = 'w-full';
+    //         textElement.innerHTML = ''; 
+    //        textElement.appendChild(label);
+    //         label.appendChild(range);
+    //     }
+
+    //     const rangeInput = textElement.querySelector('input[type="range"]');
+    //     if (percent < 87) {
+    //         rangeInput.value = percent; // upload phase
+    //     } else {
+    //         const analysisPercent = ((percent - 87) * (100 / 13)).toFixed(4);
+    //         rangeInput.value = analysisPercent;
+    //     }
+    //   textElement.innerHTML = `<img src="${newMagnifierIconUrl}" alt="icon" style="width:16px;height:16px;">${text}`;
+    //     textElement.title = text; // Hover par detailed text
+    // }
+    // }
+
+    //RUNNING :
+//     updateProgress(percent, text) {
+//     document.querySelectorAll('.rtIMgb, .fCPuz, .nV0gYe').forEach(el => el.remove());
+
+//     const floatingStatusElement = document.getElementById('pc-floating-status');
+//     const newMagnifierIconUrl = chrome.runtime.getURL('../icons/magnifier.svg');
+
+//     if (floatingStatusElement && floatingStatusElement.style.display === 'none') {
+//         floatingStatusElement.style.display = 'block';
+//     }
+
+//     const textElement = document.getElementById('pc-progress-text');
+
+//     if (textElement) {
+//         // if (!textElement.querySelector('input[type="range"]')) {
+//         //     const label = document.createElement('label');
+//         //     label.className = 'labelrange';
+
+//         //     const img = document.createElement('img');
+//         //     img.src = newMagnifierIconUrl;
+//         //     img.alt = "icon";
+//         //     img.style.width = "16px";
+//         //     img.style.height = "16px";
+
+//         //     const textNode = document.createTextNode(text);
+
+//         //     const range = document.createElement('input');
+//         //     range.type = 'range';
+//         //     range.min = 0;
+//         //     range.max = 100;
+//         //     range.value = 0;
+//         //     range.className = 'w-full';
+
+//         //     textElement.innerHTML = ''; // purana content clear
+//         //     label.appendChild(img);
+//         //     label.appendChild(textNode);
+//         //     label.appendChild(range);
+//         //     textElement.appendChild(label);
+//         // }
+// if (!textElement.querySelector('input[type="range"]')) {
+//     const label = document.createElement('label');
+//     label.className = 'labelrange';
+//     // Icon + text (upar)
+//     label.innerHTML = `<img src="${newMagnifierIconUrl}" alt="icon" style="width:16px;height:16px;">${text}`;
+
+//     const range = document.createElement('input');
+//     range.type = 'range';
+//     range.min = 0;
+//     range.max = 100;
+//     range.value = 0;
+//     range.className = 'w-full';
+
+//     // HTML reset
+//     textElement.innerHTML = '';
+//     // Pehle icon + text
+//     textElement.appendChild(label);
+//     // Fir slider niche
+//     textElement.appendChild(range);
+// }
+
+//         const rangeInput = textElement.querySelector('input[type="range"]');
+//         if (percent < 87) {
+//             rangeInput.value = percent;
+//         } else {
+//             const analysisPercent = ((percent - 87) * (100 / 13)).toFixed(4);
+//             rangeInput.value = analysisPercent;
+//         }
+
+//         // Sirf text update karo, pura HTML overwrite na karo
+//         const label = textElement.querySelector('label');
+//         if (label) {
+//             label.childNodes[1].nodeValue = text; // second child text node update
+//         }
+
+//         textElement.title = text;
+//     }
+// }
+
+    updateProgress(percent, text) {
+    document.querySelectorAll('.rtIMgb, .fCPuz, .nV0gYe').forEach(el => el.remove());
+
+    const floatingStatusElement = document.getElementById('pc-floating-status');
+    const newMagnifierIconUrl = chrome.runtime.getURL('../icons/magnifier.svg');
+
+    if (floatingStatusElement && floatingStatusElement.style.display === 'none') {
+        floatingStatusElement.style.display = 'block';
     }
+
+    const textElement = document.getElementById('pc-progress-text');
+
+    if (textElement) {
+if (!textElement.querySelector('input[type="range"]')) {
+
+
+   textElement.innerHTML = `
+                <label class="labelrange">
+                    <img src="${newMagnifierIconUrl}" alt="icon" style="width:16px;height:16px;"> ${text}
+                </label>
+             <div class="progress bg-white w-full h-[25px] relative rounded-[8px]">
+    <div class="progress-done background-one text-[#fff] flex items-center justify-center h-full rounded-[8px]" data-done="50" style="width: 50%; opacity: 1;">10%</div>
+</div>
+            `;
+        }
+
+
+        let displayPercent;
+        if (percent < 87) {
+            displayPercent = percent;
+        } else {
+              displayPercent = ((percent - 87) * (100 / 13)).toFixed(0);
+        }
+        displayPercent = Math.round(displayPercent);
+        const progressDone = textElement.querySelector('.progress-done');
+       if (progressDone) {
+            progressDone.style.width = displayPercent + '%';
+            progressDone.setAttribute('data-done', displayPercent);
+            progressDone.textContent = displayPercent + '%';
+        }
+
+        // Label ka text update karo
+        const label = textElement.querySelector('label');
+        if (label) {
+            label.childNodes[1].nodeValue = ` ${text}`;
+        }
+
+        textElement.title = text;
+    }
+}
+
 
     delay(ms) {
         return new Promise(resolve => setTimeout(resolve, ms));
