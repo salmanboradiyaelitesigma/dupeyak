@@ -1939,3 +1939,6 @@ span.percent-value {
     color: #fff !important;
 }
 .progress-done {width: 0;opacity: 0;transition: 1s ease 0.3s;}
+
+.quality_a_details_po {transition: all .5s;transform: scale(0);opacity: 0;}
+.quality_a_details_nu:hover+.quality_a_details_po, .quality_a_details_nu:hover+.quality_a_details_nu+.quality_a_details_po {transform: scale(1);opacity: 1;}

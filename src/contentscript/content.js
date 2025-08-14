@@ -63,6 +63,7 @@ class FrontendSessionManager {
             processed_images: 0,
             analysis_status: 'ready',
             similar_groups: [],
+            quality_array:[],
             last_analysis: null,
             similarity_threshold: 85
         };
@@ -114,6 +115,7 @@ class FrontendSessionManager {
             console.log(`🔢 Computing image fingerprint for ${imageId}...`);
             const frontendStartTime = Date.now();
             const fingerprint = await this.imageMatcher.processImage(img, imageId);
+
             const frontendHashTime = Date.now() - frontendStartTime;
             console.log(`✅ Computed image fingerprint for ${imageId} in ${frontendHashTime}ms`);
 
@@ -124,7 +126,8 @@ class FrontendSessionManager {
                 processed: true,
                 width: img.naturalWidth,
                 height: img.naturalHeight,
-                hash_cached: true
+                hash_cached: true,
+                imageData: imageData
             };
 
             session.images.push(imageInfo);
@@ -217,656 +220,1121 @@ class FrontendSessionManager {
 
 
 
-    async analyzeSession(sessionId, similarityThreshold = 75) {
-        const session = this.sessions[sessionId];
-        if (!session) {
-            throw new Error('Session not found');
-        }
+//     async analyzeSession(sessionId, similarityThreshold = 75) {
+//         const session = this.sessions[sessionId];
+//         if (!session) {
+//             throw new Error('Session not found');
+//         }
 
-        console.log(`🎯 Starting frontend analysis for session ${sessionId}`);
-        const analysisStartTime = Date.now();
+//         console.log(`🎯 Starting frontend analysis for session ${sessionId}`);
+//         const analysisStartTime = Date.now();
+//          const allResults = [];
+//         session.analysis_status = 'analyzing';
+//         session.similarity_threshold = similarityThreshold;
+//         session.processed_images = 0;
 
-        session.analysis_status = 'analyzing';
-        session.similarity_threshold = similarityThreshold;
-        session.processed_images = 0;
+//         const threshold = similarityThreshold / 100.0; // Convert percentage to decimal
+//         console.log(`🎯 Using ${similarityThreshold}% similarity threshold (${threshold} decimal)`);
 
-        const threshold = similarityThreshold / 100.0; // Convert percentage to decimal
-        console.log(`🎯 Using ${similarityThreshold}% similarity threshold (${threshold} decimal)`);
+//         try {
+//             const images = session.images;
+//             const totalImages = images.length;
+//             const totalComparisons = totalImages * (totalImages - 1) / 2;
 
-        try {
-            const images = session.images;
-            const totalImages = images.length;
-            const totalComparisons = totalImages * (totalImages - 1) / 2;
+//             console.log(`🔍 Analyzing ${totalImages} images (${totalComparisons} comparisons)...`);
 
-            console.log(`🔍 Analyzing ${totalImages} images (${totalComparisons} comparisons)...`);
+//             const comparisons = [];
+//             let completedComparisons = 0;
 
-            const comparisons = [];
-            let completedComparisons = 0;
+//             // Add progress callback for UI updates
+//             const progressCallback = this.progressCallback || (() => { });
 
-            // Add progress callback for UI updates
-            const progressCallback = this.progressCallback || (() => { });
+//             console.log(`🔄 Starting hash comparison phase...`);
+//             progressCallback(10, `Comparing ${totalComparisons.toLocaleString()} hash pairs...`);
 
-            console.log(`🔄 Starting hash comparison phase...`);
-            progressCallback(10, `Comparing ${totalComparisons.toLocaleString()} hash pairs...`);
+//             // Compare each pair of images with batching to prevent browser freeze
+//             const batchSize = 1000; // Process 1000 comparisons at a time
+//             let batchCount = 0;
 
-            // Compare each pair of images with batching to prevent browser freeze
-            const batchSize = 1000; // Process 1000 comparisons at a time
-            let batchCount = 0;
+//             for (let i = 0; i < totalImages; i++) {
+//                 for (let j = i + 1; j < totalImages; j++) {
+//                     const img1Info = images[i];
+//                     const img2Info = images[j];
 
-            for (let i = 0; i < totalImages; i++) {
-                for (let j = i + 1; j < totalImages; j++) {
-                    const img1Info = images[i];
-                    const img2Info = images[j];
+//                     const img1Fingerprint = session.imageHashes[img1Info.id];
+//                     const img2Fingerprint = session.imageHashes[img2Info.id];
 
-                    const img1Fingerprint = session.imageHashes[img1Info.id];
-                    const img2Fingerprint = session.imageHashes[img2Info.id];
+//                     if (img1Fingerprint && img2Fingerprint) {
+//                         const similarity = this.calculateSimilarityFromHashes(img1Fingerprint, img2Fingerprint, threshold);
 
-                    if (img1Fingerprint && img2Fingerprint) {
-                        const similarity = this.calculateSimilarityFromHashes(img1Fingerprint, img2Fingerprint, threshold);
+//                         if (similarity && similarity.is_similar) {
+//                             comparisons.push({
+//                                 image1_index: i,
+//                                 image2_index: j,
+//                                 image1_id: img1Info.id,
+//                                 image2_id: img2Info.id,
+//                                 similarity: similarity
+//                             });
 
-                        if (similarity && similarity.is_similar) {
-                            comparisons.push({
-                                image1_index: i,
-                                image2_index: j,
-                                image1_id: img1Info.id,
-                                image2_id: img2Info.id,
-                                similarity: similarity
-                            });
+//                             console.log(`🎯 MATCH: ${img1Info.id} ↔ ${img2Info.id} (score: ${similarity.combined_score.toFixed(3)})`);
+//                         }
+//                     }
 
-                            console.log(`🎯 MATCH: ${img1Info.id} ↔ ${img2Info.id} (score: ${similarity.combined_score.toFixed(3)})`);
-                        }
-                    }
+//                     completedComparisons++;
+//                     batchCount++;
 
-                    completedComparisons++;
-                    batchCount++;
+//                     // Update progress and yield control to prevent browser freeze
+//                     if (batchCount >= batchSize) {
+//                         const progress = 10 + (completedComparisons / totalComparisons) * 80; // 10-90% for comparison phase
+//                         session.processed_images = completedComparisons;
+//                         session.analysis_progress = progress;
 
-                    // Update progress and yield control to prevent browser freeze
-                    if (batchCount >= batchSize) {
-                        const progress = 10 + (completedComparisons / totalComparisons) * 80; // 10-90% for comparison phase
-                        session.processed_images = completedComparisons;
-                        session.analysis_progress = progress;
+//                         const remainingComparisons = totalComparisons - completedComparisons;
+//                         const matchesFound = comparisons.length;
 
-                        const remainingComparisons = totalComparisons - completedComparisons;
-                        const matchesFound = comparisons.length;
+//                         console.log(`📊 Progress: ${completedComparisons.toLocaleString()}/${totalComparisons.toLocaleString()} comparisons (${progress.toFixed(1)}%) - ${matchesFound} matches found`);
+//                         progressCallback(progress, `Comparing hashes: ${completedComparisons.toLocaleString()}/${totalComparisons.toLocaleString()} (${matchesFound} matches found)`);
 
-                        console.log(`📊 Progress: ${completedComparisons.toLocaleString()}/${totalComparisons.toLocaleString()} comparisons (${progress.toFixed(1)}%) - ${matchesFound} matches found`);
-                        progressCallback(progress, `Comparing hashes: ${completedComparisons.toLocaleString()}/${totalComparisons.toLocaleString()} (${matchesFound} matches found)`);
+//                         // Yield control to prevent browser freeze
+//                         await new Promise(resolve => setTimeout(resolve, 1));
+//                         batchCount = 0;
+//                     }
+//                 }
+//             }
 
-                        // Yield control to prevent browser freeze
-                        await new Promise(resolve => setTimeout(resolve, 1));
-                        batchCount = 0;
+//             // Final progress update for comparison phase
+//             const finalProgress = 90;
+//             session.analysis_progress = finalProgress;
+//             progressCallback(finalProgress, `Hash comparison complete! Found ${comparisons.length} similar pairs. Grouping results...`);
+
+//             // Group similar images
+//             console.log(`🔄 Grouping ${comparisons.length} similar pairs into groups...`);
+//             progressCallback(95, `Grouping ${comparisons.length} similar pairs...`);
+
+//             const similarGroups = this.groupSimilarImages(comparisons);
+
+//             // Update session with results
+//             session.analysis_status = 'completed';
+//             session.processed_images = totalImages;
+//             session.similar_groups = similarGroups;
+//             session.total_comparisons = totalComparisons;
+//             session.similar_pairs_found = comparisons.length;
+//             session.last_analysis = new Date().toISOString();
+//             session.analysis_progress = 100;
+
+//             progressCallback(100, `Analysis complete! Found ${similarGroups.length} groups of similar photos.`);
+
+//             const analysisTime = Date.now() - analysisStartTime;
+//             console.log(`🚀 Frontend analysis completed for session ${sessionId}:`);
+//             console.log(`  📊 Total comparisons made: ${totalComparisons}`);
+//             console.log(`  🎯 Similar pairs found: ${comparisons.length}`);
+//             console.log(`  📁 Similar groups found: ${similarGroups.length}`);
+//             console.log(`  ⏱️ Analysis time: ${analysisTime}ms`);
+
+//             console.log("assessImageQuality_assessImageQuality>>",session)
+
+
+// function base64ToBlob(dataURL) {
+//   const [meta, base64Data] = dataURL.split(',');
+//   const mime = meta.match(/:(.*?);/)[1];
+//   const byteString = atob(base64Data);
+//   const arrayBuffer = new ArrayBuffer(byteString.length);
+//   const uint8Array = new Uint8Array(arrayBuffer);
+//   for (let i = 0; i < byteString.length; i++) {
+//     uint8Array[i] = byteString.charCodeAt(i);
+//   }
+//   return new Blob([uint8Array], { type: mime });
+// }
+
+
+// async function buildNewParamsFromSession(session) {
+//     console.log("imageData>>>",session)
+//   return await Promise.all(session.images.map(async img => {
+//    const blob = base64ToBlob(img.imageData);
+//     return {
+//       blob,
+//       id: `${img.id}-${blob.size}-${Date.now()}`,
+//       preview: URL.createObjectURL(blob),
+//       lastModified: Date.now(),
+//       lastModifiedDate: new Date(),
+//       name: `${img.id}.jpg`,
+//       size: blob.size,
+//       type: blob.type,
+//       webkitRelativePath: ""
+//     };
+//   }));
+// }
+
+
+// (async () => {
+//   const newParamsList = await buildNewParamsFromSession(session);
+//   console.log("newParamsList>>>>>", newParamsList);
+
+   
+
+//   for (const new_params of newParamsList) {
+//     const quality = await this.assessImageQuality(new_params, 300);
+    
+//     console.log(`Quality for ${new_params.name}:`, quality);
+
+//       allResults.push({
+//       name: new_params.name,
+//       ...quality
+//     });
+//  console.log(allResults);
+//   }
+// })();
+//         //   const quality = await this.assessImageQuality(new_params, 300);
+//         //  console.log('quality__assessImageQuality',quality);
+//      console.log('quality__assessImageQuality',allResults);
+        
+
+//             return {
+//                 success: true,
+//                 session_id: sessionId,
+//                 total_images: totalImages,
+//                 similar_groups: similarGroups,
+//                 quality_array:allResults,
+//                 total_comparisons: totalComparisons,
+//                 similar_pairs_found: comparisons.length,
+//                 analysis_time: analysisTime
+//             };
+
+//         } catch (error) {
+//             console.error(`❌ Error during frontend analysis:`, error);
+//             session.analysis_status = 'error';
+//             session.error = error.message;
+//             throw error;
+//         }
+//     }
+
+
+async analyzeSession(sessionId, similarityThreshold = 75) {
+    const session = this.sessions[sessionId];
+    if (!session) throw new Error('Session not found');
+
+    console.log(`🎯 Starting frontend analysis for session ${sessionId}`);
+    const analysisStartTime = Date.now();
+    const allResults = [];
+
+    session.analysis_status = 'analyzing';
+    session.similarity_threshold = similarityThreshold;
+    session.processed_images = 0;
+
+    const threshold = similarityThreshold / 100.0;
+    console.log(`🎯 Using ${similarityThreshold}% similarity threshold (${threshold} decimal)`);
+
+    try {
+        const images = session.images;
+        const totalImages = images.length;
+        const totalComparisons = totalImages * (totalImages - 1) / 2;
+
+        console.log(`🔍 Analyzing ${totalImages} images (${totalComparisons} comparisons)...`);
+
+        const comparisons = [];
+        let completedComparisons = 0;
+        const batchSize = 1000;
+        let batchCount = 0;
+
+        const progressCallback = this.progressCallback || (() => {});
+
+        // Hash comparison phase
+        console.log(`🔄 Starting hash comparison phase...`);
+        progressCallback(10, `Comparing ${totalComparisons.toLocaleString()} hash pairs...`);
+
+        for (let i = 0; i < totalImages; i++) {
+            for (let j = i + 1; j < totalImages; j++) {
+                const img1Info = images[i];
+                const img2Info = images[j];
+                const img1Fingerprint = session.imageHashes[img1Info.id];
+                const img2Fingerprint = session.imageHashes[img2Info.id];
+
+                if (img1Fingerprint && img2Fingerprint) {
+                    const similarity = this.calculateSimilarityFromHashes(img1Fingerprint, img2Fingerprint, threshold);
+                    if (similarity?.is_similar) {
+                        comparisons.push({
+                            image1_index: i,
+                            image2_index: j,
+                            image1_id: img1Info.id,
+                            image2_id: img2Info.id,
+                            similarity
+                        });
+                        console.log(`🎯 MATCH: ${img1Info.id} ↔ ${img2Info.id} (score: ${similarity.combined_score.toFixed(3)})`);
                     }
                 }
+
+                completedComparisons++;
+                batchCount++;
+
+                if (batchCount >= batchSize) {
+                    const progress = 10 + (completedComparisons / totalComparisons) * 80;
+                    session.processed_images = completedComparisons;
+                    session.analysis_progress = progress;
+
+                    console.log(`📊 Progress: ${completedComparisons}/${totalComparisons} (${progress.toFixed(1)}%) - ${comparisons.length} matches found`);
+                    progressCallback(progress, `Comparing hashes: ${completedComparisons}/${totalComparisons} (${comparisons.length} matches found)`);
+
+                    await new Promise(resolve => setTimeout(resolve, 1));
+                    batchCount = 0;
+                }
             }
-
-            // Final progress update for comparison phase
-            const finalProgress = 90;
-            session.analysis_progress = finalProgress;
-            progressCallback(finalProgress, `Hash comparison complete! Found ${comparisons.length} similar pairs. Grouping results...`);
-
-            // Group similar images
-            console.log(`🔄 Grouping ${comparisons.length} similar pairs into groups...`);
-            progressCallback(95, `Grouping ${comparisons.length} similar pairs...`);
-
-            const similarGroups = this.groupSimilarImages(comparisons);
-
-            // Update session with results
-            session.analysis_status = 'completed';
-            session.processed_images = totalImages;
-            session.similar_groups = similarGroups;
-            session.total_comparisons = totalComparisons;
-            session.similar_pairs_found = comparisons.length;
-            session.last_analysis = new Date().toISOString();
-            session.analysis_progress = 100;
-
-            progressCallback(100, `Analysis complete! Found ${similarGroups.length} groups of similar photos.`);
-
-            const analysisTime = Date.now() - analysisStartTime;
-            console.log(`🚀 Frontend analysis completed for session ${sessionId}:`);
-            console.log(`  📊 Total comparisons made: ${totalComparisons}`);
-            console.log(`  🎯 Similar pairs found: ${comparisons.length}`);
-            console.log(`  📁 Similar groups found: ${similarGroups.length}`);
-            console.log(`  ⏱️ Analysis time: ${analysisTime}ms`);
-
-        //  const quality = await this.assessImageQuality(session, 300);
-        //  console.log('quality__assessImageQuality',quality);
-            return {
-                success: true,
-                session_id: sessionId,
-                total_images: totalImages,
-                similar_groups: similarGroups,
-                total_comparisons: totalComparisons,
-                similar_pairs_found: comparisons.length,
-                analysis_time: analysisTime
-            };
-
-        } catch (error) {
-            console.error(`❌ Error during frontend analysis:`, error);
-            session.analysis_status = 'error';
-            session.error = error.message;
-            throw error;
         }
+
+        // Final comparison update
+        session.analysis_progress = 90;
+        progressCallback(90, `Hash comparison complete! Found ${comparisons.length} similar pairs.`);
+
+        // Group similar images
+        console.log(`🔄 Grouping ${comparisons.length} similar pairs...`);
+        progressCallback(95, `Grouping ${comparisons.length} similar pairs...`);
+        const similarGroups = this.groupSimilarImages(comparisons);
+
+        // Quality check phase
+        console.log("🔍 Starting quality analysis for each image...");
+        const newParamsList = await buildNewParamsFromSession(session);
+
+        for (const new_params of newParamsList) {
+            const quality = await this.assessImageQuality(new_params, 300);
+            allResults.push({
+                name: new_params.name,
+                ...quality
+            });
+            console.log(`Quality for ${new_params.name}:`, quality);
+        }
+
+        // Update session
+        session.analysis_status = 'completed';
+        session.processed_images = totalImages;
+        session.similar_groups = similarGroups;
+        session.quality_array = allResults;
+        session.total_comparisons = totalComparisons;
+        session.similar_pairs_found = comparisons.length;
+        session.last_analysis = new Date().toISOString();
+        session.analysis_progress = 100;
+
+        progressCallback(100, `Analysis complete! Found ${similarGroups.length} groups.`);
+
+        const analysisTime = Date.now() - analysisStartTime;
+        console.log(`🚀 Analysis completed in ${analysisTime}ms`);
+
+        return {
+            success: true,
+            session_id: sessionId,
+            total_images: totalImages,
+            similar_groups: similarGroups,
+            quality_array: allResults,
+            total_comparisons: totalComparisons,
+            similar_pairs_found: comparisons.length,
+            analysis_time: analysisTime
+        };
+
+    } catch (error) {
+        console.error(`❌ Error during analysis:`, error);
+        session.analysis_status = 'error';
+        session.error = error.message;
+        throw error;
     }
 
+    // Helper functions
+    function base64ToBlob(dataURL) {
+        const [meta, base64Data] = dataURL.split(',');
+        const mime = meta.match(/:(.*?);/)[1];
+        const byteString = atob(base64Data);
+        const arrayBuffer = new ArrayBuffer(byteString.length);
+        const uint8Array = new Uint8Array(arrayBuffer);
+        for (let i = 0; i < byteString.length; i++) {
+            uint8Array[i] = byteString.charCodeAt(i);
+        }
+        return new Blob([uint8Array], { type: mime });
+    }
+
+    async function buildNewParamsFromSession(session) {
+        return Promise.all(session.images.map(async img => {
+            const blob = base64ToBlob(img.imageData);
+            return {
+                blob,
+                id: `${img.id}-${blob.size}-${Date.now()}`,
+                preview: URL.createObjectURL(blob),
+                lastModified: Date.now(),
+                lastModifiedDate: new Date(),
+                name: `${img.id}.jpg`,
+                size: blob.size,
+                type: blob.type,
+                webkitRelativePath: ""
+            };
+        }));
+    }
+}
+
     
-//   async assessImageQuality(imageFile, processingSize = 300) {
-//     // await this.initializeFaceApi();
-
-//     const technical = await this.analyzeTechnicalQuality(imageFile, processingSize);
-//    console.log("technical >>>",technical);
-//    return;
-//     const faces = await this.analyzeFaceQuality(imageFile);
-
-//     const overallScore = this.calculateOverallScore(technical, faces);
-//     const qualityTier = this.getQualityTier(overallScore);
-
-//     return {
-//       overallScore,
-//       qualityTier,
-//       technical,
-//       faces,
-//     };
-//   }
-
-//   analyzeTechnicalQuality(imageFile, processingSize = 300) {
-//     return new Promise((resolve, reject) => {
-//       if (!imageFile || !imageFile.type || !imageFile.type.startsWith('image/') || !imageFile.size || !imageFile.name) {
-//         reject(new Error('Invalid file object or not an image'));
-//         return;
-//       }
-
-//       const img = new Image();
-//       let objectUrl = null;
-
-//       img.onload = () => {
-//         try {
-//           const canvas = document.createElement('canvas');
-//           const ctx = canvas.getContext('2d');
-
-//           canvas.width = processingSize;
-//           canvas.height = processingSize;
-
-//           ctx.imageSmoothingEnabled = true;
-//           ctx.imageSmoothingQuality = 'high';
-//           ctx.drawImage(img, 0, 0, processingSize, processingSize);
-
-//           const imageData = ctx.getImageData(0, 0, processingSize, processingSize);
-
-//           const blurScore = this.calculateBlurScore(imageData);
-//           const exposureQuality = this.calculateExposureQuality(imageData);
-//           const contrastScore = this.calculateContrastScore(imageData);
-//           const noiseLevel = this.calculateNoiseLevel(imageData);
-//           const sharpnessScore = this.calculateSharpnessScore(imageData);
-//           const colorBalance = this.calculateColorBalance(imageData);
-
-//           if (objectUrl) {
-//             URL.revokeObjectURL(objectUrl);
-//           }
-
-//           resolve({
-//             blurScore,
-//             exposureQuality,
-//             contrastScore,
-//             noiseLevel,
-//             sharpnessScore,
-//             colorBalance,
-//           });
-//         } catch (error) {
-//           if (objectUrl) {
-//             URL.revokeObjectURL(objectUrl);
-//           }
-//           reject(error);
-//         }
-//       };
-
-//       img.onerror = (error) => {
-//         if (objectUrl) {
-//           URL.revokeObjectURL(objectUrl);
-//         }
-//         reject(error);
-//       };
-
-//       try {
-//         objectUrl = URL.createObjectURL(imageFile);
-//         img.src = objectUrl;
-//       } catch (error) {
-//         reject(new Error(`Failed to create object URL for file: ${imageFile.name}`));
-//       }
-//     });
-//   }
-
-//   async analyzeFaceQuality(imageFile) {
-//     if (!this.faceapiInitialized) {
-//       console.log('Face-api.js not initialized, skipping face detection');
-//       return undefined;
-//     }
-
-//     try {
-//       const img = await this.loadImageElement(imageFile);
-
-//       console.log('Running Tiny Face Detector with facial landmarks...');
-//       let detectionsWithLandmarks = await faceapi.detectAllFaces(img, new faceapi.TinyFaceDetectorOptions({
-//         scoreThreshold: 0.2,
-//         inputSize: 416
-//       })).withFaceLandmarks(true);
-
-//       if (detectionsWithLandmarks.length === 0) {
-//         console.log('No faces with default settings, trying more sensitive detection...');
-//         detectionsWithLandmarks = await faceapi.detectAllFaces(img, new faceapi.TinyFaceDetectorOptions({
-//           scoreThreshold: 0.1,
-//           inputSize: 320
-//         })).withFaceLandmarks(true);
-//       }
-
-//       if (detectionsWithLandmarks.length === 0) {
-//         console.log('Still no faces, trying largest input size...');
-//         detectionsWithLandmarks = await faceapi.detectAllFaces(img, new faceapi.TinyFaceDetectorOptions({
-//           scoreThreshold: 0.1,
-//           inputSize: 512
-//         })).withFaceLandmarks(true);
-//       }
-
-//       if (detectionsWithLandmarks.length === 0) {
-//         console.log('No faces detected by Tiny Face Detector');
-//         return undefined;
-//       }
-
-//       console.log(`✅ Detected ${detectionsWithLandmarks.length} face(s) with landmarks using Tiny Face Detector!`);
-
-//       const faceWithLandmarks = detectionsWithLandmarks[0];
-//       const box = faceWithLandmarks.detection.box;
-//       const landmarks = faceWithLandmarks.landmarks;
-
-//       const faceSize = this.calculateFaceSize(box, img.width, img.height);
-//       const faceCentering = this.calculateFaceCentering(box, img.width, img.height);
-//       const lightingQuality = await this.calculateFaceLighting(img, box);
-//       const eyeContactScore = this.calculateEyeContactScore(landmarks);
-
-//       const portraitScore = (faceSize + faceCentering + lightingQuality + eyeContactScore) / 4;
-
-//       return {
-//         faceCount: detectionsWithLandmarks.length,
-//         eyeContactScore,
-//         faceCentering,
-//         faceSize,
-//         lightingQuality,
-//         portraitScore,
-//       };
-//     } catch (error) {
-//       console.error('Face detection with landmarks failed:', error);
-//       console.error('Error details:', error instanceof Error ? error.message : String(error));
-//       return undefined;
-//     }
-//   }
-
-//   async detectFaceSimplified(img) {
-//     const canvas = document.createElement('canvas');
-//     const ctx = canvas.getContext('2d');
-
-//     canvas.width = 300;
-//     canvas.height = 300;
-
-//     ctx.drawImage(img, 0, 0, 300, 300);
-//     const imageData = ctx.getImageData(0, 0, 300, 300);
-
-//     const faceIndicators = this.calculateFaceIndicators(imageData);
-
-//     const hasFace = faceIndicators.confidence > 0.3;
-
-//     if (!hasFace) {
-//       return {
-//         hasFace: false,
-//         eyeContactScore: 0,
-//         faceCentering: 0,
-//         faceSize: 0,
-//         lightingQuality: 0,
-//         portraitScore: 0,
-//       };
-//     }
-
-//     const faceCentering = faceIndicators.centerWeight;
-//     const faceSize = faceIndicators.faceSize;
-//     const lightingQuality = faceIndicators.lightingQuality;
-//     const eyeContactScore = faceIndicators.eyeRegionQuality;
-//     const portraitScore = (faceCentering + faceSize + lightingQuality + eyeContactScore) / 4;
-
-//     return {
-//       hasFace: true,
-//       eyeContactScore,
-//       faceCentering,
-//       faceSize,
-//       lightingQuality,
-//       portraitScore,
-//     };
-//   }
-
-//   calculateFaceIndicators(imageData) {
-//     const data = imageData.data;
-//     const width = imageData.width;
-//     const height = imageData.height;
-
-//     const centerRegion = this.analyzeRegion(data, width, height, 0.25, 0.25, 0.5, 0.5);
-//     const upperCenterRegion = this.analyzeRegion(data, width, height, 0.2, 0.15, 0.6, 0.4);
-//     const eyeRegion = this.analyzeRegion(data, width, height, 0.15, 0.2, 0.7, 0.3);
-
-//     let confidence = 0;
-
-//     if (centerRegion.avgBrightness > 80 && centerRegion.avgBrightness < 200) {
-//       confidence += 0.3;
-//     }
-
-//     if (centerRegion.contrast > 15) {
-//       confidence += 0.2;
-//     }
-
-//     const lowerCenterRegion = this.analyzeRegion(data, width, height, 0.25, 0.5, 0.5, 0.4);
-//     if (upperCenterRegion.avgBrightness > lowerCenterRegion.avgBrightness) {
-//       confidence += 0.2;
-//     }
-
-//     if (eyeRegion.darkPixelRatio > 0.1) {
-//       confidence += 0.3;
-//     }
-
-//     const centerWeight = Math.min(100, confidence * 100 + 50);
-//     const faceSize = Math.min(100, (centerRegion.pixelCount / (width * height)) * 400);
-//     const lightingQuality = Math.min(100, 100 - Math.abs(centerRegion.avgBrightness - 140) / 2);
-//     const eyeRegionQuality = Math.min(100, eyeRegion.contrast * 2 + 40);
-
-//     return {
-//       confidence,
-//       centerWeight,
-//       faceSize,
-//       lightingQuality,
-//       eyeRegionQuality,
-//     };
-//   }
-
-//   analyzeRegion(data, width, height, x, y, w, h) {
-//     const startX = Math.floor(x * width);
-//     const startY = Math.floor(y * height);
-//     const endX = Math.floor((x + w) * width);
-//     const endY = Math.floor((y + h) * height);
-
-//     let totalBrightness = 0;
-//     let brightnessValues = [];
-//     let darkPixels = 0;
-//     let pixelCount = 0;
-
-//     for (let py = startY; py < endY; py++) {
-//       for (let px = startX; px < endX; px++) {
-//         const idx = (py * width + px) * 4;
-//         const brightness = 0.299 * data[idx] + 0.587 * data[idx + 1] + 0.114 * data[idx + 2];
-
-//         totalBrightness += brightness;
-//         brightnessValues.push(brightness);
-//         if (brightness < 80) darkPixels++;
-//         pixelCount++;
-//       }
-//     }
-
-//     const avgBrightness = pixelCount > 0 ? totalBrightness / pixelCount : 0;
-
-//     let variance = 0;
-//     for (const brightness of brightnessValues) {
-//       variance += Math.pow(brightness - avgBrightness, 2);
-//     }
-//     const contrast = pixelCount > 0 ? Math.sqrt(variance / pixelCount) : 0;
-
-//     const darkPixelRatio = pixelCount > 0 ? darkPixels / pixelCount : 0;
-
-//     return {
-//       avgBrightness,
-//       contrast,
-//       darkPixelRatio,
-//       pixelCount,
-//     };
-//   }
-
-//   loadImageElement(imageFile) {
-//     return new Promise((resolve, reject) => {
-//       const img = new Image();
-//       let objectUrl = null;
-
-//       img.onload = () => {
-//         if (objectUrl) {
-//           URL.revokeObjectURL(objectUrl);
-//         }
-//         resolve(img);
-//       };
-
-//       img.onerror = (error) => {
-//         if (objectUrl) {
-//           URL.revokeObjectURL(objectUrl);
-//         }
-//         reject(error);
-//       };
-
-//       try {
-//         objectUrl = URL.createObjectURL(imageFile);
-//         img.src = objectUrl;
-//       } catch (error) {
-//         reject(error);
-//       }
-//     });
-//   }
-
-//   calculateFaceSize(box, imgWidth, imgHeight) {
-//     const faceArea = box.width * box.height;
-//     const imageArea = imgWidth * imgHeight;
-//     const faceRatio = faceArea / imageArea;
-
-//     if (faceRatio >= 0.15 && faceRatio <= 0.25) {
-//       return 100;
-//     } else if (faceRatio >= 0.10 && faceRatio <= 0.35) {
-//       return 80;
-//     } else if (faceRatio >= 0.05 && faceRatio <= 0.45) {
-//       return 60;
-//     } else {
-//       return 40;
-//     }
-//   }
-
-//   calculateFaceCentering(box, imgWidth, imgHeight) {
-//     const faceCenterX = box.x + box.width / 2;
-//     const faceCenterY = box.y + box.height / 2;
-//     const imageCenterX = imgWidth / 2;
-//     const imageCenterY = imgHeight / 2;
-
-//     const distanceFromCenter = Math.sqrt(
-//       Math.pow(faceCenterX - imageCenterX, 2) + Math.pow(faceCenterY - imageCenterY, 2)
-//     );
-
-//     const maxDistance = Math.sqrt(Math.pow(imgWidth / 2, 2) + Math.pow(imgHeight / 2, 2));
-//     const centeringScore = Math.max(0, 100 - (distanceFromCenter / maxDistance) * 100);
-
-//     return centeringScore;
-//   }
-
-//   async calculateFaceLighting(img, box) {
-//     const canvas = document.createElement('canvas');
-//     const ctx = canvas.getContext('2d');
-
-//     canvas.width = box.width;
-//     canvas.height = box.height;
-
-//     ctx.drawImage(img, box.x, box.y, box.width, box.height, 0, 0, box.width, box.height);
-//     const imageData = ctx.getImageData(0, 0, box.width, box.height);
-
-//     const data = imageData.data;
-//     let totalBrightness = 0;
-//     let brightnessValues = [];
-
-//     for (let i = 0; i < data.length; i += 4) {
-//       const brightness = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
-//       totalBrightness += brightness;
-//       brightnessValues.push(brightness);
-//     }
-
-//     const avgBrightness = totalBrightness / brightnessValues.length;
-
-//     let variance = 0;
-//     for (const brightness of brightnessValues) {
-//       variance += Math.pow(brightness - avgBrightness, 2);
-//     }
-//     const stdDev = Math.sqrt(variance / brightnessValues.length);
-
-//     let lightingScore = 50;
-
-//     if (avgBrightness >= 80 && avgBrightness <= 160) {
-//       lightingScore += 30;
-//     } else if (avgBrightness >= 60 && avgBrightness <= 180) {
-//       lightingScore += 20;
-//     } else {
-//       lightingScore += 10;
-//     }
-
-//     if (stdDev >= 20 && stdDev <= 50) {
-//       lightingScore += 20;
-//     } else if (stdDev >= 15 && stdDev <= 60) {
-//       lightingScore += 15;
-//     } else {
-//       lightingScore += 5;
-//     }
-
-//     return Math.min(100, lightingScore);
-//   }
-
-//   calculateEyeContactScore(landmarks) {
-//     const leftEye = landmarks.getLeftEye();
-//     const rightEye = landmarks.getRightEye();
-
-//     if (!leftEye || !rightEye || leftEye.length === 0 || rightEye.length === 0) {
-//       return 50;
-//     }
-
-//     let eyeContactScore = 0;
-
-//     const leftEyeOpenness = this.calculateEyeOpenness(leftEye);
-//     const rightEyeOpenness = this.calculateEyeOpenness(rightEye);
-//     const avgEyeOpenness = (leftEyeOpenness + rightEyeOpenness) / 2;
-
-//     if (avgEyeOpenness > 0.3) {
-//       eyeContactScore += 40;
-//     } else if (avgEyeOpenness > 0.2) {
-//       eyeContactScore += 25;
-//     } else if (avgEyeOpenness > 0.1) {
-//       eyeContactScore += 10;
-//     }
-
-//     const eyeSymmetry = 1 - Math.abs(leftEyeOpenness - rightEyeOpenness);
-//     eyeContactScore += eyeSymmetry * 30;
-
-//     const jawLine = landmarks.getJawOutline();
-//     if (jawLine && jawLine.length > 0) {
-//       const eyeAlignment = this.calculateEyeAlignment(leftEye, rightEye, jawLine);
-//       eyeContactScore += eyeAlignment * 20;
-//     } else {
-//       eyeContactScore += 15;
-//     }
-
-//     const gazeScore = this.approximateGazeDirection(leftEye, rightEye);
-//     eyeContactScore += gazeScore * 10;
-
-//     console.log('Eye contact analysis:', {
-//       leftEyeOpenness: leftEyeOpenness.toFixed(3),
-//       rightEyeOpenness: rightEyeOpenness.toFixed(3),
-//       eyeSymmetry: eyeSymmetry.toFixed(3),
-//       finalScore: Math.min(100, eyeContactScore).toFixed(2)
-//     });
-
-//     return Math.min(100, eyeContactScore);
-//   }
-
-//   calculateEyeOpenness(eyePoints) {
-//     if (eyePoints.length < 6) return 0;
-
-//     const p1 = eyePoints[0];
-//     const p2 = eyePoints[1];
-//     const p3 = eyePoints[2];
-//     const p4 = eyePoints[3];
-//     const p5 = eyePoints[4];
-//     const p6 = eyePoints[5];
-
-//     const d1 = Math.sqrt(Math.pow(p2.x - p6.x, 2) + Math.pow(p2.y - p6.y, 2));
-//     const d2 = Math.sqrt(Math.pow(p3.x - p5.x, 2) + Math.pow(p3.y - p5.y, 2));
-//     const d3 = Math.sqrt(Math.pow(p1.x - p4.x, 2) + Math.pow(p1.y - p4.y, 2));
-
-//     if (d3 === 0) return 0;
-
-//     const ear = (d1 + d2) / (2 * d3);
-
-//     return Math.min(1, Math.max(0, ear / 0.3));
-//   }
-
-// calculateEyeAlignment(leftEye, rightEye, jawLine) {
-//   if (leftEye.length === 0 || rightEye.length === 0 || jawLine.length === 0) return 0.75;
-
-//   // Get eye centers
-//   const leftEyeCenter = this.getEyeCenter(leftEye);
-//   const rightEyeCenter = this.getEyeCenter(rightEye);
-
-//   // Calculate the angle between the eyes
-//   const eyeAngle = Math.atan2(
-//     rightEyeCenter.y - leftEyeCenter.y,
-//     rightEyeCenter.x - leftEyeCenter.x
-//   );
-
-//   // Good alignment is when eyes are roughly horizontal (angle close to 0)
-//   const angleDifference = Math.abs(eyeAngle);
-//   const alignmentScore = Math.max(0, 1 - (angleDifference / (Math.PI / 6))); // Penalize angles > 30 degrees
-
-//   return alignmentScore;
-// }
-// calculateOverallScore(technical, faces) {
-//   let score = 0;
-
-//   // Base technical quality weights
-//   const baseWeights = {
-//     blur: 0.20,      // Reduced from 25% to 20%
-//     sharpness: 0.15, // Reduced from 20% to 15%
-//     exposure: 0.15,
-//     contrast: 0.12,
-//     noise: 0.08,
-//     colorBalance: 0.05
-//   };
-
-//   // Apply base technical scores (85% total weight)
-//   score += technical.blurScore * baseWeights.blur;
-//   score += technical.sharpnessScore * baseWeights.sharpness;
-//   score += technical.exposureQuality * baseWeights.exposure;
-//   score += technical.contrastScore * baseWeights.contrast;
-//   score += technical.noiseLevel * baseWeights.noise;
-//   score += technical.colorBalance * baseWeights.colorBalance;
-
-//   // Face quality bonus (27% weight if faces present)
-//   if (faces && faces.faceCount > 0) {
-//     const faceBonus = (
-//       faces.faceCentering * 0.05 +
-//       faces.faceSize * 0.04 +
-//       faces.lightingQuality * 0.03 +
-//       faces.portraitScore * 0.02 +
-//       faces.eyeContactScore * 0.13
-//     );
-//     score += faceBonus;
-
-//     console.log('Face quality detected:', {
-//       faceCount: faces.faceCount,
-//       faceCentering: faces.faceCentering.toFixed(2),
-//       faceSize: faces.faceSize.toFixed(2),
-//       lightingQuality: faces.lightingQuality.toFixed(2),
-//       faceBonus: faceBonus.toFixed(4)
-//     });
-//   }
-
-//   return Math.max(0, Math.min(100, score));
-// }
-// getQualityTier(score) {
-//   if (score >= 85) return 'excellent';
-//   if (score >= 70) return 'good';
-//   if (score >= 50) return 'fair';
-//   return 'poor';
-// }
+    
+  async assessImageQuality(imageFile, processingSize = 300) {
+    // await this.initializeFaceApi();
+
+    const technical = await this.analyzeTechnicalQuality(imageFile, processingSize);
+   console.log("technical >>>",technical);
+
+    const faces = await this.analyzeFaceQuality(imageFile);
+
+    const overallScore = this.calculateOverallScore(technical, faces);
+    const qualityTier = this.getQualityTier(overallScore);
+
+    return {
+      overallScore,
+      qualityTier,
+      technical,
+      faces,
+    };
+  }
+
+  analyzeTechnicalQuality(imageFile, processingSize = 300) {
+    return new Promise((resolve, reject) => {
+      if (!imageFile || !imageFile.type || !imageFile.type.startsWith('image/') || !imageFile.size || !imageFile.name) {
+        reject(new Error('Invalid file object or not an image'));
+        return;
+      }
+
+      const img = new Image();
+      let objectUrl = null;
+
+      img.onload = () => {
+        try {
+          const canvas = document.createElement('canvas');
+          const ctx = canvas.getContext('2d');
+
+          canvas.width = processingSize;
+          canvas.height = processingSize;
+
+          ctx.imageSmoothingEnabled = true;
+          ctx.imageSmoothingQuality = 'high';
+          ctx.drawImage(img, 0, 0, processingSize, processingSize);
+
+          const imageData = ctx.getImageData(0, 0, processingSize, processingSize);
+
+          const blurScore = this.calculateBlurScore(imageData);
+          const exposureQuality = this.calculateExposureQuality(imageData);
+          const contrastScore = this.calculateContrastScore(imageData);
+          const noiseLevel = this.calculateNoiseLevel(imageData);
+          const sharpnessScore = this.calculateSharpnessScore(imageData);
+          const colorBalance = this.calculateColorBalance(imageData);
+
+          if (objectUrl) {
+            URL.revokeObjectURL(objectUrl);
+          }
+
+          resolve({
+            blurScore,
+            exposureQuality,
+            contrastScore,
+            noiseLevel,
+            sharpnessScore,
+            colorBalance,
+          });
+        } catch (error) {
+          if (objectUrl) {
+            URL.revokeObjectURL(objectUrl);
+          }
+          reject(error);
+        }
+      };
+
+      img.onerror = (error) => {
+        if (objectUrl) {
+          URL.revokeObjectURL(objectUrl);
+        }
+        reject(error);
+      };
+
+      try {
+        objectUrl = URL.createObjectURL(imageFile.blob);
+        img.src = objectUrl;
+      } catch (error) {
+        reject(new Error(`Failed to create object URL for file: ${imageFile.name}`));
+      }
+    });
+  }
+
+  async analyzeFaceQuality(imageFile) {
+    if (!this.faceapiInitialized) {
+      console.log('Face-api.js not initialized, skipping face detection');
+      return undefined;
+    }
+
+    try {
+      const img = await this.loadImageElement(imageFile);
+
+      console.log('Running Tiny Face Detector with facial landmarks...');
+      let detectionsWithLandmarks = await faceapi.detectAllFaces(img, new faceapi.TinyFaceDetectorOptions({
+        scoreThreshold: 0.2,
+        inputSize: 416
+      })).withFaceLandmarks(true);
+
+      if (detectionsWithLandmarks.length === 0) {
+        console.log('No faces with default settings, trying more sensitive detection...');
+        detectionsWithLandmarks = await faceapi.detectAllFaces(img, new faceapi.TinyFaceDetectorOptions({
+          scoreThreshold: 0.1,
+          inputSize: 320
+        })).withFaceLandmarks(true);
+      }
+
+      if (detectionsWithLandmarks.length === 0) {
+        console.log('Still no faces, trying largest input size...');
+        detectionsWithLandmarks = await faceapi.detectAllFaces(img, new faceapi.TinyFaceDetectorOptions({
+          scoreThreshold: 0.1,
+          inputSize: 512
+        })).withFaceLandmarks(true);
+      }
+
+      if (detectionsWithLandmarks.length === 0) {
+        console.log('No faces detected by Tiny Face Detector');
+        return undefined;
+      }
+
+      console.log(`✅ Detected ${detectionsWithLandmarks.length} face(s) with landmarks using Tiny Face Detector!`);
+
+      const faceWithLandmarks = detectionsWithLandmarks[0];
+      const box = faceWithLandmarks.detection.box;
+      const landmarks = faceWithLandmarks.landmarks;
+
+      const faceSize = this.calculateFaceSize(box, img.width, img.height);
+      const faceCentering = this.calculateFaceCentering(box, img.width, img.height);
+      const lightingQuality = await this.calculateFaceLighting(img, box);
+      const eyeContactScore = this.calculateEyeContactScore(landmarks);
+
+      const portraitScore = (faceSize + faceCentering + lightingQuality + eyeContactScore) / 4;
+
+      return {
+        faceCount: detectionsWithLandmarks.length,
+        eyeContactScore,
+        faceCentering,
+        faceSize,
+        lightingQuality,
+        portraitScore,
+      };
+    } catch (error) {
+      console.error('Face detection with landmarks failed:', error);
+      console.error('Error details:', error instanceof Error ? error.message : String(error));
+      return undefined;
+    }
+  }
+
+  async detectFaceSimplified(img) {
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+
+    canvas.width = 300;
+    canvas.height = 300;
+
+    ctx.drawImage(img, 0, 0, 300, 300);
+    const imageData = ctx.getImageData(0, 0, 300, 300);
+
+    const faceIndicators = this.calculateFaceIndicators(imageData);
+
+    const hasFace = faceIndicators.confidence > 0.3;
+
+    if (!hasFace) {
+      return {
+        hasFace: false,
+        eyeContactScore: 0,
+        faceCentering: 0,
+        faceSize: 0,
+        lightingQuality: 0,
+        portraitScore: 0,
+      };
+    }
+
+    const faceCentering = faceIndicators.centerWeight;
+    const faceSize = faceIndicators.faceSize;
+    const lightingQuality = faceIndicators.lightingQuality;
+    const eyeContactScore = faceIndicators.eyeRegionQuality;
+    const portraitScore = (faceCentering + faceSize + lightingQuality + eyeContactScore) / 4;
+
+    return {
+      hasFace: true,
+      eyeContactScore,
+      faceCentering,
+      faceSize,
+      lightingQuality,
+      portraitScore,
+    };
+  }
+
+  calculateFaceIndicators(imageData) {
+    const data = imageData.data;
+    const width = imageData.width;
+    const height = imageData.height;
+
+    const centerRegion = this.analyzeRegion(data, width, height, 0.25, 0.25, 0.5, 0.5);
+    const upperCenterRegion = this.analyzeRegion(data, width, height, 0.2, 0.15, 0.6, 0.4);
+    const eyeRegion = this.analyzeRegion(data, width, height, 0.15, 0.2, 0.7, 0.3);
+
+    let confidence = 0;
+
+    if (centerRegion.avgBrightness > 80 && centerRegion.avgBrightness < 200) {
+      confidence += 0.3;
+    }
+
+    if (centerRegion.contrast > 15) {
+      confidence += 0.2;
+    }
+
+    const lowerCenterRegion = this.analyzeRegion(data, width, height, 0.25, 0.5, 0.5, 0.4);
+    if (upperCenterRegion.avgBrightness > lowerCenterRegion.avgBrightness) {
+      confidence += 0.2;
+    }
+
+    if (eyeRegion.darkPixelRatio > 0.1) {
+      confidence += 0.3;
+    }
+
+    const centerWeight = Math.min(100, confidence * 100 + 50);
+    const faceSize = Math.min(100, (centerRegion.pixelCount / (width * height)) * 400);
+    const lightingQuality = Math.min(100, 100 - Math.abs(centerRegion.avgBrightness - 140) / 2);
+    const eyeRegionQuality = Math.min(100, eyeRegion.contrast * 2 + 40);
+
+    return {
+      confidence,
+      centerWeight,
+      faceSize,
+      lightingQuality,
+      eyeRegionQuality,
+    };
+  }
+
+  analyzeRegion(data, width, height, x, y, w, h) {
+    const startX = Math.floor(x * width);
+    const startY = Math.floor(y * height);
+    const endX = Math.floor((x + w) * width);
+    const endY = Math.floor((y + h) * height);
+
+    let totalBrightness = 0;
+    let brightnessValues = [];
+    let darkPixels = 0;
+    let pixelCount = 0;
+
+    for (let py = startY; py < endY; py++) {
+      for (let px = startX; px < endX; px++) {
+        const idx = (py * width + px) * 4;
+        const brightness = 0.299 * data[idx] + 0.587 * data[idx + 1] + 0.114 * data[idx + 2];
+
+        totalBrightness += brightness;
+        brightnessValues.push(brightness);
+        if (brightness < 80) darkPixels++;
+        pixelCount++;
+      }
+    }
+
+    const avgBrightness = pixelCount > 0 ? totalBrightness / pixelCount : 0;
+
+    let variance = 0;
+    for (const brightness of brightnessValues) {
+      variance += Math.pow(brightness - avgBrightness, 2);
+    }
+    const contrast = pixelCount > 0 ? Math.sqrt(variance / pixelCount) : 0;
+
+    const darkPixelRatio = pixelCount > 0 ? darkPixels / pixelCount : 0;
+
+    return {
+      avgBrightness,
+      contrast,
+      darkPixelRatio,
+      pixelCount,
+    };
+  }
+
+  loadImageElement(imageFile) {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      let objectUrl = null;
+
+      img.onload = () => {
+        if (objectUrl) {
+          URL.revokeObjectURL(objectUrl);
+        }
+        resolve(img);
+      };
+
+      img.onerror = (error) => {
+        if (objectUrl) {
+          URL.revokeObjectURL(objectUrl);
+        }
+        reject(error);
+      };
+
+      try {
+        objectUrl = URL.createObjectURL(imageFile.blob);
+        img.src = objectUrl;
+      } catch (error) {
+        reject(error);
+      }
+    });
+  }
+
+  calculateFaceSize(box, imgWidth, imgHeight) {
+    const faceArea = box.width * box.height;
+    const imageArea = imgWidth * imgHeight;
+    const faceRatio = faceArea / imageArea;
+
+    if (faceRatio >= 0.15 && faceRatio <= 0.25) {
+      return 100;
+    } else if (faceRatio >= 0.10 && faceRatio <= 0.35) {
+      return 80;
+    } else if (faceRatio >= 0.05 && faceRatio <= 0.45) {
+      return 60;
+    } else {
+      return 40;
+    }
+  }
+
+  calculateFaceCentering(box, imgWidth, imgHeight) {
+    const faceCenterX = box.x + box.width / 2;
+    const faceCenterY = box.y + box.height / 2;
+    const imageCenterX = imgWidth / 2;
+    const imageCenterY = imgHeight / 2;
+
+    const distanceFromCenter = Math.sqrt(
+      Math.pow(faceCenterX - imageCenterX, 2) + Math.pow(faceCenterY - imageCenterY, 2)
+    );
+
+    const maxDistance = Math.sqrt(Math.pow(imgWidth / 2, 2) + Math.pow(imgHeight / 2, 2));
+    const centeringScore = Math.max(0, 100 - (distanceFromCenter / maxDistance) * 100);
+
+    return centeringScore;
+  }
+
+  async calculateFaceLighting(img, box) {
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+
+    canvas.width = box.width;
+    canvas.height = box.height;
+
+    ctx.drawImage(img, box.x, box.y, box.width, box.height, 0, 0, box.width, box.height);
+    const imageData = ctx.getImageData(0, 0, box.width, box.height);
+
+    const data = imageData.data;
+    let totalBrightness = 0;
+    let brightnessValues = [];
+
+    for (let i = 0; i < data.length; i += 4) {
+      const brightness = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
+      totalBrightness += brightness;
+      brightnessValues.push(brightness);
+    }
+
+    const avgBrightness = totalBrightness / brightnessValues.length;
+
+    let variance = 0;
+    for (const brightness of brightnessValues) {
+      variance += Math.pow(brightness - avgBrightness, 2);
+    }
+    const stdDev = Math.sqrt(variance / brightnessValues.length);
+
+    let lightingScore = 50;
+
+    if (avgBrightness >= 80 && avgBrightness <= 160) {
+      lightingScore += 30;
+    } else if (avgBrightness >= 60 && avgBrightness <= 180) {
+      lightingScore += 20;
+    } else {
+      lightingScore += 10;
+    }
+
+    if (stdDev >= 20 && stdDev <= 50) {
+      lightingScore += 20;
+    } else if (stdDev >= 15 && stdDev <= 60) {
+      lightingScore += 15;
+    } else {
+      lightingScore += 5;
+    }
+
+    return Math.min(100, lightingScore);
+  }
+
+  calculateEyeContactScore(landmarks) {
+    const leftEye = landmarks.getLeftEye();
+    const rightEye = landmarks.getRightEye();
+
+    if (!leftEye || !rightEye || leftEye.length === 0 || rightEye.length === 0) {
+      return 50;
+    }
+
+    let eyeContactScore = 0;
+
+    const leftEyeOpenness = this.calculateEyeOpenness(leftEye);
+    const rightEyeOpenness = this.calculateEyeOpenness(rightEye);
+    const avgEyeOpenness = (leftEyeOpenness + rightEyeOpenness) / 2;
+
+    if (avgEyeOpenness > 0.3) {
+      eyeContactScore += 40;
+    } else if (avgEyeOpenness > 0.2) {
+      eyeContactScore += 25;
+    } else if (avgEyeOpenness > 0.1) {
+      eyeContactScore += 10;
+    }
+
+    const eyeSymmetry = 1 - Math.abs(leftEyeOpenness - rightEyeOpenness);
+    eyeContactScore += eyeSymmetry * 30;
+
+    const jawLine = landmarks.getJawOutline();
+    if (jawLine && jawLine.length > 0) {
+      const eyeAlignment = this.calculateEyeAlignment(leftEye, rightEye, jawLine);
+      eyeContactScore += eyeAlignment * 20;
+    } else {
+      eyeContactScore += 15;
+    }
+
+    const gazeScore = this.approximateGazeDirection(leftEye, rightEye);
+    eyeContactScore += gazeScore * 10;
+
+    console.log('Eye contact analysis:', {
+      leftEyeOpenness: leftEyeOpenness.toFixed(3),
+      rightEyeOpenness: rightEyeOpenness.toFixed(3),
+      eyeSymmetry: eyeSymmetry.toFixed(3),
+      finalScore: Math.min(100, eyeContactScore).toFixed(2)
+    });
+
+    return Math.min(100, eyeContactScore);
+  }
+
+  calculateEyeOpenness(eyePoints) {
+    if (eyePoints.length < 6) return 0;
+
+    const p1 = eyePoints[0];
+    const p2 = eyePoints[1];
+    const p3 = eyePoints[2];
+    const p4 = eyePoints[3];
+    const p5 = eyePoints[4];
+    const p6 = eyePoints[5];
+
+    const d1 = Math.sqrt(Math.pow(p2.x - p6.x, 2) + Math.pow(p2.y - p6.y, 2));
+    const d2 = Math.sqrt(Math.pow(p3.x - p5.x, 2) + Math.pow(p3.y - p5.y, 2));
+    const d3 = Math.sqrt(Math.pow(p1.x - p4.x, 2) + Math.pow(p1.y - p4.y, 2));
+
+    if (d3 === 0) return 0;
+
+    const ear = (d1 + d2) / (2 * d3);
+
+    return Math.min(1, Math.max(0, ear / 0.3));
+  }
+
+calculateEyeAlignment(leftEye, rightEye, jawLine) {
+  if (leftEye.length === 0 || rightEye.length === 0 || jawLine.length === 0) return 0.75;
+
+  // Get eye centers
+  const leftEyeCenter = this.getEyeCenter(leftEye);
+  const rightEyeCenter = this.getEyeCenter(rightEye);
+
+  // Calculate the angle between the eyes
+  const eyeAngle = Math.atan2(
+    rightEyeCenter.y - leftEyeCenter.y,
+    rightEyeCenter.x - leftEyeCenter.x
+  );
+
+  // Good alignment is when eyes are roughly horizontal (angle close to 0)
+  const angleDifference = Math.abs(eyeAngle);
+  const alignmentScore = Math.max(0, 1 - (angleDifference / (Math.PI / 6))); // Penalize angles > 30 degrees
+
+  return alignmentScore;
+}
+calculateOverallScore(technical, faces) {
+  let score = 0;
+
+  // Base technical quality weights
+  const baseWeights = {
+    blur: 0.20,      // Reduced from 25% to 20%
+    sharpness: 0.15, // Reduced from 20% to 15%
+    exposure: 0.15,
+    contrast: 0.12,
+    noise: 0.08,
+    colorBalance: 0.05
+  };
+
+  // Apply base technical scores (85% total weight)
+  score += technical.blurScore * baseWeights.blur;
+  score += technical.sharpnessScore * baseWeights.sharpness;
+  score += technical.exposureQuality * baseWeights.exposure;
+  score += technical.contrastScore * baseWeights.contrast;
+  score += technical.noiseLevel * baseWeights.noise;
+  score += technical.colorBalance * baseWeights.colorBalance;
+
+  // Face quality bonus (27% weight if faces present)
+  if (faces && faces.faceCount > 0) {
+    const faceBonus = (
+      faces.faceCentering * 0.05 +
+      faces.faceSize * 0.04 +
+      faces.lightingQuality * 0.03 +
+      faces.portraitScore * 0.02 +
+      faces.eyeContactScore * 0.13
+    );
+    score += faceBonus;
+
+    console.log('Face quality detected:', {
+      faceCount: faces.faceCount,
+      faceCentering: faces.faceCentering.toFixed(2),
+      faceSize: faces.faceSize.toFixed(2),
+      lightingQuality: faces.lightingQuality.toFixed(2),
+      faceBonus: faceBonus.toFixed(4)
+    });
+  }
+
+  return Math.max(0, Math.min(100, score));
+}
+getQualityTier(score) {
+  if (score >= 85) return 'excellent';
+  if (score >= 70) return 'good';
+  if (score >= 50) return 'fair';
+  return 'poor';
+}
+
+
+
+ calculateEyeAlignment(leftEye, rightEye, jawLine) {
+  if (leftEye.length === 0 || rightEye.length === 0 || jawLine.length === 0) return 0.75;
+
+  // Get eye centers
+  const leftEyeCenter = this.getEyeCenter(leftEye);
+  const rightEyeCenter = this.getEyeCenter(rightEye);
+
+  // Calculate the angle between the eyes
+  const eyeAngle = Math.atan2(
+    rightEyeCenter.y - leftEyeCenter.y,
+    rightEyeCenter.x - leftEyeCenter.x
+  );
+
+  // Good alignment is when eyes are roughly horizontal (angle close to 0)
+  const angleDifference = Math.abs(eyeAngle);
+  const alignmentScore = Math.max(0, 1 - (angleDifference / (Math.PI / 6))); // Penalize angles > 30 degrees
+
+  return alignmentScore;
+}
+
+ approximateGazeDirection(leftEye, rightEye) {
+  // Simplified gaze estimation based on iris position relative to eye corners
+  if (leftEye.length < 6 || rightEye.length < 6) return 0.7;
+
+  const leftEyeCenter = this.getEyeCenter(leftEye);
+  const rightEyeCenter = this.getEyeCenter(rightEye);
+
+  // For frontal gaze, eye centers should be roughly centered within the eye regions
+  const leftGaze = this.estimateEyeGaze(leftEye, leftEyeCenter);
+  const rightGaze = this.estimateEyeGaze(rightEye, rightEyeCenter);
+
+  // Average gaze scores
+  return (leftGaze + rightGaze) / 2;
+}
+
+ getEyeCenter(eyePoints) {
+  const sumX = eyePoints.reduce((sum, point) => sum + point.x, 0);
+  const sumY = eyePoints.reduce((sum, point) => sum + point.y, 0);
+
+  return {
+    x: sumX / eyePoints.length,
+    y: sumY / eyePoints.length
+  };
+}
+
+ estimateEyeGaze(eyePoints, eyeCenter) {
+  if (eyePoints.length < 6) return 0.7;
+
+  // Get leftmost and rightmost points of the eye
+  const leftmostPoint = eyePoints[0];
+  const rightmostPoint = eyePoints[3];
+
+  // Calculate eye width
+  const eyeWidth = rightmostPoint.x - leftmostPoint.x;
+
+  if (eyeWidth <= 0) return 0.7;
+
+  // Calculate how centered the eye center is within the eye region
+  const expectedCenter = leftmostPoint.x + eyeWidth / 2;
+  const actualCenter = eyeCenter.x;
+
+  // Calculate deviation from center
+  const deviation = Math.abs(actualCenter - expectedCenter) / (eyeWidth / 2);
+
+  // Score decreases with deviation from center
+  return Math.max(0, 1 - deviation);
+}
+
+ calculateBlurScore(imageData) {
+  // Simplified Laplacian variance calculation
+  const data = imageData.data;
+  const width = imageData.width;
+  const height = imageData.height;
+
+  let sum = 0;
+  let count = 0;
+
+  for (let y = 1; y < height - 1; y++) {
+    for (let x = 1; x < width - 1; x++) {
+      const idx = (y * width + x) * 4;
+
+      // Get grayscale value
+      const gray = 0.299 * data[idx] + 0.587 * data[idx + 1] + 0.114 * data[idx + 2];
+
+      // Simple edge detection
+      const topIdx = ((y - 1) * width + x) * 4;
+      const bottomIdx = ((y + 1) * width + x) * 4;
+      const leftIdx = (y * width + (x - 1)) * 4;
+      const rightIdx = (y * width + (x + 1)) * 4;
+
+      const topGray = 0.299 * data[topIdx] + 0.587 * data[topIdx + 1] + 0.114 * data[topIdx + 2];
+      const bottomGray = 0.299 * data[bottomIdx] + 0.587 * data[bottomIdx + 1] + 0.114 * data[bottomIdx + 2];
+      const leftGray = 0.299 * data[leftIdx] + 0.587 * data[leftIdx + 1] + 0.114 * data[leftIdx + 2];
+      const rightGray = 0.299 * data[rightIdx] + 0.587 * data[rightIdx + 1] + 0.114 * data[rightIdx + 2];
+
+      const laplacian = Math.abs(4 * gray - topGray - bottomGray - leftGray - rightGray);
+      sum += laplacian * laplacian;
+      count++;
+    }
+  }
+
+  const variance = count > 0 ? sum / count : 0;
+  return Math.min(100, variance / 10); // Normalize to 0-100
+}
+
+ calculateExposureQuality(imageData) {
+  const data = imageData.data;
+  const histogram = new Array(256).fill(0);
+
+  // Build histogram
+  for (let i = 0; i < data.length; i += 4) {
+    const gray = Math.round(0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2]);
+    histogram[gray]++;
+  }
+
+  const totalPixels = data.length / 4;
+
+  // Check for proper distribution (not too many dark or bright pixels)
+  const darkPixels = histogram.slice(0, 50).reduce((sum, count) => sum + count, 0);
+  const brightPixels = histogram.slice(200, 256).reduce((sum, count) => sum + count, 0);
+
+  const darkRatio = darkPixels / totalPixels;
+  const brightRatio = brightPixels / totalPixels;
+
+  // Good exposure has balanced distribution
+  let score = 100;
+  if (darkRatio > 0.3) score -= (darkRatio - 0.3) * 200;
+  if (brightRatio > 0.3) score -= (brightRatio - 0.3) * 200;
+
+  return Math.max(0, Math.min(100, score));
+}
+
+ calculateContrastScore(imageData) {
+  const data = imageData.data;
+  let sum = 0;
+  let sumSquares = 0;
+  const totalPixels = data.length / 4;
+
+  // Calculate mean and standard deviation
+  for (let i = 0; i < data.length; i += 4) {
+    const gray = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
+    sum += gray;
+    sumSquares += gray * gray;
+  }
+
+  const mean = sum / totalPixels;
+  const variance = (sumSquares / totalPixels) - (mean * mean);
+  const stdDev = Math.sqrt(variance);
+
+  // Higher standard deviation indicates better contrast
+  return Math.min(100, (stdDev / 64) * 100);
+}
+
+ calculateNoiseLevel(imageData) {
+  // Simplified noise calculation
+  const data = imageData.data;
+  let noiseSum = 0;
+  let count = 0;
+
+  for (let i = 4; i < data.length - 4; i += 4) {
+    const current = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
+    const prev = 0.299 * data[i - 4] + 0.587 * data[i - 3] + 0.114 * data[i - 2];
+
+    noiseSum += Math.abs(current - prev);
+    count++;
+  }
+
+  const avgNoise = count > 0 ? noiseSum / count : 0;
+  return Math.max(0, 100 - (avgNoise / 10)); // Lower noise = higher score
+}
+
+ calculateSharpnessScore(imageData) {
+  // Use similar calculation to blur but return as sharpness
+  const blurScore = this.calculateBlurScore(imageData);
+  return blurScore; // Higher blur variance = higher sharpness
+}
+
+calculateColorBalance(imageData) {
+  const data = imageData.data;
+  let rSum = 0, gSum = 0, bSum = 0;
+  const totalPixels = data.length / 4;
+
+  for (let i = 0; i < data.length; i += 4) {
+    rSum += data[i];
+    gSum += data[i + 1];
+    bSum += data[i + 2];
+  }
+
+  const rAvg = rSum / totalPixels;
+  const gAvg = gSum / totalPixels;
+  const bAvg = bSum / totalPixels;
+
+  // Calculate how balanced the color channels are
+  const maxChannel = Math.max(rAvg, gAvg, bAvg);
+  const minChannel = Math.min(rAvg, gAvg, bAvg);
+
+  if (maxChannel === 0) return 100;
+
+  const balance = minChannel / maxChannel;
+  return balance * 100;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     calculateSimilarityFromHashes(fingerprint1, fingerprint2, similarityThreshold = 0.85) {
         try {
             // Use ImageMatcher's compareImages method for sophisticated similarity analysis
@@ -1003,6 +1471,7 @@ class FrontendSessionManager {
             processed_images: session.processed_images || 0,
             analysis_progress: session.analysis_progress || 0,
             similar_groups: session.similar_groups || [],
+            quality_array: session.allResults || [],
             total_comparisons: session.total_comparisons || 0,
             similar_pairs_found: session.similar_pairs_found || 0,
             last_analysis: session.last_analysis,
@@ -3769,6 +4238,7 @@ The extension page will open in a new tab and this scanning window will close.
             session_id: sessionId,
             total_images: frontendResults.total_images,
             similar_groups: frontendResults.similar_groups,
+            quality_array: frontendResults.quality_array,
             total_comparisons: frontendResults.total_comparisons,
             similar_pairs_found: frontendResults.similar_pairs_found,
             analysis_time: frontendResults.analysis_time,
@@ -4641,7 +5111,8 @@ The extension page will open in a new tab and this scanning window will close.
                     success: true,
                     total_images: status.total_images,
                     comparisons: status.total_comparisons,
-                    similar_groups: status.similar_groups
+                    similar_groups: status.similar_groups,
+                    quality_array: status.allResults
                 };
             } else if (status.analysis_status === 'error') {
                 throw new Error(status.error || 'Analysis failed on server');
@@ -5446,22 +5917,51 @@ The extension page will open in a new tab and this scanning window will close.
                                 // const shouldShowDelete = !isDuplicate;
                                     const fullSizeUrl = this.convertToFullResolution(mediaItem.url);
                                     const similarityPercent = Math.round(group.similarity_score * 100);
-
+                                const quality = results.quality_array.find(q => q.name.startsWith(id));
+                                 const qualityHTML = quality ? `
+                                        <ul class="grid grid-cols-2 gap-[3px] my-[8px]">
+                                            <li class="bg-gradient flex items-center p-[2px] px-[2px] rounded-[6px]"><span class="text-[11px] dec-color dark-color">Blur:${quality.technical.blurScore.toFixed(2)}</span></li>
+                                            <li class="bg-gradient flex items-center p-[2px] px-[2px] rounded-[6px]"><span class="text-[11px] dec-color dark-color">Sharpness:${quality.technical.sharpnessScore.toFixed(2)}</span></li>
+                                            <li class="bg-gradient flex items-center p-[2px] px-[2px] rounded-[6px]"><span class="text-[11px] dec-color dark-color">Exposure:${quality.technical.exposureQuality.toFixed(2)}</span></li>
+                                            <li class="bg-gradient flex items-center p-[2px] px-[2px] rounded-[6px]"><span class="text-[11px] dec-color dark-color">Contrast:${quality.technical.contrastScore.toFixed(2)}</span></li>
+                                            <li class="bg-gradient flex items-center p-[2px] px-[2px] rounded-[6px]"><span class="text-[11px] dec-color dark-color">Noise:${quality.technical.noiseLevel.toFixed(2)}</span></li>
+                                            <li class="bg-gradient flex items-center p-[2px] px-[2px] rounded-[6px]"><span class="text-[11px] dec-color dark-color">Color balance:${quality.technical.colorBalance.toFixed(2)}</span></li>
+                                        </ul>
+                                        <p class="!text-[12px] mt-[8px] dec-color font-medium">Overall Score:${quality.overallScore.toFixed(2)}%</p>
+                                    ` : '';
                                     return `
-                                    <article class="border rounded-[8px] overflow-hidden border-[2px] border-[#fca5a5] mb-6">
-                                        <div class="p-[12px] bg-white border-b border-[#e2e8f0] flex gap-[5px] items-center">
-                                        <span class="text-[#9333ea] font-semibold !text-[15px]">${index + 1}/${group.image_ids.length}</span>
-                                        <span class="text-[#94a3b8] !text-[15px]">(${similarityPercent}%)</span>
+                                    <article class="border rounded-[8px]  border-[2px] border-[#fca5a5] mb-6 relative">
+                                        <div class="p-[12px] bg-white border-b border-[#e2e8f0] flex gap-[5px] items-center rounded-t-[8px]">
+                                       <div class="quality_a_details">
+                                          <span class="quality_a_details_nu text-[#9333ea] font-semibold !text-[15px]">${index + 1}/${group.image_ids.length}</span>
+                                          <span class="quality_a_details_nu text-[#94a3b8] !text-[15px]">(${quality.overallScore.toFixed(2)}%)</span>
+                                        <div class="quality_a_details_po rounded-[10px] border-color-two border p-[15px] w-[240px] absolute top-[40px] -left-[30px] z-[999] bg-white">
+                                       
+                                        <div class="articlecontent">
+                                            <h4 class="text-[14px] font-bold dark-color">Quality Assessment Details</h4>
+                                            <span class="h-[1px] flex items-center justify-center w-full bg-[#DBF7FE] my-[8px]"></span>
+                                            <p class="!text-[12px] dec-color font-medium">Technical quality</p>
+                                            ${qualityHTML}
+                                            <span class="h-[1px] flex items-center justify-center w-full bg-[#DBF7FE] my-[8px]"></span>
+                       
+                                        </div>
+                                    </div>
+                                        </div>
                                         ${
                                             isSelectable
                                             ? `<span class="px-[8px] py-[5px] gap-[4px] border bg-[#10b981] border-[#10b981] rounded-md !text-[12px] text-white ml-auto">Keeping this file</span>`
                                            : `<span class="px-[8px] py-[5px] gap-[4px] border bg-[#10b981] border-[#10b981] rounded-md !text-[12px] text-white ml-auto">Keeping this file</span>`
                                         }
                                         </div>
+
+
+
+
+
                                         <div class="relative">
                                         <img src="${fullSizeUrl}" alt="${mediaItem.ariaLabel}" class="w-full h-[190px] object-cover">
                                         </div>
-                                        <div class="p-[10px] bg-white border-t border-slate-200">
+                                        <div class="p-[10px] bg-white border-t border-slate-200 rounded-b-[8px]">
                                         <h4 class="text-[14px] font-semibold text-[#0f172a] mb-1 truncate">${mediaItem.ariaLabel}</h4>
                                         <p class="!text-[12px] text-[#64748b] mb-[12px]">${(mediaItem.size || 0) / 1000000} MB</p>
                                         <div class="flex items-center justify-between">
