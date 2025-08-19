@@ -494,6 +494,7 @@ async analyzeSession(sessionId, similarityThreshold = 75) {
         const newParamsList = await buildNewParamsFromSession(session);
 
         for (const new_params of newParamsList) {
+            console.log("new_params>>>",new_params)
             const quality = await this.assessImageQuality(new_params, 300);
             allResults.push({
                 name: new_params.name,
@@ -4410,7 +4411,6 @@ The extension page will open in a new tab and this scanning window will close.
                                     </div>
                                     <p>${mediaType === 'video' ? '📹 ' : '📸 '}${mediaItem.ariaLabel}</p>
                                     <div class="pc-image-size" data-photo-id="${mediaItem.id}"></div>
-                                    <a href="${mediaItem.href}" target="_blank">View in DupeYak Duplicate Remover</a>
                                 </div>
                             `;
             }).join('')}
@@ -5858,39 +5858,11 @@ The extension page will open in a new tab and this scanning window will close.
                           </div>
                         </div>
 
-                        <div class="analysisresults-group bg-white  border border-[#e2e8f0] rounded-[12px] shadow-sm">
-                            <div class="p-[16px] border-b border-[#e2e8f0] bg-[#f8fafc]">
-                                <div class="flex items-center justify-between">
-                                    <div class="flex items-center gap-[10px]">
-                                        <span>
-                                           <button> <i class="fa-solid fa-angle-down text-[#94a3b8]"></i></button>
-                                        </span>
-                                        <span>
-                                            <input type="checkbox" class="border border-[#2094f3] rounded-[8px]">
-                                        </span>
-                                        <span>img</span>
-                                        <span class="font-semibold	text-[#0f172a] !text-[16px]">Group group-1</span>
-                                        <span class="text-[12px] bg-[#f5f5f4] rounded-full py-[2px] py-[10px]">${results.similar_groups.length}<span>  images</span></span>
-                                        <span class="text-[#64748b] !text-[12px]">Select group to process • Keep button to preserve images</span>
-                                    </div>
-                                    <div class="flex items-center gap-[5px]">
-                                        <span class="flex flex-col">
-                                            <span class="text-[#0f172a] font-medium !text-[14px] text-right">${results.total_comparisons || results.comparisons || 0} <span>% similar </span></span>
-                                            <span class="text-[#64748b] font-medium !text-[12px] text-right">Keep: 1 • Delete: 1</span>
-                                        </span>
-                                        <button class="text-[14px] px-[11px] py-[8px] rounded-[8px] font-semibold text-[#3b4a5e]">Select Group</button>
-                                        <button class="text-[14px] px-[11px] py-[8px] rounded-[8px] font-semibold text-[#dc2626]">Dismiss Group</button>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-  
-                            <div class="p-[24px]">
+                     <div class="p-[24px]">
                                 ${(() => {
                             const photoGroups = [];
                             const videoGroups = [];
-
+                            console.log('results>>>>',results)
                             results.similar_groups.forEach((group, index) => {
                                 const firstItemId = group.image_ids[0];
                                 const isVideoGroup = this.videos.some(v => v.id === firstItemId);
@@ -5902,81 +5874,384 @@ The extension page will open in a new tab and this scanning window will close.
                                 }
                             });
 
-                            const generateArticles = (groups, mediaType) => {
-                                   console.log("generateArticlesGROPUS",groups);
-                                const mediaArray = mediaType === 'video' ? this.videos : this.photos;
+                            // const generateArticles = (groups, mediaType) => {
+                            //        console.log("generateArticlesGROPUS",groups);
+                            //     const mediaArray = mediaType === 'video' ? this.videos : this.photos;
 
-                                return groups.map((group, index) => {
-                                const isSelectable = this.isPaidVersion || index < 2;
-                                // const keptImages = new Set(mediaArray.map(item => item.id)); 
-                                return group.image_ids.map((id, idx) => {
-                                    const mediaItem = mediaArray.find(item => item.id === id);
-                                    if (!mediaItem) return '';
-                            //    const isKept = groups.has(mediaItem.id)
-                            //     const shouldShowDelete = !isKept;
-                                // const shouldShowDelete = !isDuplicate;
-                                    const fullSizeUrl = this.convertToFullResolution(mediaItem.url);
-                                    const similarityPercent = Math.round(group.similarity_score * 100);
-                                const quality = results.quality_array.find(q => q.name.startsWith(id));
-                                 const qualityHTML = quality ? `
-                                        <ul class="grid grid-cols-2 gap-[3px] my-[8px]">
-                                            <li class="bg-gradient flex items-center p-[2px] px-[2px] rounded-[6px]"><span class="text-[11px] dec-color dark-color">Blur:${quality.technical.blurScore.toFixed(2)}</span></li>
-                                            <li class="bg-gradient flex items-center p-[2px] px-[2px] rounded-[6px]"><span class="text-[11px] dec-color dark-color">Sharpness:${quality.technical.sharpnessScore.toFixed(2)}</span></li>
-                                            <li class="bg-gradient flex items-center p-[2px] px-[2px] rounded-[6px]"><span class="text-[11px] dec-color dark-color">Exposure:${quality.technical.exposureQuality.toFixed(2)}</span></li>
-                                            <li class="bg-gradient flex items-center p-[2px] px-[2px] rounded-[6px]"><span class="text-[11px] dec-color dark-color">Contrast:${quality.technical.contrastScore.toFixed(2)}</span></li>
-                                            <li class="bg-gradient flex items-center p-[2px] px-[2px] rounded-[6px]"><span class="text-[11px] dec-color dark-color">Noise:${quality.technical.noiseLevel.toFixed(2)}</span></li>
-                                            <li class="bg-gradient flex items-center p-[2px] px-[2px] rounded-[6px]"><span class="text-[11px] dec-color dark-color">Color balance:${quality.technical.colorBalance.toFixed(2)}</span></li>
-                                        </ul>
-                                        <p class="!text-[12px] mt-[8px] dec-color font-medium">Overall Score:${quality.overallScore.toFixed(2)}%</p>
-                                    ` : '';
-                                    return `
-                                    <article class="border rounded-[8px]  border-[2px] border-[#fca5a5] mb-6 relative">
-                                        <div class="p-[12px] bg-white border-b border-[#e2e8f0] flex gap-[5px] items-center rounded-t-[8px]">
-                                       <div class="quality_a_details">
-                                          <span class="quality_a_details_nu text-[#9333ea] font-semibold !text-[15px]">${index + 1}/${group.image_ids.length}</span>
-                                          <span class="quality_a_details_nu text-[#94a3b8] !text-[15px]">(${quality.overallScore.toFixed(2)}%)</span>
-                                        <div class="quality_a_details_po rounded-[10px] border-color-two border p-[15px] w-[240px] absolute top-[40px] -left-[30px] z-[999] bg-white">
+                            //     return groups.map((group, index) => {
+                            //     const isSelectable = this.isPaidVersion || index < 2;
+                            //     // const keptImages = new Set(mediaArray.map(item => item.id)); 
+                            //     return group.image_ids.map((id, idx) => {
+                            //         const mediaItem = mediaArray.find(item => item.id === id);
+                            //         if (!mediaItem) return '';
+                            //     const isKept = groups.some(g => g.image_ids.includes(mediaItem.id));
+                            // //    const isKept = groups.has(mediaItem.id)
+                            // //     const shouldShowDelete = !isKept;
+                            //     // const shouldShowDelete = !isDuplicate;
+                            //     console.log("mediaItem<<<<<<<",mediaItem)
+                            //         const fullSizeUrl = this.convertToFullResolution(mediaItem.url);
+                            //         const similarityPercent = Math.round(group.similarity_score * 100);
+                            //     const quality = results.quality_array.find(q => q.name.startsWith(id));
+                            //      const qualityHTML = quality ? `
+                            //             <ul class="grid grid-cols-2 gap-[3px] my-[8px]">
+                            //                 <li class="bg-gradient flex items-center p-[2px] px-[2px] rounded-[6px]"><span class="text-[11px] dec-color dark-color">Blur:${quality.technical.blurScore.toFixed(2)}</span></li>
+                            //                 <li class="bg-gradient flex items-center p-[2px] px-[2px] rounded-[6px]"><span class="text-[11px] dec-color dark-color">Sharpness:${quality.technical.sharpnessScore.toFixed(2)}</span></li>
+                            //                 <li class="bg-gradient flex items-center p-[2px] px-[2px] rounded-[6px]"><span class="text-[11px] dec-color dark-color">Exposure:${quality.technical.exposureQuality.toFixed(2)}</span></li>
+                            //                 <li class="bg-gradient flex items-center p-[2px] px-[2px] rounded-[6px]"><span class="text-[11px] dec-color dark-color">Contrast:${quality.technical.contrastScore.toFixed(2)}</span></li>
+                            //                 <li class="bg-gradient flex items-center p-[2px] px-[2px] rounded-[6px]"><span class="text-[11px] dec-color dark-color">Noise:${quality.technical.noiseLevel.toFixed(2)}</span></li>
+                            //                 <li class="bg-gradient flex items-center p-[2px] px-[2px] rounded-[6px]"><span class="text-[11px] dec-color dark-color">Color balance:${quality.technical.colorBalance.toFixed(2)}</span></li>
+                            //             </ul>
+                            //             <p class="!text-[12px] mt-[8px] dec-color font-medium">Overall Score:${quality.overallScore.toFixed(2)}%</p>
+                            //         ` : '';
+                            //         return `
+                            //         <article class="pc-image-item border rounded-[8px]  border-[2px] border-[#fca5a5] mb-6 relative" data-photo-id="${mediaItem.id}" data-photo-url="${mediaItem.url}" data-media-type="${mediaType}">
+                            //             <div class="p-[12px] bg-white border-b border-[#e2e8f0] flex gap-[5px] items-center rounded-t-[8px]">
+                            //            <div class="quality_a_details">
+                            //               <span class="quality_a_details_nu text-[#9333ea] font-semibold !text-[15px]">${index + 1}/${group.image_ids.length}</span>
+                            //               <span class="quality_a_details_nu text-[#94a3b8] !text-[15px]">(${quality.overallScore.toFixed(2)}%)</span>
+                            //             <div class="quality_a_details_po rounded-[10px] border-color-two border p-[15px] w-[240px] absolute top-[40px] -left-[30px] z-[999] bg-white">
                                        
-                                        <div class="articlecontent">
-                                            <h4 class="text-[14px] font-bold dark-color">Quality Assessment Details</h4>
-                                            <span class="h-[1px] flex items-center justify-center w-full bg-[#DBF7FE] my-[8px]"></span>
-                                            <p class="!text-[12px] dec-color font-medium">Technical quality</p>
-                                            ${qualityHTML}
-                                            <span class="h-[1px] flex items-center justify-center w-full bg-[#DBF7FE] my-[8px]"></span>
+                            //             <div class="articlecontent">
+                            //                 <h4 class="text-[14px] font-bold dark-color">Quality Assessment Details</h4>
+                            //                 <span class="h-[1px] flex items-center justify-center w-full bg-[#DBF7FE] my-[8px]"></span>
+                            //                 <p class="!text-[12px] dec-color font-medium">Technical quality</p>
+                            //                 ${qualityHTML}
+                            //                 <span class="h-[1px] flex items-center justify-center w-full bg-[#DBF7FE] my-[8px]"></span>
                        
-                                        </div>
-                                    </div>
-                                        </div>
-                                        ${
-                                            isSelectable
-                                            ? `<span class="px-[8px] py-[5px] gap-[4px] border bg-[#10b981] border-[#10b981] rounded-md !text-[12px] text-white ml-auto">Keeping this file</span>`
-                                           : `<span class="px-[8px] py-[5px] gap-[4px] border bg-[#10b981] border-[#10b981] rounded-md !text-[12px] text-white ml-auto">Keeping this file</span>`
-                                        }
-                                        </div>
+                            //             </div>
+                            //          </div>
+                            //             </div>
+                            //             ${
+                            //                 isSelectable
+                            //                 ? `<span class="px-[8px] py-[5px] gap-[4px] border bg-[#10b981] border-[#10b981] rounded-md !text-[12px] text-white ml-auto">Keeping this file</span>`
+                            //                : `<span class="px-[8px] py-[5px] gap-[4px] border bg-[#10b981] border-[#10b981] rounded-md !text-[12px] text-white ml-auto">Keeping this file</span>`
+                            //             }
+                            //             </div>
+                            //             <div class="relative">
+                            //             <img src="${fullSizeUrl}" alt="${mediaItem.ariaLabel}" class="w-full h-[190px] object-cover">
+                            //             </div>
+                            //             <div class="p-[10px] bg-white border-t border-slate-200 rounded-b-[8px]">
+                            //             <h4 class="text-[14px] font-semibold text-[#0f172a] mb-1 truncate">${mediaItem.ariaLabel}</h4>
+                            //             <div class="pc-image-size" data-photo-id="${mediaItem.id}"></div>
+                            //             <div class="flex items-center justify-between">
+                            //                 <button class="px-[8px] py-[5px] gap-[4px] border border-[#e7e5e4] rounded-md !text-[12px]"><i class="fa-solid fa-eye"></i> <span>View</span></button>
+                            //                 <button class="px-[8px] py-[5px] gap-[4px] border bg-[#10b981] border-[#10b981] rounded-md !text-[12px] text-white"><i class="fa-solid fa-check"></i> <span>Keep</span></button>
+                            //             </div>
+                            //             </div>
+                            //         </article>
+                            //         `;
+                            //     }).join('');
+                            //     }).join('');
+                            // };
+
+    //Runnign 18/8
+                            // const generateArticles = (groups, mediaType) => {
+                            //        console.log("generateArticlesGROPUS",groups);
+                            //     const mediaArray = mediaType === 'video' ? this.videos : this.photos;
+
+                            //     return groups.map((group, index) => {
+                            //     const isSelectable = this.isPaidVersion || index < 2;
+                            //     // const keptImages = new Set(mediaArray.map(item => item.id)); 
+                            //     return group.image_ids.map((id, idx) => {
+                            //         const mediaItem = mediaArray.find(item => item.id === id);
+                            //         if (!mediaItem) return '';
+                            //     const isKept = groups.some(g => g.image_ids.includes(mediaItem.id));
+                            // //    const isKept = groups.has(mediaItem.id)
+                            // //     const shouldShowDelete = !isKept;
+                            //     // const shouldShowDelete = !isDuplicate;
+                            //     console.log("mediaItem<<<<<<<",mediaItem)
+                            //         const fullSizeUrl = this.convertToFullResolution(mediaItem.url);
+                            //         const similarityPercent = Math.round(group.similarity_score * 100);
+                            //     const quality = results.quality_array.find(q => q.name.startsWith(id));
+                            //      const qualityHTML = quality ? `
+                            //             <ul class="grid grid-cols-2 gap-[3px] my-[8px]">
+                            //                 <li class="bg-gradient flex items-center p-[2px] px-[2px] rounded-[6px]"><span class="text-[11px] dec-color dark-color">Blur:${quality.technical.blurScore.toFixed(2)}</span></li>
+                            //                 <li class="bg-gradient flex items-center p-[2px] px-[2px] rounded-[6px]"><span class="text-[11px] dec-color dark-color">Sharpness:${quality.technical.sharpnessScore.toFixed(2)}</span></li>
+                            //                 <li class="bg-gradient flex items-center p-[2px] px-[2px] rounded-[6px]"><span class="text-[11px] dec-color dark-color">Exposure:${quality.technical.exposureQuality.toFixed(2)}</span></li>
+                            //                 <li class="bg-gradient flex items-center p-[2px] px-[2px] rounded-[6px]"><span class="text-[11px] dec-color dark-color">Contrast:${quality.technical.contrastScore.toFixed(2)}</span></li>
+                            //                 <li class="bg-gradient flex items-center p-[2px] px-[2px] rounded-[6px]"><span class="text-[11px] dec-color dark-color">Noise:${quality.technical.noiseLevel.toFixed(2)}</span></li>
+                            //                 <li class="bg-gradient flex items-center p-[2px] px-[2px] rounded-[6px]"><span class="text-[11px] dec-color dark-color">Color balance:${quality.technical.colorBalance.toFixed(2)}</span></li>
+                            //             </ul>
+                            //             <p class="!text-[12px] mt-[8px] dec-color font-medium">Overall Score:${quality.overallScore.toFixed(2)}%</p>
+                            //         ` : '';
+                            //         return `
+                            //         <article class="pc-image-item border rounded-[8px]  border-[2px] border-[#fca5a5] mb-6 relative" data-photo-id="${mediaItem.id}" data-photo-url="${mediaItem.url}" data-media-type="${mediaType}">
+                            //             <div class="p-[12px] bg-white border-b border-[#e2e8f0] flex gap-[5px] items-center rounded-t-[8px]">
+                            //            <div class="quality_a_details">
+                            //               <span class="quality_a_details_nu text-[#9333ea] font-semibold !text-[15px]">${index + 1}/${group.image_ids.length}</span>
+                            //               <span class="quality_a_details_nu text-[#94a3b8] !text-[15px]">(${quality.overallScore.toFixed(2)}%)</span>
+                            //             <div class="quality_a_details_po rounded-[10px] border-color-two border p-[15px] w-[240px] absolute top-[40px] -left-[30px] z-[999] bg-white">
+                                       
+                            //             <div class="articlecontent">
+                            //                 <h4 class="text-[14px] font-bold dark-color">Quality Assessment Details</h4>
+                            //                 <span class="h-[1px] flex items-center justify-center w-full bg-[#DBF7FE] my-[8px]"></span>
+                            //                 <p class="!text-[12px] dec-color font-medium">Technical quality</p>
+                            //                 ${qualityHTML}
+                            //                 <span class="h-[1px] flex items-center justify-center w-full bg-[#DBF7FE] my-[8px]"></span>
+                       
+                            //             </div>
+                            //          </div>
+                            //             </div>
+                            //             ${
+                            //                 isSelectable
+                            //                 ? `<span class="px-[8px] py-[5px] gap-[4px] border bg-[#10b981] border-[#10b981] rounded-md !text-[12px] text-white ml-auto">Keeping this file</span>`
+                            //                : `<span class="px-[8px] py-[5px] gap-[4px] border bg-[#10b981] border-[#10b981] rounded-md !text-[12px] text-white ml-auto">Keeping this file</span>`
+                            //             }
+                            //             </div>
+                            //             <div class="relative">
+                            //             <img src="${fullSizeUrl}" alt="${mediaItem.ariaLabel}" class="w-full h-[190px] object-cover">
+                            //             </div>
+                            //             <div class="p-[10px] bg-white border-t border-slate-200 rounded-b-[8px]">
+                            //             <h4 class="text-[14px] font-semibold text-[#0f172a] mb-1 truncate">${mediaItem.ariaLabel}</h4>
+                            //             <div class="pc-image-size" data-photo-id="${mediaItem.id}"></div>
+                            //             <div class="flex items-center justify-between">
+                            //                 <button class="px-[8px] py-[5px] gap-[4px] border border-[#e7e5e4] rounded-md !text-[12px]"><i class="fa-solid fa-eye"></i> <span>View</span></button>
+                            //                 <button class="px-[8px] py-[5px] gap-[4px] border bg-[#10b981] border-[#10b981] rounded-md !text-[12px] text-white"><i class="fa-solid fa-check"></i> <span>Keep</span></button>
+                            //             </div>
+                            //             </div>
+                            //         </article>
+                            //         `;
+                            //     }).join('');
+                            //     }).join('');
+                            // };
 
 
 
+                            
+
+//    const generateArticles = (groups, mediaType) => {
+//   console.log("generateArticlesGROPUS", groups);
+//   const mediaArray = mediaType === "video" ? this.videos : this.photos;
+
+//   return groups
+//     .map((group, index) => {
+//       const similarityPercent = Math.round(group.similarity_score * 100);
+
+//       // Group heading + cards
+//       return `
+//         <section class="mb-8">
+//           <h3 class="text-lg font-semibold text-[#0f172a] mb-4">
+//             Group ${index + 1} - ${similarityPercent}% Match
+//           </h3>
+//           <div class="grid grid-cols-3 gap-5">
+//             ${group.image_ids
+//               .map((id, idx) => {
+//                 const mediaItem = mediaArray.find((item) => item.id === id);
+//                 if (!mediaItem) return "";
+
+//                 const fullSizeUrl = this.convertToFullResolution(mediaItem.url);
+//                 const quality = results.quality_array.find((q) =>
+//                   q.name.startsWith(id)
+//                 );
+
+//                 const qualityHTML = quality
+//                   ? `
+//                   <ul class="grid grid-cols-2 gap-[3px] my-[8px]">
+//                     <li class="bg-gradient flex items-center p-[2px] px-[2px] rounded-[6px]"><span class="text-[11px] dec-color dark-color">Blur: ${quality.technical.blurScore.toFixed(2)}</span></li>
+//                     <li class="bg-gradient flex items-center p-[2px] px-[2px] rounded-[6px]"><span class="text-[11px] dec-color dark-color">Sharpness: ${quality.technical.sharpnessScore.toFixed(2)}</span></li>
+//                     <li class="bg-gradient flex items-center p-[2px] px-[2px] rounded-[6px]"><span class="text-[11px] dec-color dark-color">Exposure: ${quality.technical.exposureQuality.toFixed(2)}</span></li>
+//                     <li class="bg-gradient flex items-center p-[2px] px-[2px] rounded-[6px]"><span class="text-[11px] dec-color dark-color">Contrast: ${quality.technical.contrastScore.toFixed(2)}</span></li>
+//                     <li class="bg-gradient flex items-center p-[2px] px-[2px] rounded-[6px]"><span class="text-[11px] dec-color dark-color">Noise: ${quality.technical.noiseLevel.toFixed(2)}</span></li>
+//                     <li class="bg-gradient flex items-center p-[2px] px-[2px] rounded-[6px]"><span class="text-[11px] dec-color dark-color">Color Balance: ${quality.technical.colorBalance.toFixed(2)}</span></li>
+//                   </ul>
+//                   <p class="!text-[12px] mt-[8px] dec-color font-medium">Overall Score: ${quality.overallScore.toFixed(
+//                     2
+//                   )}%</p>
+//                 `
+//                   : "";
+
+//                 return `
+//                   <article class="pc-image-item border rounded-[8px] border-[2px] border-[#fca5a5] mb-6 relative"
+//                     data-photo-id="${mediaItem.id}" 
+//                     data-photo-url="${mediaItem.url}" 
+//                     data-media-type="${mediaType}">
+                    
+//                     <div class="p-[12px] bg-white border-b border-[#e2e8f0] flex gap-[5px] items-center rounded-t-[8px]">
+//                       <div class="quality_a_details">
+//                         <span class="quality_a_details_nu text-[#9333ea] font-semibold !text-[15px]">${idx + 1}/${
+//                   group.image_ids.length
+//                 }</span>
+//                         <span class="quality_a_details_nu text-[#94a3b8] !text-[15px]">
+//                           (${quality ? quality.overallScore.toFixed(2) : 0}%)
+//                         </span>
+//                         <div class="quality_a_details_po rounded-[10px] border-color-two border p-[15px] w-[240px] absolute top-[40px] -left-[30px] z-[999] bg-white">
+//                           <div class="articlecontent">
+//                             <h4 class="text-[14px] font-bold dark-color">Quality Assessment Details</h4>
+//                             <span class="h-[1px] flex items-center justify-center w-full bg-[#DBF7FE] my-[8px]"></span>
+//                             <p class="!text-[12px] dec-color font-medium">Technical quality</p>
+//                             ${qualityHTML}
+//                             <span class="h-[1px] flex items-center justify-center w-full bg-[#DBF7FE] my-[8px]"></span>
+//                           </div>
+//                         </div>
+//                       </div>
+//                       <span class="px-[8px] py-[5px] gap-[4px] border bg-[#10b981] border-[#10b981] rounded-md !text-[12px] text-white ml-auto">
+//                         Keeping this file
+//                       </span>
+//                     </div>
+
+//                     <div class="relative">
+//                       <img src="${fullSizeUrl}" alt="${mediaItem.ariaLabel}" class="w-full h-[190px] object-cover">
+//                     </div>
+
+//                     <div class="p-[10px] bg-white border-t border-slate-200 rounded-b-[8px]">
+//                       <h4 class="text-[14px] font-semibold text-[#0f172a] mb-1 truncate">${mediaItem.ariaLabel}</h4>
+//                       <div class="pc-image-size" data-photo-id="${mediaItem.id}"></div>
+//                       <div class="flex items-center justify-between">
+//                         <button class="px-[8px] py-[5px] gap-[4px] border border-[#e7e5e4] rounded-md !text-[12px]">
+//                           <i class="fa-solid fa-eye"></i> <span>View</span>
+//                         </button>
+//                         <button class="px-[8px] py-[5px] gap-[4px] border bg-[#10b981] border-[#10b981] rounded-md !text-[12px] text-white">
+//                           <i class="fa-solid fa-check"></i> <span>Keep</span>
+//                         </button>
+//                       </div>
+//                     </div>
+//                   </article>
+//                 `;
+//               })
+//               .join("")}
+//           </div>
+//         </section>
+//       `;
+//     })
+//     .join("");
+// };
 
 
-                                        <div class="relative">
-                                        <img src="${fullSizeUrl}" alt="${mediaItem.ariaLabel}" class="w-full h-[190px] object-cover">
-                                        </div>
-                                        <div class="p-[10px] bg-white border-t border-slate-200 rounded-b-[8px]">
-                                        <h4 class="text-[14px] font-semibold text-[#0f172a] mb-1 truncate">${mediaItem.ariaLabel}</h4>
-                                        <p class="!text-[12px] text-[#64748b] mb-[12px]">${(mediaItem.size || 0) / 1000000} MB</p>
-                                        <div class="flex items-center justify-between">
-                                            <button class="px-[8px] py-[5px] gap-[4px] border border-[#e7e5e4] rounded-md !text-[12px]"><i class="fa-solid fa-eye"></i> <span>View</span></button>
-                                            <button class="px-[8px] py-[5px] gap-[4px] border bg-[#10b981] border-[#10b981] rounded-md !text-[12px] text-white"><i class="fa-solid fa-check"></i> <span>Keep</span></button>
-                                        </div>
-                                        </div>
-                                    </article>
-                                    `;
-                                }).join('');
-                                }).join('');
-                            };
+//Latest 18/8
+        const generateArticles = (groups, mediaType) => {
+  console.log("generateArticlesGROPUS", groups);
+  const mediaArray = mediaType === "video" ? this.videos : this.photos;
 
+  return groups.map((group, gIndex) => {
+    const similarityPercent = Math.round(group.similarity_score * 100);
+
+    // Group wrapper
+    return `
+      <div class="analysisresults-group bg-white border border-[#e2e8f0] rounded-[12px] shadow-sm mb-8">
+        <!-- Group Header -->
+        <div class="p-[16px] border-b border-[#e2e8f0] bg-[#f8fafc]">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-[10px]">
+              <span>
+                <button><i class="fa-solid fa-angle-down text-[#94a3b8]"></i></button>
+              </span>
+              <span>
+                <input type="checkbox" class="border border-[#2094f3] rounded-[8px]">
+              </span>
+              <span>img</span>
+              <span class="font-semibold text-[#0f172a] !text-[16px]">Group ${gIndex + 1}</span>
+              <span class="text-[12px] bg-[#f5f5f4] rounded-full px-[8px] py-[2px]">
+                ${group.image_ids.length} <span>images</span>
+              </span>
+              <span class="text-[#64748b] !text-[12px]">
+                Select group to process • Keep button to preserve images
+              </span>
+            </div>
+            <div class="flex items-center gap-[5px]">
+              <span class="flex flex-col">
+                <span class="text-[#0f172a] font-medium !text-[14px] text-right">
+                  ${similarityPercent}% similar
+                </span>
+                <span class="text-[#64748b] font-medium !text-[12px] text-right">
+                  Keep: 1 • Delete: 1
+                </span>
+              </span>
+              <button class="text-[14px] px-[11px] py-[8px] rounded-[8px] font-semibold text-[#3b4a5e]">
+                Select Group
+              </button>
+              <button class="text-[14px] px-[11px] py-[8px] rounded-[8px] font-semibold text-[#dc2626]">
+                Dismiss Group
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Group Body -->
+        <div class="p-[24px]">
+          <div class="grid grid-cols-3 gap-5">
+            ${group.image_ids.map((id, idx) => {
+              const mediaItem = mediaArray.find((item) => item.id === id);
+              if (!mediaItem) return "";
+
+              const fullSizeUrl = this.convertToFullResolution(mediaItem.url);
+              const quality = results.quality_array.find((q) =>
+                q.name.startsWith(id)
+              );
+
+              const qualityHTML = quality
+                ? `
+                  <ul class="grid grid-cols-2 gap-[3px] my-[8px]">
+                    <li>Blur: ${quality.technical.blurScore.toFixed(2)}</li>
+                    <li>Sharpness: ${quality.technical.sharpnessScore.toFixed(2)}</li>
+                    <li>Exposure: ${quality.technical.exposureQuality.toFixed(2)}</li>
+                    <li>Contrast: ${quality.technical.contrastScore.toFixed(2)}</li>
+                    <li>Noise: ${quality.technical.noiseLevel.toFixed(2)}</li>
+                    <li>Color Balance: ${quality.technical.colorBalance.toFixed(2)}</li>
+                  </ul>
+                  <p>Overall Score: ${quality.overallScore.toFixed(2)}%</p>
+                `
+                : "";
+
+              return `
+                <article class="pc-image-item border rounded-[8px] border-[2px] border-[#fca5a5] mb-6 relative"
+                  data-photo-id="${mediaItem.id}" 
+                  data-photo-url="${mediaItem.url}" 
+                  data-media-type="${mediaType}">
+
+                  <div class="p-[12px] bg-white border-b border-[#e2e8f0] flex gap-[5px] items-center rounded-t-[8px]">
+                    <div class="quality_a_details">
+                      <span class="text-[#9333ea] font-semibold !text-[15px]">${idx + 1}/${group.image_ids.length}</span>
+                      <span class="text-[#94a3b8] !text-[15px]">
+                        (${quality ? quality.overallScore.toFixed(2) : 0}%)
+                      </span>
+                      
+                <div class="quality_a_details_po rounded-[10px] border p-[15px] w-[240px] absolute top-[40px] -left-[30px] z-[999] bg-white">
+                    <div class="articlecontent">
+                    <h4 class="text-[14px] font-bold dark-color">Quality Assessment Details</h4>
+                    <span class="h-[1px] flex items-center justify-center w-full bg-[#DBF7FE] my-[8px]"></span>
+                    <p class="!text-[12px] dec-color font-medium">Technical quality</p>
+                    ${qualityHTML}
+                    </div>
+                </div>
+                    </div>
+                    <span class="ml-auto text-white text-[12px] bg-[#10b981] px-[8px] py-[5px] rounded-md">Keeping this file</span>
+                  </div>
+
+                  <div class="relative">
+                    <img src="${fullSizeUrl}" alt="${mediaItem.ariaLabel}" class="w-full h-[190px] object-cover">
+                  </div>
+
+                  <div class="p-[10px] bg-white border-t border-slate-200 rounded-b-[8px]">
+                    <h4 class="text-[14px] font-semibold text-[#0f172a] mb-1 truncate">${mediaItem.ariaLabel}</h4>
+<div class="pc-image-size" data-photo-id="${mediaItem.id}"></div>
+                    <div class="flex items-center justify-between">
+                      <button class="px-[8px] py-[5px] border rounded-md text-[12px]">
+                        <i class="fa-solid fa-eye"></i> View
+                      </button>
+                      <button class="px-[8px] py-[5px] bg-[#10b981] text-white border rounded-md text-[12px]">
+                        <i class="fa-solid fa-check"></i> Keep
+                      </button>
+                    </div>
+                  </div>
+                </article>
+              `;
+            }).join("")}
+          </div>
+        </div>
+      </div>
+    `;
+  }).join("");
+};
+
+
+                            // return `
+                            //     <div class="grid gap-6 grid-cols-1 md:grid-cols-2 lg:grid-cols-4">
+                            //     ${generateArticles(videoGroups, 'video')}
+                            //     ${generateArticles(photoGroups, 'photo')}
+                            //     </div>
+                            // `;
                             return `
-                                <div class="grid gap-6 grid-cols-1 md:grid-cols-2 lg:grid-cols-4">
+                                <div class="">
                                 ${generateArticles(videoGroups, 'video')}
                                 ${generateArticles(photoGroups, 'photo')}
                                 </div>
@@ -6079,111 +6354,118 @@ The extension page will open in a new tab and this scanning window will close.
         // const thresholdSlider = $('#pc-similarity-threshold');
         // const thresholdValue = $('#pc-threshold-value');
         // const reanalyzeBtn =$('#pc-reanalyze');
-        const thresholdSlider = document.getElementById('pc-similarity-threshold');
-        const thresholdValue = document.getElementById('pc-threshold-value');
-        const reanalyzeBtn = document.getElementById('pc-reanalyze');
-        if (thresholdSlider.length && thresholdValue.length) {
-            thresholdSlider.addEventListener('input', (e) => {
-                const percentage = Math.round(parseFloat(e.target.value) * 100);
-                thresholdValue.textContent = percentage + '%';
-            });
-        }
 
-        if (reanalyzeBtn.length) {
-           reanalyzeBtn.addEventListener('click', async () => {
-                // Check daily re-analysis limit for non-pro users
-                if (!this.isPaidVersion && !this.canPerformReAnalysis()) {
-                    alert('You have reached limit of re-analysis today. Upgrade to PRO to unlock this or try again tomorrow.');
-                    const shouldUpgrade = confirm(
-                        '🔥 Upgrade to Pro Version!\n\n' +
-                        'Unlimited re-analysis is available in the Pro version.\n\n' +
-                        '✨ Features included:\n' +
-                        '• Unlimited similar groups detection\n' +
-                        '• Unlimited re-analysis\n' +
-                        '• AI face detection for smart selection\n' +
-                        '• Advanced metadata-based selection\n' +
-                        '• Priority support\n\n' +
-                        'Price: €9.99 (one-time payment)\n\n' +
-                        'Click OK to upgrade, or Cancel to continue.'
-                    );
-                    if (shouldUpgrade) {
-                        this.openPurchasePopup();
-                    }
-                    return;
-                }
+        //Comment on 18-8 start
+        // const thresholdSlider = document.getElementById('pc-similarity-threshold');
+        // const thresholdValue = document.getElementById('pc-threshold-value');
+        // const reanalyzeBtn = document.getElementById('pc-reanalyze');
+        // if (thresholdSlider.length && thresholdValue.length) {
+        //     thresholdSlider.addEventListener('input', (e) => {
+        //         const percentage = Math.round(parseFloat(e.target.value) * 100);
+        //         thresholdValue.textContent = percentage + '%';
+        //     });
+        // }
 
-                const newThreshold = Math.round(parseFloat(thresholdSlider.val()) * 100);
-                console.log(`🔄 Re-analyzing with similarity threshold: ${newThreshold}%`);
+        // if (reanalyzeBtn.length) {
+        //    reanalyzeBtn.addEventListener('click', async () => {
+        //         // Check daily re-analysis limit for non-pro users
+        //         if (!this.isPaidVersion && !this.canPerformReAnalysis()) {
+        //             alert('You have reached limit of re-analysis today. Upgrade to PRO to unlock this or try again tomorrow.');
+        //             const shouldUpgrade = confirm(
+        //                 '🔥 Upgrade to Pro Version!\n\n' +
+        //                 'Unlimited re-analysis is available in the Pro version.\n\n' +
+        //                 '✨ Features included:\n' +
+        //                 '• Unlimited similar groups detection\n' +
+        //                 '• Unlimited re-analysis\n' +
+        //                 '• AI face detection for smart selection\n' +
+        //                 '• Advanced metadata-based selection\n' +
+        //                 '• Priority support\n\n' +
+        //                 'Price: €9.99 (one-time payment)\n\n' +
+        //                 'Click OK to upgrade, or Cancel to continue.'
+        //             );
+        //             if (shouldUpgrade) {
+        //                 this.openPurchasePopup();
+        //             }
+        //             return;
+        //         }
 
-                // Update re-analysis count for non-pro users
-                if (!this.isPaidVersion) {
-                    await this.updateDailyReAnalysisCount();
-                }
+        //         const newThreshold = Math.round(parseFloat(thresholdSlider.val()) * 100);
+        //         console.log(`🔄 Re-analyzing with similarity threshold: ${newThreshold}%`);
 
-                // Disable button during re-analysis
-                reanalyzeBtn.disabled = true;
-                reanalyzeBtn.textContent = 'Re-analyzing...';
+        //         // Update re-analysis count for non-pro users
+        //         if (!this.isPaidVersion) {
+        //             await this.updateDailyReAnalysisCount();
+        //         }
 
-                // Show progress overlay
-                this.showProgress(true);
-                this.updateProgress(0, 'Starting re-analysis...');
+        //         // Disable button during re-analysis
+        //         reanalyzeBtn.disabled = true;
+        //         reanalyzeBtn.textContent = 'Re-analyzing...';
 
-                try {
-                    // Get the current session ID from the frontend session manager
-                    const sessionId = this.frontendSessionManager.currentSessionId;
-                    if (sessionId) {
-                        // Set up progress callback for re-analysis
-                        this.frontendSessionManager.progressCallback = (progress, message) => {
-                            this.updateProgress(progress, message);
-                        };
+        //         // Show progress overlay
+        //         this.showProgress(true);
+        //         this.updateProgress(0, 'Starting re-analysis...');
 
-                        // Re-run analysis with new threshold and progress tracking
-                        await this.frontendSessionManager.analyzeSession(sessionId, newThreshold);
+        //         try {
+        //             // Get the current session ID from the frontend session manager
+        //             const sessionId = this.frontendSessionManager.currentSessionId;
+        //             if (sessionId) {
+        //                 // Set up progress callback for re-analysis
+        //                 this.frontendSessionManager.progressCallback = (progress, message) => {
+        //                     this.updateProgress(progress, message);
+        //                 };
 
-                        // Clear progress callback
-                        this.frontendSessionManager.progressCallback = null;
+        //                 // Re-run analysis with new threshold and progress tracking
+        //                 await this.frontendSessionManager.analyzeSession(sessionId, newThreshold);
 
-                        this.updateProgress(100, 'Re-analysis complete! Updating results...');
+        //                 // Clear progress callback
+        //                 this.frontendSessionManager.progressCallback = null;
 
-                        const updatedResults = this.transformFrontendResults(
-                            this.frontendSessionManager.sessions[sessionId],
-                            sessionId
-                        );
+        //                 this.updateProgress(100, 'Re-analysis complete! Updating results...');
 
-                        // Small delay to show completion message
-                        await new Promise(resolve => setTimeout(resolve, 500));
+        //                 const updatedResults = this.transformFrontendResults(
+        //                     this.frontendSessionManager.sessions[sessionId],
+        //                     sessionId
+        //                 );
 
-                        // Hide progress and update the overlay with new results
-                        this.showProgress(false);
-                        overlay.remove();
-                        this.createResultsOverlay(updatedResults);
-                    }
-                } catch (error) {
-                    console.error('❌ Error during re-analysis:', error);
-                    this.updateProgress(0, 'Re-analysis failed! Please try again.');
-                    setTimeout(() => {
-                        this.showProgress(false);
-                        alert('Error during re-analysis. Please try again.');
-                        reanalyzeBtn.prop('disabled', false).text('Re-analyze');
-                    }, 2000);
-                    return; // Exit early to prevent finally block from running immediately
-                } finally {
-                    // Only run this if we didn't have an error (normal completion)
-                    if (reanalyzeBtn.prop('disabled')) {
-                		reanalyzeBtn.prop('disabled', false).text('Re-analyze');
-           	        }
-                }
-            });
-        }
+        //                 // Small delay to show completion message
+        //                 await new Promise(resolve => setTimeout(resolve, 500));
+
+        //                 // Hide progress and update the overlay with new results
+        //                 this.showProgress(false);
+        //                 overlay.remove();
+        //                 this.createResultsOverlay(updatedResults);
+        //             }
+        //         } catch (error) {
+        //             console.error('❌ Error during re-analysis:', error);
+        //             this.updateProgress(0, 'Re-analysis failed! Please try again.');
+        //             setTimeout(() => {
+        //                 this.showProgress(false);
+        //                 alert('Error during re-analysis. Please try again.');
+        //                 reanalyzeBtn.prop('disabled', false).text('Re-analyze');
+        //             }, 2000);
+        //             return; // Exit early to prevent finally block from running immediately
+        //         } finally {
+        //             // Only run this if we didn't have an error (normal completion)
+        //             if (reanalyzeBtn.prop('disabled')) {
+        //         		reanalyzeBtn.prop('disabled', false).text('Re-analyze');
+        //    	        }
+        //         }
+        //     });
+        // }
+
+   
 
         // Add photo click handlers for checkbox toggling
-        this.setupPhotoToggleHandlers(overlay);
+        // this.setupPhotoToggleHandlers(overlay);
 
-        // Add group toggle functionality
-        this.setupGroupToggleHandlers(overlay);
+        // // Add group toggle functionality
+        // this.setupGroupToggleHandlers(overlay);
 
-        // Initialize checkbox states based on current DupeYak Duplicate Remover state
-        this.initializeCheckboxStates(overlay);
+        // // Initialize checkbox states based on current DupeYak Duplicate Remover state
+        // this.initializeCheckboxStates(overlay);
+
+
+         //Comment on 18-8 End 
 
         // Load image sizes asynchronously
         this.loadImageSizes(overlay);
@@ -7621,6 +7903,7 @@ The extension page will open in a new tab and this scanning window will close.
     }
 
     setupMetadataSelectionHandlers(overlay) {
+        return;
         const metadataButtons = [
             { id: 'pc-keep-larger-size', criteria: 'size', preference: 'larger' },
             { id: 'pc-keep-smaller-size', criteria: 'size', preference: 'smaller' },
@@ -9615,7 +9898,7 @@ if (!textElement.querySelector('input[type="range"]')) {
     }
 
     setupViewportObserver(overlay) {
-        const imageItems = overlay.querySelectorAll('.pc-image-item');
+        const imageItems = overlay[0].querySelectorAll('.pc-image-item');
 
         if (imageItems.length === 0) {
             //console.log('📏 No image items found, skipping viewport observer setup');
@@ -9795,10 +10078,10 @@ if (!textElement.querySelector('input[type="range"]')) {
         }
 
         // Line 2: Upload date (if available and different from taken date)
-        if (sizeInfo.uploadTimestamp && sizeInfo.uploadTimestamp !== sizeInfo.timestamp) {
-            const uploadDateTime = this.formatDateTime(sizeInfo.uploadTimestamp, sizeInfo.timezoneOffset);
-            html += `<div style="color: #333; font-size: 0.9em; margin: 0; padding: 0; text-align: center; font-weight: normal;">uploaded ${uploadDateTime}</div>`;
-        }
+        // if (sizeInfo.uploadTimestamp && sizeInfo.uploadTimestamp !== sizeInfo.timestamp) {
+        //     const uploadDateTime = this.formatDateTime(sizeInfo.uploadTimestamp, sizeInfo.timezoneOffset);
+        //     html += `<div style="color: #333; font-size: 0.9em; margin: 0; padding: 0; text-align: center; font-weight: normal;">uploaded ${uploadDateTime}</div>`;
+        // }
 
         // Line 3: File size and storage information
         let storageText = `(${sizeInfo.formatted}) `;
