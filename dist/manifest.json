@@ -36,7 +36,7 @@
 
    "version": "1.0.1",
    "web_accessible_resources": [{
-  "matches": ["https://photos.google.com/*"],
+  "matches": ["<all_urls>"],
   "resources": [
     "models/*",
     "html/*",

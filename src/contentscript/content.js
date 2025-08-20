@@ -7,7 +7,7 @@
 
  import $ from 'jquery';
  import 'jquery-ui-dist/jquery-ui';
- import { QualityAssessor } from "../js/quality-assestor";
+import * as faceapi from 'face-api.js';
  
 // Utility function to check if current URL is a valid DupeYak Duplicate Remover page for the extension
 function isValidGooglePhotosPage(url = window.location.href) {
@@ -631,17 +631,50 @@ async analyzeSession(sessionId, similarityThreshold = 75) {
         }));
     }
 }
+faceapiInitialized = false;
+
+ async initializeFaceApi() {
+   if (this.faceapiInitialized) {
+    console.log("⚠️ Models already loaded, skipping reload...");
+    return;
+  } // agar pehle hi load ho gaya hai to wapas load na kare
+
+  try {
+    console.log('Loading Tiny Face Detector and Face Landmarks models from /models...');
+
+    console.log("📂 Trying to load models from /models folder...");
+    // await Promise.all([
+    //   faceapi.nets.tinyFaceDetector.loadFromUri('/models'),
+    //   faceapi.nets.faceLandmark68TinyNet.loadFromUri('/models')
+    // ]);
+    const modelUrl = chrome.runtime.getURL("models");
+    console.log("🔍 Model URL being used:", modelUrl);
+    await faceapi.nets.tinyFaceDetector.loadFromUri(modelUrl);
+    console.log("✅ tinyFaceDetector model loaded");
+    await faceapi.nets.faceLandmark68TinyNet.loadFromUri(modelUrl);
+    console.log("✅ faceLandmark68TinyNet model loaded");
+
+
+    this.faceapiInitialized = true; // flag ko update karo
+    console.log('✅ Tiny Face Detector and Face Landmarks models loaded successfully!');
+  } catch (error) {
+    console.error('❌ Failed to load face-api.js models:', error);
+    console.error('Error details:', error instanceof Error ? error.message : String(error));
+
+    this.faceapiInitialized = false; // fail hone par bhi reset rakho
+  }
+}
 
     
     
   async assessImageQuality(imageFile, processingSize = 300) {
-    // await this.initializeFaceApi();
+     await this.initializeFaceApi();
 
     const technical = await this.analyzeTechnicalQuality(imageFile, processingSize);
    console.log("technical >>>",technical);
 
     const faces = await this.analyzeFaceQuality(imageFile);
-
+   console.log("faces >>>",faces);
     const overallScore = this.calculateOverallScore(technical, faces);
     const qualityTier = this.getQualityTier(overallScore);
 
@@ -728,7 +761,8 @@ async analyzeSession(sessionId, similarityThreshold = 75) {
 
     try {
       const img = await this.loadImageElement(imageFile);
-
+console.log("🖼️ Loaded image element:", img);
+console.log("🖼️ Image dimensions:", img?.width, img?.height);
       console.log('Running Tiny Face Detector with facial landmarks...');
       let detectionsWithLandmarks = await faceapi.detectAllFaces(img, new faceapi.TinyFaceDetectorOptions({
         scoreThreshold: 0.2,
@@ -767,6 +801,11 @@ async analyzeSession(sessionId, similarityThreshold = 75) {
       const lightingQuality = await this.calculateFaceLighting(img, box);
       const eyeContactScore = this.calculateEyeContactScore(landmarks);
 
+
+          console.log("faceSize",faceSize);
+          console.log("faceCentering",faceCentering);
+          console.log("lightingQuality",lightingQuality);
+         console.log("eyeContactScore",eyeContactScore);
       const portraitScore = (faceSize + faceCentering + lightingQuality + eyeContactScore) / 4;
 
       return {
@@ -815,6 +854,10 @@ async analyzeSession(sessionId, similarityThreshold = 75) {
     const eyeContactScore = faceIndicators.eyeRegionQuality;
     const portraitScore = (faceCentering + faceSize + lightingQuality + eyeContactScore) / 4;
 
+    console.log("faceSize",faceSize);
+          console.log("faceCentering",faceCentering);
+          console.log("lightingQuality",lightingQuality);
+         console.log("eyeContactScore",eyeContactScore);
     return {
       hasFace: true,
       eyeContactScore,
@@ -6215,13 +6258,19 @@ The extension page will open in a new tab and this scanning window will close.
     }, null);
 
     // Sorting me use kar lo
+    // const sortedIds = [...group.image_ids].sort((a, b) => {
+    //   const aIsBest = bestImage && bestImage.id === a;
+    //   const bIsBest = bestImage && bestImage.id === b;
+    //   if (aIsBest && !bIsBest) return -1;
+    //   if (!aIsBest && bIsBest) return 1;
+    //   return 0;
+    // });
     const sortedIds = [...group.image_ids].sort((a, b) => {
-      const aIsBest = bestImage && bestImage.id === a;
-      const bIsBest = bestImage && bestImage.id === b;
-      if (aIsBest && !bIsBest) return -1;
-      if (!aIsBest && bIsBest) return 1;
-      return 0;
-    });
+  const qa = results.quality_array.find(q => q.name.startsWith(a));
+  const qb = results.quality_array.find(q => q.name.startsWith(b));
+  return (qb?.overallScore || 0) - (qa?.overallScore || 0); // high to low
+});
+
     // Group wrapper
     return `
       <div class="analysisresults-group bg-white border border-[#e2e8f0] rounded-[12px] shadow-sm mb-8">
@@ -6269,6 +6318,7 @@ The extension page will open in a new tab and this scanning window will close.
           <div class="grid grid-cols-3 gap-5">
                 ${sortedIds.map((id, idx) => {
               const mediaItem = mediaArray.find((item) => item.id === id);
+              console.log('mediaItem>>>',mediaItem);
               if (!mediaItem) return "";
 
                 const totalImages = sortedIds.length;
@@ -6287,6 +6337,7 @@ The extension page will open in a new tab and this scanning window will close.
               const quality = results.quality_array.find((q) =>
                 q.name.startsWith(id)
               );
+              console.log("quality>>>",quality);
 
             //   const bestImage = group.image_ids.reduce((best, imgId) => {
             //     const q = results.quality_array.find((qq) =>
@@ -6300,17 +6351,28 @@ The extension page will open in a new tab and this scanning window will close.
             const isBest = bestImage && bestImage.id === id;
               const qualityHTML = quality
                 ? `
+                 <h4 class="text-[13px] font-semibold mb-[4px] text-left">Technical Quality</h4>
                   <ul class="grid grid-cols-2 gap-[3px] my-[8px]">
-                    <li class="bg-gradient flex items-center p-[2px] px-[2px] rounded-[6px]"><span class="text-[11px] dec-color dark-color">Blur: ${quality.technical.blurScore.toFixed(2)}</li>
-                    <li class="bg-gradient flex items-center p-[2px] px-[2px] rounded-[6px]"><span class="text-[11px] dec-color dark-color">Sharpness: ${quality.technical.sharpnessScore.toFixed(2)}</li>
-                    <li class="bg-gradient flex items-center p-[2px] px-[2px] rounded-[6px]"><span class="text-[11px] dec-color dark-color">Exposure: ${quality.technical.exposureQuality.toFixed(2)}</li>
-                    <li class="bg-gradient flex items-center p-[2px] px-[2px] rounded-[6px]"><span class="text-[11px] dec-color dark-color">Contrast: ${quality.technical.contrastScore.toFixed(2)}</li>
-                    <li class="bg-gradient flex items-center p-[2px] px-[2px] rounded-[6px]"><span class="text-[11px] dec-color dark-color">Noise: ${quality.technical.noiseLevel.toFixed(2)}</li>
-                    <li class="bg-gradient flex items-center p-[2px] px-[2px] rounded-[6px]"><span class="text-[11px] dec-color dark-color">Color Balance: ${quality.technical.colorBalance.toFixed(2)}</li>
+                    <li class="bg-gradient flex items-center p-[2px] px-[2px] rounded-[6px]"><span class="text-[11px] dec-color dark-color">Blur: ${quality.technical.blurScore.toFixed(2)}</span></li>
+                    <li class="bg-gradient flex items-center p-[2px] px-[2px] rounded-[6px]"><span class="text-[11px] dec-color dark-color">Sharpness: ${quality.technical.sharpnessScore.toFixed(2)}</span></li>
+                    <li class="bg-gradient flex items-center p-[2px] px-[2px] rounded-[6px]"><span class="text-[11px] dec-color dark-color">Exposure: ${quality.technical.exposureQuality.toFixed(2)}</span></li>
+                    <li class="bg-gradient flex items-center p-[2px] px-[2px] rounded-[6px]"><span class="text-[11px] dec-color dark-color">Contrast: ${quality.technical.contrastScore.toFixed(2)}</span></li>
+                    <li class="bg-gradient flex items-center p-[2px] px-[2px] rounded-[6px]"><span class="text-[11px] dec-color dark-color">Noise: ${quality.technical.noiseLevel.toFixed(2)}</span></li>
+                    <li class="bg-gradient flex items-center p-[2px] px-[2px] rounded-[6px]"><span class="text-[11px] dec-color dark-color">Color Balance: ${quality.technical.colorBalance.toFixed(2)}</span></li>
                   </ul>
-
+                   ${quality.faces 
+                    ? ` <h4 class="text-[13px] font-semibold mb-[4px] text-left">Face Quality</h4>
+                    <ul class="grid grid-cols-2 gap-[3px] my-[8px]">
+                        <li class="bg-gradient flex items-center p-[2px] px-[2px] rounded-[6px]"><span class="text-[11px] dec-color dark-color">Eye Contact:  ${quality.faces.eyeContactScore.toFixed(2)}</span></li>
+                        <li class="bg-gradient flex items-center p-[2px] px-[2px] rounded-[6px]"><span class="text-[11px] dec-color dark-color">Face Centering: ${quality.faces.faceCentering.toFixed(2)}</span></li>
+                        <li class="bg-gradient flex items-center p-[2px] px-[2px] rounded-[6px]"><span class="text-[11px] dec-color dark-color">Face Size: ${quality.faces.faceSize.toFixed(2)}</span></li>
+                        <li class="bg-gradient flex items-center p-[2px] px-[2px] rounded-[6px]"><span class="text-[11px] dec-color dark-color">Lighting: ${quality.faces.lightingQuality.toFixed(2)}</span></li>
+                        <li class="bg-gradient flex items-center p-[2px] px-[2px] rounded-[6px]"><span class="text-[11px] dec-color dark-color">Portrait Score: ${quality.faces.portraitScore.toFixed(2)}</span></li>
+                        <li class="bg-gradient flex items-center p-[2px] px-[2px] rounded-[6px]"><span class="text-[11px] dec-color dark-color">Face Count: ${quality.faces.faceCount.toFixed(2)}</span></li>
+                        </ul>`
+                    : ""}
                   <span class="h-[1px] flex items-center justify-center w-full bg-[#DBF7FE] my-[8px]"></span>
-                  <p class="!text-[12px] mt-[8px] dec-color font-medium">Overall Score: ${quality.overallScore.toFixed(2)}%</p>
+                  <p class="">Overall Score: ${quality.overallScore.toFixed(2)}%</p>
                 `
                 : "";
 
@@ -6329,11 +6391,11 @@ The extension page will open in a new tab and this scanning window will close.
                         (${quality ? quality.overallScore.toFixed(2) : 0}%)
                       </span>
                       
-                <div class="quality_a_details_po rounded-[10px] border p-[10px] w-[240px] absolute top-[40px] -left-[20px] z-[999] bg-white">
+                <div class="quality_a_details_po rounded-[10px] border p-[10px] w-[251px] absolute top-[40px] -left-[20px] z-[999] bg-white">
                     <div class="articlecontent">
                     <h4 class="text-[14px] font-bold dark-color">Quality Assessment Details</h4>
                     <span class="h-[1px] flex items-center justify-center w-full bg-[#DBF7FE] my-[8px]"></span>
-                    <span class="" >Technical quality</span>
+
                     ${qualityHTML}
                     </div>
                 </div>
