@@ -417,7 +417,7 @@ div#pc-window-warning {
 .pc-image-item {
     background: white;
     border-radius: 12px;
-    padding: 16px;
+    /* padding: 16px; */
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
     text-align: center;
     position: relative;
@@ -437,10 +437,10 @@ div#pc-window-warning {
 
 .pc-image-item img {
     width: 100%;
-    max-width: 200px;
+    max-width: 100%;
     height: auto;
-    border-radius: 8px;
-    margin: 0 auto 12px auto;
+    /* border-radius: 8px; */
+    margin: 0 auto 0px auto;
     display: block;
 }
 

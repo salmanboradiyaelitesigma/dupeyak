@@ -489,6 +489,7 @@ async analyzeSession(sessionId, similarityThreshold = 75) {
         progressCallback(95, `Grouping ${comparisons.length} similar pairs...`);
         const similarGroups = this.groupSimilarImages(comparisons);
 
+        console.log("similarGroups>>>",similarGroups)
         // Quality check phase
         console.log("🔍 Starting quality analysis for each image...");
         const newParamsList = await buildNewParamsFromSession(session);
@@ -502,7 +503,70 @@ async analyzeSession(sessionId, similarityThreshold = 75) {
             });
             console.log(`Quality for ${new_params.name}:`, quality);
         }
+//////FOR TESING 19-8-score
+        // 1️⃣ Function to calculate relative quality ranks
+// function calculateRelativeQualityRanks(group) {
+//     console.log("GROUP_calculate",group)
+//     // group.files me quality_array se har image ka score le lo
+//     const sortedFiles = [...group.files].sort((a, b) => 
+//         b.overallScore - a.overallScore
+//     );
+// console.log("sortedFiles",sortedFiles)
+//     sortedFiles.forEach((file, index) => {
+//         if (sortedFiles.length <= 10) {
+//             // Groups with 10 or fewer
+//             file.relativeQualityRank = 10 - index;
+//         } else {
+//             // Groups with >10 images: use decimal ranking
+//             const rankRange = 9; // from 10 down to 1
+//             const step = rankRange / (sortedFiles.length - 1);
+//             const rank = 10 - (index * step);
+//             file.relativeQualityRank = Math.max(1.0, Math.round(rank * 10) / 10);
+//         }
+//     });
+// }
 
+// 2️⃣ Function to select recommended keeper
+// function selectRecommendedKeeper(group, strategy = 'quality') {
+//     switch (strategy) {
+//         case 'quality':
+//             group.recommendedKeeper = group.files.reduce((best, current) => 
+//                 current.overallScore > best.overallScore ? current : best
+//             ).id;
+//             break;
+
+//         case 'size':
+//             group.recommendedKeeper = group.files.reduce((largest, current) =>
+//                 current.fileSize > largest.fileSize ? current : largest
+//             ).id;
+//             break;
+
+//         default:
+//             group.recommendedKeeper = null;
+//             break;
+//     }
+// }
+
+// 3️⃣ Example usage after analysis & grouping
+// similarGroups.forEach(group => {
+//     // Har group me files create karo using quality_array
+//     group.files = group.image_ids.map(id =>
+//         session.quality_array.find(q => q.name.startsWith(id))
+//     );
+
+//     calculateRelativeQualityRanks(group);
+//     selectRecommendedKeeper(group, 'quality');
+// });
+
+// 4️⃣ Rendering ke time ranking show karne ke liye
+// Example: generateArticles function me
+{/* <span class="text-[#9333ea] font-semibold !text-[15px]">
+  ${file.relativeQualityRank.toFixed(1)}/10
+</span> */}
+
+
+
+/// for tetsting 19-8-score
         // Update session
         session.analysis_status = 'completed';
         session.processed_images = totalImages;
@@ -513,6 +577,7 @@ async analyzeSession(sessionId, similarityThreshold = 75) {
         session.last_analysis = new Date().toISOString();
         session.analysis_progress = 100;
 
+          console.log("session>>>",session)
         progressCallback(100, `Analysis complete! Found ${similarGroups.length} groups.`);
 
         const analysisTime = Date.now() - analysisStartTime;
@@ -5805,7 +5870,7 @@ The extension page will open in a new tab and this scanning window will close.
         <div class="ap-popupu-in h-full flex items-center w-[1250px] mx-auto relative">
              <div class="container mx-auto px-3 max-[767px]:px-2 w-[100%] !max-w-full">
                 <div class="row">
-                   <div class="max-height overflow-auto bg-white max-[1600px]:rounded-[20px] rounded-[30px]">
+                   <div class=" bg-white max-[1600px]:rounded-[20px] rounded-[30px]">
                     <div class=" flex items-center justify-between background-one p-5 max-[1600px]:rounded-[20px] rounded-[40px] !rounded-b-[0] bg-gradient-to-br from-blue-500 to-violet-600 !py-[10px]">
                         <div class="headerlogo">
                             <a href="#" class="flex items-center gap-[5px] font-bold dark-color">
@@ -5819,7 +5884,7 @@ The extension page will open in a new tab and this scanning window will close.
                         </div>
                     </div>
                     <div class="p-5 flex flex-col">
-                       <div class="flex flex-col gap-3">
+                       <div class="flex flex-col gap-3 max-height overflow-auto">
                           <div class="results-summary bg-gradient p-4 rounded-[20px] ">
                             <ul class="grid grid-cols-2 gap-1">
                                 <li class="dark-color font-semibold flex"><span class="w-[170px] flex items-center">Total Photos </span> : <span class="dec-color font-normal pl-2">${this.photos.length}</span></li>
@@ -5847,7 +5912,7 @@ The extension page will open in a new tab and this scanning window will close.
 
                         
 
-                       <div class="analysis-results bg-white p-6 rounded-[20px] border border-[#e2e8f0] m-[6px] shadow-lg rounded-[8px]">
+                       <div class="analysis-results bg-white p-6 rounded-[20px] border border-[#e2e8f0] shadow-lg rounded-[8px]">
                           <div class="flex justify-between items-center">
                              <h4 class="text-[18px] font-semibold text-[#0f172a]">Analysis Results</h4>
                              <p class="text-[#64748b] !text-[14px] pl-[14px]">${results.similar_groups.length}<span> groups found •</span>  ${this.photos.length} <span> images processed</span></p>
@@ -5858,7 +5923,7 @@ The extension page will open in a new tab and this scanning window will close.
                           </div>
                         </div>
 
-                     <div class="p-[24px]">
+                     <div class="p-[24px] px-[0px]">
                                 ${(() => {
                             const photoGroups = [];
                             const videoGroups = [];
@@ -6125,11 +6190,43 @@ The extension page will open in a new tab and this scanning window will close.
   return groups.map((group, gIndex) => {
     const similarityPercent = Math.round(group.similarity_score * 100);
 
+
+    // const sortedIds = [...group.image_ids].sort((a, b) => {
+    //   const bestImage = group.image_ids.reduce((best, imgId) => {
+    //     const q = results.quality_array.find((qq) => qq.name.startsWith(imgId));
+    //     if (!q) return best;
+    //     if (!best) return { id: imgId, score: q.overallScore };
+    //     return q.overallScore > best.score ? { id: imgId, score: q.overallScore } : best;
+    //   }, null);
+
+    //   const aIsBest = bestImage && bestImage.id === a;
+    //   const bIsBest = bestImage && bestImage.id === b;
+
+    //   if (aIsBest && !bIsBest) return -1;
+    //   if (!aIsBest && bIsBest) return 1;
+    //   return 0;
+    // });
+
+    const bestImage = group.image_ids.reduce((best, imgId) => {
+      const q = results.quality_array.find((qq) => qq.name.startsWith(imgId));
+      if (!q) return best;
+      if (!best) return { id: imgId, score: q.overallScore };
+      return q.overallScore > best.score ? { id: imgId, score: q.overallScore } : best;
+    }, null);
+
+    // Sorting me use kar lo
+    const sortedIds = [...group.image_ids].sort((a, b) => {
+      const aIsBest = bestImage && bestImage.id === a;
+      const bIsBest = bestImage && bestImage.id === b;
+      if (aIsBest && !bIsBest) return -1;
+      if (!aIsBest && bIsBest) return 1;
+      return 0;
+    });
     // Group wrapper
     return `
       <div class="analysisresults-group bg-white border border-[#e2e8f0] rounded-[12px] shadow-sm mb-8">
         <!-- Group Header -->
-        <div class="p-[16px] border-b border-[#e2e8f0] bg-[#f8fafc]">
+        <div class="p-[16px] border-b border-[#e2e8f0] bg-[#f8fafc] rounded-[12px]">
           <div class="flex items-center justify-between">
             <div class="flex items-center gap-[10px]">
               <span>
@@ -6153,7 +6250,8 @@ The extension page will open in a new tab and this scanning window will close.
                   ${similarityPercent}% similar
                 </span>
                 <span class="text-[#64748b] font-medium !text-[12px] text-right">
-                  Keep: 1 • Delete: 1
+                 Keep: ${group.image_ids.filter(id => bestImage && bestImage.id === id).length} • 
+                Delete: ${group.image_ids.length - (group.image_ids.filter(id => bestImage && bestImage.id === id).length)}
                 </span>
               </span>
               <button class="text-[14px] px-[11px] py-[8px] rounded-[8px] font-semibold text-[#3b4a5e]">
@@ -6169,68 +6267,122 @@ The extension page will open in a new tab and this scanning window will close.
         <!-- Group Body -->
         <div class="p-[24px]">
           <div class="grid grid-cols-3 gap-5">
-            ${group.image_ids.map((id, idx) => {
+                ${sortedIds.map((id, idx) => {
               const mediaItem = mediaArray.find((item) => item.id === id);
               if (!mediaItem) return "";
+
+                const totalImages = sortedIds.length;
+               let tempRank;
+
+                // Agar images 10 ya usse kam hain
+                if (totalImages <= 10) {
+                    tempRank = 10 - idx; // 10, 9, 8, ...
+                } else {
+                    // Agar images > 10, decimal step use kar sakte ho, lekin integer me round karo
+                    const step = 9 / (totalImages - 1);
+                    tempRank = (10 - idx * step).toFixed(1); // round kar ke integer banao
+                }
 
               const fullSizeUrl = this.convertToFullResolution(mediaItem.url);
               const quality = results.quality_array.find((q) =>
                 q.name.startsWith(id)
               );
 
+            //   const bestImage = group.image_ids.reduce((best, imgId) => {
+            //     const q = results.quality_array.find((qq) =>
+            //     qq.name.startsWith(imgId)
+            //     );
+            //     if (!q) return best;
+            //     if (!best) return { id: imgId, score: q.overallScore };
+            //     return q.overallScore > best.score ? { id: imgId, score: q.overallScore } : best;
+            // }, null);
+
+            const isBest = bestImage && bestImage.id === id;
               const qualityHTML = quality
                 ? `
                   <ul class="grid grid-cols-2 gap-[3px] my-[8px]">
-                    <li>Blur: ${quality.technical.blurScore.toFixed(2)}</li>
-                    <li>Sharpness: ${quality.technical.sharpnessScore.toFixed(2)}</li>
-                    <li>Exposure: ${quality.technical.exposureQuality.toFixed(2)}</li>
-                    <li>Contrast: ${quality.technical.contrastScore.toFixed(2)}</li>
-                    <li>Noise: ${quality.technical.noiseLevel.toFixed(2)}</li>
-                    <li>Color Balance: ${quality.technical.colorBalance.toFixed(2)}</li>
+                    <li class="bg-gradient flex items-center p-[2px] px-[2px] rounded-[6px]"><span class="text-[11px] dec-color dark-color">Blur: ${quality.technical.blurScore.toFixed(2)}</li>
+                    <li class="bg-gradient flex items-center p-[2px] px-[2px] rounded-[6px]"><span class="text-[11px] dec-color dark-color">Sharpness: ${quality.technical.sharpnessScore.toFixed(2)}</li>
+                    <li class="bg-gradient flex items-center p-[2px] px-[2px] rounded-[6px]"><span class="text-[11px] dec-color dark-color">Exposure: ${quality.technical.exposureQuality.toFixed(2)}</li>
+                    <li class="bg-gradient flex items-center p-[2px] px-[2px] rounded-[6px]"><span class="text-[11px] dec-color dark-color">Contrast: ${quality.technical.contrastScore.toFixed(2)}</li>
+                    <li class="bg-gradient flex items-center p-[2px] px-[2px] rounded-[6px]"><span class="text-[11px] dec-color dark-color">Noise: ${quality.technical.noiseLevel.toFixed(2)}</li>
+                    <li class="bg-gradient flex items-center p-[2px] px-[2px] rounded-[6px]"><span class="text-[11px] dec-color dark-color">Color Balance: ${quality.technical.colorBalance.toFixed(2)}</li>
                   </ul>
-                  <p>Overall Score: ${quality.overallScore.toFixed(2)}%</p>
+
+                  <span class="h-[1px] flex items-center justify-center w-full bg-[#DBF7FE] my-[8px]"></span>
+                  <p class="!text-[12px] mt-[8px] dec-color font-medium">Overall Score: ${quality.overallScore.toFixed(2)}%</p>
                 `
                 : "";
 
               return `
-                <article class="pc-image-item border rounded-[8px] border-[2px] border-[#fca5a5] mb-6 relative"
+                <article class="pc-image-item border rounded-[8px] border-[1px] 
+                ${isBest ? 'border-[#10b981]' : 'border-[#ef4444]'} 
+                mb-6 relative"
                   data-photo-id="${mediaItem.id}" 
                   data-photo-url="${mediaItem.url}" 
                   data-media-type="${mediaType}">
 
-                  <div class="p-[12px] bg-white border-b border-[#e2e8f0] flex gap-[5px] items-center rounded-t-[8px]">
+                  <div class="p-[16px] bg-white  flex gap-[5px] items-center rounded-t-[12px] rounded-[12px]">
                     <div class="quality_a_details">
-                      <span class="text-[#9333ea] font-semibold !text-[15px]">${idx + 1}/${group.image_ids.length}</span>
+                      <span class="text-[#9333ea] font-semibold !text-[15px]">${tempRank}/10</span>
                       <span class="text-[#94a3b8] !text-[15px]">
                         (${quality ? quality.overallScore.toFixed(2) : 0}%)
                       </span>
                       
-                <div class="quality_a_details_po rounded-[10px] border p-[15px] w-[240px] absolute top-[40px] -left-[30px] z-[999] bg-white">
+                <div class="quality_a_details_po rounded-[10px] border p-[10px] w-[240px] absolute top-[40px] -left-[20px] z-[999] bg-white">
                     <div class="articlecontent">
                     <h4 class="text-[14px] font-bold dark-color">Quality Assessment Details</h4>
                     <span class="h-[1px] flex items-center justify-center w-full bg-[#DBF7FE] my-[8px]"></span>
-                    <p class="!text-[12px] dec-color font-medium">Technical quality</p>
+                    <span class="" >Technical quality</span>
                     ${qualityHTML}
                     </div>
                 </div>
                     </div>
-                    <span class="ml-auto text-white text-[12px] bg-[#10b981] px-[8px] py-[5px] rounded-md">Keeping this file</span>
+                   <span class="ml-auto text-white text-[12px] 
+                    ${isBest ? "bg-[#10b981]" : "bg-[#ef4444]"} 
+                    px-[8px] py-[5px] rounded-md flex gap-[2px] items-center">
+                     ${isBest 
+                    ? "Keeping this file" 
+                    : `<svg class="w-[14px] text-[#fff]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                        <path d="M3 6h18"></path>
+                        <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path>
+                        <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path>
+                        <line x1="10" x2="10" y1="11" y2="17"></line>
+                        <line x1="14" x2="14" y1="11" y2="17"></line>
+                    </svg> Will delete`}
+                    </span>
+
                   </div>
 
-                  <div class="relative">
+                  <div class="relative h-[268px] overflow-hidden flex bg-[#f8fafc] items-center justify-center">
                     <img src="${fullSizeUrl}" alt="${mediaItem.ariaLabel}" class="w-full h-[190px] object-cover">
                   </div>
 
-                  <div class="p-[10px] bg-white border-t border-slate-200 rounded-b-[8px]">
+                  <div class="p-[16px] bg-white rounded-b-[12px] rounded-[12px]">
                     <h4 class="text-[14px] font-semibold text-[#0f172a] mb-1 truncate">${mediaItem.ariaLabel}</h4>
 <div class="pc-image-size" data-photo-id="${mediaItem.id}"></div>
                     <div class="flex items-center justify-between">
                       <button class="px-[8px] py-[5px] border rounded-md text-[12px]">
                         <i class="fa-solid fa-eye"></i> View
                       </button>
-                      <button class="px-[8px] py-[5px] bg-[#10b981] text-white border rounded-md text-[12px]">
-                        <i class="fa-solid fa-check"></i> Keep
-                      </button>
+
+                    <button 
+    class="flex items-center px-[8px] py-[5px] border rounded-md text-[12px] 
+        ${isBest ? 'bg-[#10b981] text-white' : 'bg-transparent text-[#ef4444]'}">
+    <span>
+        ${isBest 
+          ? `<svg viewBox="0 0 130.2 130.2" class="check-icon w-[22px]">
+               <polyline fill="none" stroke="#fff" stroke-width="6" points="100.2,40.2 51.5,88.8 29.8,67.5 "/>
+             </svg>` 
+          : `<svg viewBox="0 0 130.2 130.2" class="close-icon w-[22px]">
+               <line fill="none" stroke="#f00" stroke-width="6" x1="34.4" y1="37.9" x2="95.8" y2="92.3"/>
+               <line fill="none" stroke="#f00" stroke-width="6" x1="95.8" y1="38" x2="34.4" y2="92.2"/>
+             </svg>`}
+    </span>
+    ${isBest ? 'Keep' : 'Delete'}
+</button>
+
+
                     </div>
                   </div>
                 </article>
@@ -10072,9 +10224,11 @@ if (!textElement.querySelector('input[type="range"]')) {
         // Line 1: Resolution and taken date
         if (sizeInfo.resWidth && sizeInfo.resHeight && sizeInfo.timestamp) {
             const resolution = `${sizeInfo.resWidth}x${sizeInfo.resHeight}`;
-            const takenDateTime = this.formatDateTime(sizeInfo.timestamp, sizeInfo.timezoneOffset);
+            // const takenDateTime = this.formatDateTime(sizeInfo.timestamp, sizeInfo.timezoneOffset);
+            const fullDateTime = this.formatDateTime(sizeInfo.timestamp, sizeInfo.timezoneOffset);
+            const takenDateTime = fullDateTime.split(" ")[0];
 
-            html += `<div style="color: #333; font-size: 0.9em; margin: 0; padding: 0; text-align: center; font-weight: normal;">${resolution}, ${takenDateTime}</div>`;
+            html += `<span><span class="text-[12px] bg-gradient rounded-[5px] px-[8px] py-[2px] border border-[#e2e8f0] dark-color mx-[1px]">${resolution}</span> <span class="text-[12px] bg-gradient rounded-[5px] px-[8px] py-[2px] border border-[#e2e8f0] dark-color mx-[1px]">${takenDateTime}</span></span>`;
         }
 
         // Line 2: Upload date (if available and different from taken date)
