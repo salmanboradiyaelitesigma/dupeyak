@@ -219,7 +219,7 @@ class FrontendSessionManager {
     }
 
 
-
+//21/8-5:26
 //     async analyzeSession(sessionId, similarityThreshold = 75) {
 //         const session = this.sessions[sessionId];
 //         if (!session) {
@@ -409,6 +409,283 @@ class FrontendSessionManager {
 //     }
 
 
+
+
+
+ // FOR_similarity_groups_changes
+
+// async analyzeSession(sessionId, similarityThreshold = 75) {
+//     const session = this.sessions[sessionId];
+//     if (!session) throw new Error('Session not found');
+
+//     console.log(`🎯 Starting frontend analysis for session ${sessionId}`);
+//     const analysisStartTime = Date.now();
+//     const allResults = [];
+
+//     session.analysis_status = 'analyzing';
+//     session.similarity_threshold = similarityThreshold;
+//     session.processed_images = 0;
+
+//     const threshold = similarityThreshold / 100.0;
+//     console.log(`🎯 Using ${similarityThreshold}% similarity threshold (${threshold} decimal)`);
+
+//     try {
+//         const images = session.images;
+//         const totalImages = images.length;
+//         const totalComparisons = totalImages * (totalImages - 1) / 2;
+
+//         console.log(`🔍 Analyzing ${totalImages} images (${totalComparisons} comparisons)...`);
+
+//         const comparisons = [];
+//         let completedComparisons = 0;
+//         const batchSize = 1000;
+//         let batchCount = 0;
+
+//         const progressCallback = this.progressCallback || (() => {});
+
+//         // Hash comparison phase
+//         console.log(`🔄 Starting hash comparison phase...`);
+//         progressCallback(10, `Comparing ${totalComparisons.toLocaleString()} hash pairs...`);
+
+//         for (let i = 0; i < totalImages; i++) {
+//             for (let j = i + 1; j < totalImages; j++) {
+//                 const img1Info = images[i];
+//                 const img2Info = images[j];
+//                 const img1Fingerprint = session.imageHashes[img1Info.id];
+//                 const img2Fingerprint = session.imageHashes[img2Info.id];
+
+//                 if (img1Fingerprint && img2Fingerprint) {
+//                     const similarity = this.calculateSimilarityFromHashes(img1Fingerprint, img2Fingerprint, threshold);
+//                     if (similarity?.is_similar) {
+//                         comparisons.push({
+//                             image1_index: i,
+//                             image2_index: j,
+//                             image1_id: img1Info.id,
+//                             image2_id: img2Info.id,
+//                             similarity
+//                         });
+//                         console.log(`🎯 MATCH: ${img1Info.id} ↔ ${img2Info.id} (score: ${similarity.combined_score.toFixed(3)})`);
+//                     }
+//                 }
+
+//                 completedComparisons++;
+//                 batchCount++;
+
+//                 if (batchCount >= batchSize) {
+//                     const progress = 10 + (completedComparisons / totalComparisons) * 80;
+//                     session.processed_images = completedComparisons;
+//                     session.analysis_progress = progress;
+
+//                     console.log(`📊 Progress: ${completedComparisons}/${totalComparisons} (${progress.toFixed(1)}%) - ${comparisons.length} matches found`);
+//                     progressCallback(progress, `Comparing hashes: ${completedComparisons}/${totalComparisons} (${comparisons.length} matches found)`);
+
+//                     await new Promise(resolve => setTimeout(resolve, 1));
+//                     batchCount = 0;
+//                 }
+//             }
+//         }
+
+//         // Final comparison update
+//         session.analysis_progress = 90;
+//         progressCallback(90, `Hash comparison complete! Found ${comparisons.length} similar pairs.`);
+
+//         // Group similar images
+//         console.log(`🔄 Grouping ${comparisons.length} similar pairs...`);
+//         progressCallback(95, `Grouping ${comparisons.length} similar pairs...`);
+//         const similarGroups = this.groupSimilarImages(comparisons);
+
+//         console.log("similarGroups>>>",similarGroups)
+//         // Quality check phase
+//         console.log("🔍 Starting quality analysis for each image...");
+//         const newParamsList = await buildNewParamsFromSession(session);
+
+//         for (const new_params of newParamsList) {
+//             console.log("new_params>>>",new_params)
+//             const quality = await this.assessImageQuality(new_params, 300);
+//             allResults.push({
+//                 name: new_params.name,
+//                 ...quality
+//             });
+//             console.log(`Quality for ${new_params.name}:`, quality);
+//         }
+// //////FOR TESING 19-8-score
+//         // 1️⃣ Function to calculate relative quality ranks
+// // function calculateRelativeQualityRanks(group) {
+// //     console.log("GROUP_calculate",group)
+// //     // group.files me quality_array se har image ka score le lo
+// //     const sortedFiles = [...group.files].sort((a, b) => 
+// //         b.overallScore - a.overallScore
+// //     );
+// // console.log("sortedFiles",sortedFiles)
+// //     sortedFiles.forEach((file, index) => {
+// //         if (sortedFiles.length <= 10) {
+// //             // Groups with 10 or fewer
+// //             file.relativeQualityRank = 10 - index;
+// //         } else {
+// //             // Groups with >10 images: use decimal ranking
+// //             const rankRange = 9; // from 10 down to 1
+// //             const step = rankRange / (sortedFiles.length - 1);
+// //             const rank = 10 - (index * step);
+// //             file.relativeQualityRank = Math.max(1.0, Math.round(rank * 10) / 10);
+// //         }
+// //     });
+// // }
+
+// // 2️⃣ Function to select recommended keeper
+// // function selectRecommendedKeeper(group, strategy = 'quality') {
+// //     switch (strategy) {
+// //         case 'quality':
+// //             group.recommendedKeeper = group.files.reduce((best, current) => 
+// //                 current.overallScore > best.overallScore ? current : best
+// //             ).id;
+// //             break;
+
+// //         case 'size':
+// //             group.recommendedKeeper = group.files.reduce((largest, current) =>
+// //                 current.fileSize > largest.fileSize ? current : largest
+// //             ).id;
+// //             break;
+
+// //         default:
+// //             group.recommendedKeeper = null;
+// //             break;
+// //     }
+// // }
+
+// // 3️⃣ Example usage after analysis & grouping
+// // similarGroups.forEach(group => {
+// //     // Har group me files create karo using quality_array
+// //     group.files = group.image_ids.map(id =>
+// //         session.quality_array.find(q => q.name.startsWith(id))
+// //     );
+
+// //     calculateRelativeQualityRanks(group);
+// //     selectRecommendedKeeper(group, 'quality');
+// // });
+
+// // 4️⃣ Rendering ke time ranking show karne ke liye
+// // Example: generateArticles function me
+// {/* <span class="text-[#9333ea] font-semibold !text-[15px]">
+//   ${file.relativeQualityRank.toFixed(1)}/10
+// </span> */}
+
+
+
+// /// for tetsting 19-8-score
+//         // Update session
+//         session.analysis_status = 'completed';
+//         session.processed_images = totalImages;
+//         session.similar_groups = similarGroups;
+//         session.quality_array = allResults;
+//         session.total_comparisons = totalComparisons;
+//         session.similar_pairs_found = comparisons.length;
+//         session.last_analysis = new Date().toISOString();
+//         session.analysis_progress = 100;
+
+//           console.log("session>>>",session)
+//         progressCallback(100, `Analysis complete! Found ${similarGroups.length} groups.`);
+
+//         const analysisTime = Date.now() - analysisStartTime;
+//         console.log(`🚀 Analysis completed in ${analysisTime}ms`);
+
+//         return {
+//             success: true,
+//             session_id: sessionId,
+//             total_images: totalImages,
+//             similar_groups: similarGroups,
+//             quality_array: allResults,
+//             total_comparisons: totalComparisons,
+//             similar_pairs_found: comparisons.length,
+//             analysis_time: analysisTime
+//         };
+
+//     } catch (error) {
+//         console.error(`❌ Error during analysis:`, error);
+//         session.analysis_status = 'error';
+//         session.error = error.message;
+//         throw error;
+//     }
+
+//     // Helper functions
+//     function base64ToBlob(dataURL) {
+//         const [meta, base64Data] = dataURL.split(',');
+//         const mime = meta.match(/:(.*?);/)[1];
+//         const byteString = atob(base64Data);
+//         const arrayBuffer = new ArrayBuffer(byteString.length);
+//         const uint8Array = new Uint8Array(arrayBuffer);
+//         for (let i = 0; i < byteString.length; i++) {
+//             uint8Array[i] = byteString.charCodeAt(i);
+//         }
+//         return new Blob([uint8Array], { type: mime });
+//     }
+
+//     async function buildNewParamsFromSession(session) {
+//         return Promise.all(session.images.map(async img => {
+//             const blob = base64ToBlob(img.imageData);
+//             return {
+//                 blob,
+//                 id: `${img.id}-${blob.size}-${Date.now()}`,
+//                 preview: URL.createObjectURL(blob),
+//                 lastModified: Date.now(),
+//                 lastModifiedDate: new Date(),
+//                 name: `${img.id}.jpg`,
+//                 size: blob.size,
+//                 type: blob.type,
+//                 webkitRelativePath: ""
+//             };
+//         }));
+//     }
+// }
+
+
+// async  analyzeSession(sessionId, similarityThreshold = 75) {
+//      const session = this.sessions[sessionId];
+//     if (!session) throw new Error("Session not found");
+
+//     console.log(`🎯 Starting analysis for session ${session.id}`);
+//     session.analysis_status = 'analyzing';
+//     const threshold = similarityThreshold / 100.0;
+//     const allResults = [];
+
+//     // 1️⃣ Hash comparison
+//     const images = session.images;
+//     for (let img of images) {
+//         // assume each image has perceptualHash calculated already
+//         // qualityAssessment will be filled later
+//     }
+
+//     // 2️⃣ Group similar images
+//     const similarGroups = this.groupSimilarImages(images, threshold, 'moderate');
+
+//     // 3️⃣ Quality assessment (dummy async simulation)
+//     for (let img of images) {
+//         // Simulate async quality assessment, replace with real function
+//         const quality = await this.assessImageQuality(img); // implement this
+//         img.qualityAssessment = quality;
+//         allResults.push({
+//             name: img.id,
+//             ...quality
+//         });
+//     }
+
+//     // 4️⃣ Calculate ranks & recommended keeper
+//     similarGroups.forEach(group => {
+//         this.calculateRelativeQualityRanks(group);
+//         this.selectRecommendedKeeper(group, 'quality');
+//     });
+
+//     // 5️⃣ Update session
+//     session.similar_groups = similarGroups;
+//     session.quality_array = allResults;
+//     session.analysis_status = 'completed';
+//     session.similarity_threshold = similarityThreshold;
+
+//     console.log("✅ Session analysis complete", session);
+//     return session;
+// }
+
+
+//20/8
 async analyzeSession(sessionId, similarityThreshold = 75) {
     const session = this.sessions[sessionId];
     if (!session) throw new Error('Session not found');
@@ -631,6 +908,8 @@ async analyzeSession(sessionId, similarityThreshold = 75) {
         }));
     }
 }
+
+
 faceapiInitialized = false;
 
  async initializeFaceApi() {
@@ -685,6 +964,76 @@ faceapiInitialized = false;
       faces,
     };
   }
+
+ // FOR_similarity_groups_changes
+// async  assessImageQuality(image) {
+//     // Replace with your real assessment logic
+//     return {
+//         overallScore: Math.random() * 100,
+//         sharpness: Math.random() * 100,
+//         brightness: Math.random() * 100
+//     };
+// }
+//  calculateRelativeQualityRanks(group) {
+//     const sortedFiles = [...group.files].sort((a, b) => b.qualityAssessment.overallScore - a.qualityAssessment.overallScore);
+//     sortedFiles.forEach((file, idx) => {
+//         if (sortedFiles.length <= 10) file.relativeQualityRank = 10 - idx;
+//         else {
+//             const step = 9 / (sortedFiles.length - 1);
+//             const rank = 10 - idx * step;
+//             file.relativeQualityRank = Math.max(1, Math.round(rank * 10) / 10);
+//         }
+//     });
+// }
+
+ // FOR_similarity_groups_changes
+//  calculateSimilarity(hash1, hash2) {
+//       if (!hash1 || !hash2) {
+//         console.warn("Missing hash:", { hash1, hash2 });
+//         return 0;
+//     }
+//     if (hash1.length !== hash2.length) return 0;
+
+//     let hammingDistance = 0;
+//     for (let i = 0; i < hash1.length; i++) {
+//         if (hash1[i] !== hash2[i]) hammingDistance++;
+//     }
+
+//     return (hash1.length - hammingDistance) / hash1.length;
+// }
+
+
+ // FOR_similarity_groups_changes
+//  selectRecommendedKeeper(group, strategy = 'quality') {
+//     switch (strategy) {
+//         case 'quality':
+//             group.recommendedKeeper = group.files.reduce((best, curr) =>
+//                 curr.qualityAssessment.overallScore > best.qualityAssessment.overallScore ? curr : best
+//             ).id;
+//             break;
+//         case 'size':
+//             group.recommendedKeeper = group.files.reduce((largest, curr) =>
+//                 curr.fileSize > largest.fileSize ? curr : largest
+//             ).id;
+//             break;
+//         default:
+//             group.recommendedKeeper = null;
+//     }
+// }
+
+
+ // FOR_similarity_groups_changes
+calculateRelativeQualityRanks(group) {
+    const sortedFiles = [...group.files].sort((a, b) => b.qualityAssessment.overallScore - a.qualityAssessment.overallScore);
+    sortedFiles.forEach((file, idx) => {
+        if (sortedFiles.length <= 10) file.relativeQualityRank = 10 - idx;
+        else {
+            const step = 9 / (sortedFiles.length - 1);
+            const rank = 10 - idx * step;
+            file.relativeQualityRank = Math.max(1, Math.round(rank * 10) / 10);
+        }
+    });
+}
 
   analyzeTechnicalQuality(imageFile, processingSize = 300) {
     return new Promise((resolve, reject) => {
@@ -1438,12 +1787,6 @@ calculateColorBalance(imageData) {
 
 
 
-
-
-
-
-
-
     calculateSimilarityFromHashes(fingerprint1, fingerprint2, similarityThreshold = 0.85) {
         try {
             // Use ImageMatcher's compareImages method for sophisticated similarity analysis
@@ -1567,6 +1910,133 @@ calculateColorBalance(imageData) {
         console.log(`🎯 Total similarity groups found: ${similarGroups.length}`);
         return similarGroups;
     }
+
+     // FOR_similarity_groups_changes
+//      groupSimilarImages(images, threshold = 0.75, strategy = 'moderate') {
+//     const groups = [];
+//     const processed = new Set();
+
+//     for (let i = 0; i < images.length; i++) {
+//         if (processed.has(images[i].id)) continue;
+
+//         const currentGroup = [images[i]];
+//         processed.add(images[i].id);
+
+//         for (let j = i + 1; j < images.length; j++) {
+//             if (processed.has(images[j].id)) continue;
+
+//             let sim = this.calculateSimilarity(images[i].perceptualHash, images[j].perceptualHash);
+//             let adjustedThreshold = threshold;
+//             if (strategy === 'strict') adjustedThreshold = Math.min(0.98, threshold + 0.05);
+//             if (strategy === 'loose') adjustedThreshold = Math.max(0.75, threshold - 0.05);
+
+//             if (sim >= adjustedThreshold) {
+//                 currentGroup.push(images[j]);
+//                 processed.add(images[j].id);
+//             }
+//         }
+
+//         if (currentGroup.length > 1) {
+//             // Average similarity in group
+//             let totalSim = 0, comparisons = 0;
+//             for (let x = 0; x < currentGroup.length; x++) {
+//                 for (let y = x + 1; y < currentGroup.length; y++) {
+//                     totalSim += this.calculateSimilarity(currentGroup[x].perceptualHash, currentGroup[y].perceptualHash);
+//                     comparisons++;
+//                 }
+//             }
+//             const avgSimilarity = comparisons > 0 ? totalSim / comparisons : 0;
+
+//             // Potential savings
+//             const sortedBySize = [...currentGroup].sort((a, b) => b.fileSize - a.fileSize);
+//             const potentialSavings = sortedBySize.slice(1).reduce((sum, f) => sum + f.fileSize, 0);
+
+//             // Best quality image
+//             const bestQuality = currentGroup.reduce((best, curr) =>
+//                 curr.qualityAssessment.overallScore > best.qualityAssessment.overallScore ? curr : best
+//             );
+
+//             groups.push({
+//                 id: `group-${groups.length + 1}`,
+//                 files: currentGroup,
+//                 averageSimilarity: avgSimilarity,
+//                 potentialSavings,
+//                 recommendedKeeper: bestQuality.id
+//             });
+//         }
+//     }
+
+//     return groups;
+// }
+
+
+// groupSimilarImages(images, threshold = 0.75, strategy = 'moderate') {
+//     const groups = [];
+//     const processed = new Set();
+
+//     for (let i = 0; i < images.length; i++) {
+//         if (processed.has(images[i].id)) continue;
+
+//         const currentGroup = [images[i]];
+//         processed.add(images[i].id);
+
+//         for (let j = i + 1; j < images.length; j++) {
+//             if (processed.has(images[j].id)) continue;
+
+//             // ✅ Checkpoint: make sure hashes exist
+//             if (!images[i].perceptualHash || !images[j].perceptualHash) {
+//                 console.warn("Skipping comparison, missing hash:", {
+//                     img1: images[i].id, hash1: images[i].perceptualHash,
+//                     img2: images[j].id, hash2: images[j].perceptualHash
+//                 });
+//                 continue; // skip this pair
+//             }
+
+//             let sim = this.calculateSimilarity(images[i].perceptualHash, images[j].perceptualHash);
+
+//             let adjustedThreshold = threshold;
+//             if (strategy === 'strict') adjustedThreshold = Math.min(0.98, threshold + 0.05);
+//             if (strategy === 'loose') adjustedThreshold = Math.max(0.75, threshold - 0.05);
+
+//             if (sim >= adjustedThreshold) {
+//                 currentGroup.push(images[j]);
+//                 processed.add(images[j].id);
+//             }
+//         }
+
+//         if (currentGroup.length > 1) {
+//             // Average similarity in group
+//             let totalSim = 0, comparisons = 0;
+//             for (let x = 0; x < currentGroup.length; x++) {
+//                 for (let y = x + 1; y < currentGroup.length; y++) {
+//                     if (!currentGroup[x].perceptualHash || !currentGroup[y].perceptualHash) continue;
+//                     totalSim += this.calculateSimilarity(currentGroup[x].perceptualHash, currentGroup[y].perceptualHash);
+//                     comparisons++;
+//                 }
+//             }
+//             const avgSimilarity = comparisons > 0 ? totalSim / comparisons : 0;
+
+//             // Potential savings
+//             const sortedBySize = [...currentGroup].sort((a, b) => b.fileSize - a.fileSize);
+//             const potentialSavings = sortedBySize.slice(1).reduce((sum, f) => sum + f.fileSize, 0);
+
+//             // Best quality image (guard agar qualityAssessment missing hai)
+//             const bestQuality = currentGroup.reduce((best, curr) =>
+//                 (curr.qualityAssessment?.overallScore || 0) > (best.qualityAssessment?.overallScore || 0) ? curr : best
+//             );
+
+//             groups.push({
+//                 id: `group-${groups.length + 1}`,
+//                 files: currentGroup,
+//                 averageSimilarity: avgSimilarity,
+//                 potentialSavings,
+//                 recommendedKeeper: bestQuality.id
+//             });
+//         }
+//     }
+
+//     return groups;
+// }
 
     getSessionStatus(sessionId) {
         const session = this.sessions[sessionId];
@@ -2897,7 +3367,7 @@ The extension page will open in a new tab and this scanning window will close.
 
         // Wait 2 seconds before starting to scroll to let the page fully load
         // //console.log('⏳ Waiting 2 seconds for page to fully load before starting scroll...');
-        await this.delay(500);
+        await this.delay(2000);
         // //console.log('✅ Initial wait complete, starting photo collection...');
 
         // Initialize scroll tracking
@@ -2968,7 +3438,7 @@ The extension page will open in a new tab and this scanning window will close.
                     }
 
               //      //console.log('⏳ Multiple cycles without progress - waiting 3 seconds to confirm end of content...');
-                    await this.delay(1000);
+                    await this.delay(3000);
 
                     // Try one more scroll to confirm
                     const retryScrollResult = await this.performScroll();
@@ -5960,9 +6430,10 @@ The extension page will open in a new tab and this scanning window will close.
                              <h4 class="text-[18px] font-semibold text-[#0f172a]">Analysis Results</h4>
                              <p class="text-[#64748b] !text-[14px] pl-[14px]">${results.similar_groups.length}<span> groups found •</span>  ${this.photos.length} <span> images processed</span></p>
 
-                             <button class="font-medium !text-[12px] px-[7px] py-[5px] bg-[#f5f5f4] rounded-[8px] ml-auto text-[#0f172a]">1 group selected</button>
-                             <button class="font-medium !text-[14px] px-[12px] py-[8px] border border-[#e7e5e4] rounded-[8px] mx-[8px]">Select All</button>
-                             <button class="font-medium !text-[14px] px-[12px] py-[8px] border border-[#ef4444] bg-[#ef4444] rounded-[8px] text-white">Process Selected Groups</button>
+                             <button id="group-summary" class="font-medium !text-[12px] px-[7px] py-[5px] bg-[#f5f5f4] rounded-[8px] ml-auto text-[#0f172a]"></button>
+                             
+                             <button id="select-all-btn" class="font-medium !text-[14px] px-[12px] py-[8px] border border-[#e7e5e4] rounded-[8px] mx-[8px]">Select All</button>
+                             <button id="process-selected-groups" style="display:none;" class="font-medium !text-[14px] px-[12px] py-[8px] border border-[#ef4444] bg-[#ef4444] rounded-[8px] text-white">Process Selected Groups</button>
                           </div>
                         </div>
 
@@ -6303,10 +6774,10 @@ The extension page will open in a new tab and this scanning window will close.
                 Delete: ${group.image_ids.length - (group.image_ids.filter(id => bestImage && bestImage.id === id).length)}
                 </span>
               </span>
-              <button class="text-[14px] px-[11px] py-[8px] rounded-[8px] font-semibold text-[#3b4a5e]">
+              <button class="select-group-btn text-[14px] px-[11px] py-[8px] rounded-[8px] font-semibold text-[#3b4a5e]">
                 Select Group
               </button>
-              <button class="text-[14px] px-[11px] py-[8px] rounded-[8px] font-semibold text-[#dc2626]">
+              <button  data-group="${gIndex}" class="dismiss-group-btn text-[14px] px-[11px] py-[8px] rounded-[8px] font-semibold text-[#dc2626]">
                 Dismiss Group
               </button>
             </div>
@@ -6488,10 +6959,185 @@ The extension page will open in a new tab and this scanning window will close.
         
         $('body').append(overlay);
 
+
+            // Track selected groups globally
+let selectedGroups = new Set();
+
+// Handle Select / Deselect Group
+overlay.on('click', '.select-group-btn', function () {
+    const $btn = $(this);
+    const $group = $btn.closest('.analysisresults-group');
+    const groupIndex = $group.index();
+
+    if (selectedGroups.has(groupIndex)) {
+        // Deselect
+        selectedGroups.delete(groupIndex);
+        $btn.text('Select Group');
+        $group.find('input[type=checkbox]').prop('checked', false);
+    } else {
+        // Select
+        selectedGroups.add(groupIndex);
+        $btn.text('Deselect Group');
+        $group.find('input[type=checkbox]').prop('checked', true);
+    }
+
+    // Update Analysis Results summary
+    updateAnalysisResults();
+});
+
+// Update summary + Process button
+// function updateAnalysisResults() {
+//     const $summary = overlay.find('#analysis-summary'); 
+//     const $processBtn = overlay.find('#process-selected-groups'); 
+//     // if (selectedGroups.size === 0) {
+//     //     $summary.text("Select All");
+//     //     $processBtn.hide();
+//     // } else {
+//     //     // $summary.text(`${selectedGroups.size} groups selected`);
+//     //     //  $summary.html(`Select All <span class="ml-2">(${selectedGroups.size} groups selected)</span>`);
+//     //     $summary.html(`Select All <span class="ml-2">(${selectedGroups.size} groups selected)</span>`);
+//     //     $processBtn.show();
+//     // }
+//     if (selectedGroups.size === 0) {
+//     $summary.html(`
+//         <button id="select-all-btn">Select All</button>
+//     `);
+//     $processBtn.hide();
+// } else {
+//     $summary.html(`
+//         <div class="mb-2 font-semibold">${selectedGroups.size} Group(s) selected</div>
+//         <button id="select-all-btn">Select All</button>
+//     `);
+//     $processBtn.show();
+// }
+
+// }
+function updateAnalysisResults() {
+    const $summary = overlay.find('#group-summary'); 
+    const $processBtn = overlay.find('#process-selected-groups'); 
+    
+    if (selectedGroups.size === 0) {
+        $summary.text(""); // kuch nahi dikhana
+        $processBtn.hide();
+    } else {
+        $summary.text(`${selectedGroups.size} Groups selected`);
+        $processBtn.show();
+    }
+}
+
+// Handle Process Selected Groups
+// overlay.on('click', '#process-selected-groups', function () {
+//     selectedGroups.forEach(idx => {
+//         const $group = overlay.find('.analysisresults-group').eq(idx);
+//         $group.find('article').each(function () {
+//             if (!$(this).find('span:contains("Keeping this file")').length) {
+//                 $(this).remove(); 
+//             }
+//         });
+//     });
+  
+// });
+
+
+    overlay.on('click', '#process-selected-groups', function () {
+    selectedGroups.forEach(idx => {
+        const $group = overlay.find('.analysisresults-group').eq(idx);
+
+        // Go through each photo inside this group
+        $group.find('article').each(function () {
+            const $article = $(this);
+
+            // If NOT "Keeping this file", delete it
+            const isKeeping = $article.find('span:contains("Keeping this file")').length > 0;
+            if (!isKeeping) {
+                $article.remove();
+            }
+        });
+    });
+
+    // After processing, you may want to reset selection
+    selectedGroups.clear();
+    overlay.find('.select-group-btn').text('Select Group');
+    overlay.find('input[type=checkbox]').prop('checked', false);
+    overlay.find('#select-all-btn').text('Select All');
+    updateAnalysisResults();
+});
+
+//         overlay.on('click', '#select-all-btn', function () {
+//     // sabhi groups ko loop karo
+//     overlay.find('.analysisresults-group').each(function (idx) {
+//         const $group = $(this);
+//         const $btn = $group.find('.select-group-btn');
+
+//         // Agar already selected nahi hai to select kar do
+//         if (!selectedGroups.has(idx)) {
+//             selectedGroups.add(idx);
+//             $btn.text('Deselect Group');
+//             $group.find('input[type=checkbox]').prop('checked', true);
+//         }
+//     });
+
+//     // update summary call karo
+//     updateAnalysisResults();
+// });
+
+
+overlay.on('click', '#select-all-btn', function () {
+    const $btn = $(this);
+    const $processBtn = overlay.find('#process-selected-groups');
+
+    if ($btn.text().trim() === "Select All") {
+        // ✅ Sabhi groups select karo
+        overlay.find('.analysisresults-group').each(function (idx) {
+            const $group = $(this);
+            const $selectBtn = $group.find('.select-group-btn');
+
+            selectedGroups.add(idx);
+            $selectBtn.text('Deselect Group');
+            $group.find('input[type=checkbox]').prop('checked', true);
+        });
+
+        // Button ka text change
+        $btn.text("Deselect All");
+        $processBtn.show();
+
+    } else {
+        // ❌ Sabhi groups unselect karo
+        overlay.find('.analysisresults-group').each(function (idx) {
+            const $group = $(this);
+            const $selectBtn = $group.find('.select-group-btn');
+
+            selectedGroups.delete(idx);
+            $selectBtn.text('Select Group');
+            $group.find('input[type=checkbox]').prop('checked', false);
+        });
+
+        // Button ka text change
+        $btn.text("Select All");
+        $processBtn.hide();
+    }
+
+    updateAnalysisResults();
+});
+
+overlay.on('click', '.pc-image-item', function (e) {
+    const $article = $(this);
+    const hasWillDelete = $article.find('span:contains("Will delete")').length > 0;
+    if (hasWillDelete) {
+        $article.remove(); 
+    }
+});
+
         // Add close functionality
        $('#pc-results-close_').on('click', () => {
             this.cleanupViewportObserver();
             overlay.remove();
+        });
+
+        $('body').on('click', '.dismiss-group-btn', function () {
+        const groupIndex = $(this).data('group');
+        console.log("Dismissed Group:", groupIndex);
+        $(this).closest('.analysisresults-group').remove();
         });
 
         // Add done selecting functionality
