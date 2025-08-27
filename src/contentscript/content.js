@@ -1,3 +1,4 @@
+
 // DupeYak Duplicate Remover Duplicate Remover - Content Script
 // Runs on:
 // - https://photos.google.com/search/* and https://photos.google.com/u/*/search/* pages
@@ -78,7 +79,84 @@ class FrontendSessionManager {
         return 'session_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
     }
 
-    async addImage(sessionId, imageId, imageData) {
+    // async addImage(sessionId, imageId, imageData,photo_url) {
+    //     const session = this.sessions[sessionId];
+    //     if (!session) {
+    //         return { success: false, error: 'Session not found' };
+    //     }
+
+    //     if (session.status !== 'active') {
+    //         return { success: false, error: 'Session is not active' };
+    //     }
+
+    //     try {
+    //         console.log(`🖼️ Processing image ${imageId} for session ${sessionId}...`);
+
+    //         // Use base64 data URL directly for console output (more reliable than blob URLs)
+    //         const base64DataUrl = imageData; // This is already a complete data:image/... URL
+    //         const mimeType = imageData.match(/data:([^;]+)/)?.[1] || 'image/png';
+    //         const base64Size = Math.round((imageData.length * 3) / 4); // Approximate size in bytes
+          
+    //         console.log(`📊 Image data info:`, {
+    //             imageId: imageId,
+    //             size: `${(base64Size / 1024).toFixed(2)} KB`,
+    //             type: mimeType
+    //         });
+
+    //         // Display image in console using base64 data URL
+    //         this.displayImageInConsole(imageId, base64DataUrl, base64Size, mimeType);
+
+    //         // Convert base64 to image element for hash computation
+    //         const img = await this.createImageFromBase64(imageData);
+    //         // const dynamicFileName = `image_${imageId}.${ext}`;
+    //          const dynamicFileName = `image_${imageId}`;
+    //         // const file = this.base64ToFile(base64DataUrl, dynamicFileName, mimeType);
+    //           const file = await this.urlToFile(photo_url, dynamicFileName, mimeType);
+    //         const hash = await this.calculateImageHash(file);
+
+    //         // Wait for ImageMatcher library to be loaded
+    //         await this.waitForImageMatcher();
+
+    //         // Compute image fingerprint using ImageMatcher
+    //         console.log(`🔢 Computing image fingerprint for ${imageId}...`);
+    //         const frontendStartTime = Date.now();
+    //         const fingerprint = await this.imageMatcher.processImage(img, imageId);
+
+    //         const frontendHashTime = Date.now() - frontendStartTime;
+    //         console.log(`✅ Computed image fingerprint for ${imageId} in ${frontendHashTime}ms`);
+
+    //         // Store image info and hashes (frontend only)
+    //         const imageInfo = {
+    //             id: imageId,
+    //             added_at: new Date().toISOString(),
+    //             processed: true,
+    //             width: img.naturalWidth,
+    //             height: img.naturalHeight,
+    //             hash_cached: true,
+    //             imageData: imageData,
+    //             photo_url: photo_url  
+    //         };
+
+    //         session.images.push(imageInfo);
+    //         //session.imageHashes[imageId] = fingerprint;
+    //         session.imageHashes[imageId] = hash;
+    //         session.total_images = session.images.length;
+
+    //         console.log(`✅ Added image ${imageId} to frontend session ${sessionId}`);
+    //         console.log(`  - Dimensions: ${img.naturalWidth}x${img.naturalHeight}`);
+    //         // console.log(`  - aHash: ${fingerprint.aHash}`);
+    //         // console.log(`  - dHash: ${fingerprint.dHash}`);
+    //         // console.log(`  - pHash: ${fingerprint.pHash}`);
+    //         // console.log(`  - edgeHash: ${fingerprint.edgeHash}`);
+
+    //         return { success: true, message: 'Image added successfully' };
+
+    //     } catch (error) {
+    //         console.error(`❌ Error adding image to session ${sessionId}:`, error);
+    //         return { success: false, error: `Failed to process image: ${error.message}` };
+    //     }
+    // }
+ async addImage(sessionId, imageId, imageData,photo_url) {
         const session = this.sessions[sessionId];
         if (!session) {
             return { success: false, error: 'Session not found' };
@@ -115,7 +193,7 @@ class FrontendSessionManager {
             console.log(`🔢 Computing image fingerprint for ${imageId}...`);
             const frontendStartTime = Date.now();
             const fingerprint = await this.imageMatcher.processImage(img, imageId);
-
+            console.log("fingerprint>>>",fingerprint)
             const frontendHashTime = Date.now() - frontendStartTime;
             console.log(`✅ Computed image fingerprint for ${imageId} in ${frontendHashTime}ms`);
 
@@ -127,7 +205,8 @@ class FrontendSessionManager {
                 width: img.naturalWidth,
                 height: img.naturalHeight,
                 hash_cached: true,
-                imageData: imageData
+                imageData: imageData,
+                 photo_url: photo_url  
             };
 
             session.images.push(imageInfo);
@@ -150,7 +229,6 @@ class FrontendSessionManager {
     }
 
 
-
     async waitForImageMatcher() {
         try {
             // Since library is loaded via manifest, just verify it's ready
@@ -169,6 +247,105 @@ class FrontendSessionManager {
             throw error;
         }
     }
+ async calculateImageHash(imageFile) {
+  return new Promise((resolve, reject) => {
+    // Basic validation
+    if (
+      !imageFile ||
+      !imageFile.type?.startsWith("image/") ||
+      !imageFile.size ||
+      !imageFile.name
+    ) {
+      return reject(new Error("Invalid file object or not an image"));
+    }
+
+    const img = new Image();
+    const objectUrl = URL.createObjectURL(imageFile);
+
+    img.onload = () => {
+      try {
+        // Prepare canvas
+        const canvas = document.createElement("canvas");
+        const ctx = canvas.getContext("2d");
+
+        // Resize consistently to improve perceptual hashing accuracy
+        const size = 300;
+        canvas.width = size;
+        canvas.height = size;
+
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = "high";
+        ctx.drawImage(img, 0, 0, size, size);
+
+        // Extract image data
+        const { data } = ctx.getImageData(0, 0, size, size);
+
+        // Generate hash
+        const hash = this.calculatePerceptualHash(data);
+
+        console.log(`🖼️ Generated hash for ${imageFile.name}: ${hash}`);
+
+        resolve(hash);
+      } catch (err) {
+        reject(err);
+      } finally {
+        URL.revokeObjectURL(objectUrl);
+      }
+    };
+
+    img.onerror = () => {
+      URL.revokeObjectURL(objectUrl);
+      reject(new Error(`Failed to load image: ${imageFile.name}`));
+    };
+
+    img.src = objectUrl;
+  });
+}
+ calculatePerceptualHash(imageData) {
+  // Convert to grayscale and calculate average
+  const grayscale = [];
+  for (let i = 0; i < imageData.length; i += 4) {
+    const gray = Math.round(
+      0.299 * imageData[i] +
+      0.587 * imageData[i + 1] +
+      0.114 * imageData[i + 2]
+    );
+    grayscale.push(gray);
+  }
+
+  // Calculate median instead of average for better distribution
+  const sortedGrayscale = grayscale.slice().sort((a, b) => a - b);
+  const median = sortedGrayscale[Math.floor(sortedGrayscale.length / 2)];
+
+  // Generate hash string using median threshold
+  let hash = '';
+  for (let i = 0; i < grayscale.length; i++) {
+    hash += grayscale[i] > median ? '1' : '0';
+  }
+
+//  console.log("Perceptual hash length:", hash.length, "Hash snippet:", hash.slice(0, 50));
+  console.log("hash>>>", hash);
+  return hash;
+}
+
+  base64ToFile(base64Data, fileName, mimeType) {
+  const arr = base64Data.split(',');
+  const bstr = atob(arr[1]); // decode base64
+  let n = bstr.length;
+  const u8arr = new Uint8Array(n);
+
+  while (n--) {
+    u8arr[n] = bstr.charCodeAt(n);
+  }
+
+  return new File([u8arr], fileName, { type: mimeType });
+}
+
+async  urlToFile(url, fileName, mimeType) {
+    const response = await fetch(url);
+    const blob = await response.blob();
+    return new File([blob], fileName, { type: mimeType || blob.type });
+}
 
     async createImageFromBase64(base64Data) {
         return new Promise((resolve, reject) => {
@@ -727,17 +904,33 @@ async analyzeSession(sessionId, similarityThreshold = 75) {
                 const img2Fingerprint = session.imageHashes[img2Info.id];
 
                 if (img1Fingerprint && img2Fingerprint) {
-                    const similarity = this.calculateSimilarityFromHashes(img1Fingerprint, img2Fingerprint, threshold);
-                    if (similarity?.is_similar) {
-                        comparisons.push({
+                    //  console.log("  Image1:", img1Info.id, "hash length:", img1Fingerprint.length, "snippet:", img1Fingerprint);
+                    // console.log("  Image2:", img2Info.id, "hash length:", img2Fingerprint.length, "snippet:", img2Fingerprint);
+                  //  const similarity = this.calculateSimilarity(img1Fingerprint, img2Fingerprint);
+                  const similarity = this.calculateSimilarityFromHashes(img1Fingerprint, img2Fingerprint, threshold);
+                    //let adjustedThreshold = similarityThreshold / 100
+                    console.log("similarity_",similarity);
+                 console.log("adjustedThreshold_",threshold);
+                    //  if (similarity >= threshold) {
+                          if (similarity && similarity.is_similar) {
+                           comparisons.push({
                             image1_index: i,
                             image2_index: j,
                             image1_id: img1Info.id,
                             image2_id: img2Info.id,
                             similarity
                         });
-                        console.log(`🎯 MATCH: ${img1Info.id} ↔ ${img2Info.id} (score: ${similarity.combined_score.toFixed(3)})`);
-                    }
+                     }
+                    // if (similarity?.is_similar) {
+                    //     comparisons.push({
+                    //         image1_index: i,
+                    //         image2_index: j,
+                    //         image1_id: img1Info.id,
+                    //         image2_id: img2Info.id,
+                    //         similarity
+                    //     });
+                    //     console.log(`🎯 MATCH: ${img1Info.id} ↔ ${img2Info.id} (score: ${similarity.combined_score.toFixed(3)})`);
+                    // }
                 }
 
                 completedComparisons++;
@@ -764,8 +957,9 @@ async analyzeSession(sessionId, similarityThreshold = 75) {
         // Group similar images
         console.log(`🔄 Grouping ${comparisons.length} similar pairs...`);
         progressCallback(95, `Grouping ${comparisons.length} similar pairs...`);
-        const similarGroups = this.groupSimilarImages(comparisons);
-
+        // const similarGroups = this.groupSimilarImagesNew(comparisons, threshold);
+          const similarGroups = this.groupSimilarImagesOld(comparisons);
+          console.log("comparisons>>>",comparisons);
         console.log("similarGroups>>>",similarGroups)
         // Quality check phase
         console.log("🔍 Starting quality analysis for each image...");
@@ -780,66 +974,6 @@ async analyzeSession(sessionId, similarityThreshold = 75) {
             });
             console.log(`Quality for ${new_params.name}:`, quality);
         }
-//////FOR TESING 19-8-score
-        // 1️⃣ Function to calculate relative quality ranks
-// function calculateRelativeQualityRanks(group) {
-//     console.log("GROUP_calculate",group)
-//     // group.files me quality_array se har image ka score le lo
-//     const sortedFiles = [...group.files].sort((a, b) => 
-//         b.overallScore - a.overallScore
-//     );
-// console.log("sortedFiles",sortedFiles)
-//     sortedFiles.forEach((file, index) => {
-//         if (sortedFiles.length <= 10) {
-//             // Groups with 10 or fewer
-//             file.relativeQualityRank = 10 - index;
-//         } else {
-//             // Groups with >10 images: use decimal ranking
-//             const rankRange = 9; // from 10 down to 1
-//             const step = rankRange / (sortedFiles.length - 1);
-//             const rank = 10 - (index * step);
-//             file.relativeQualityRank = Math.max(1.0, Math.round(rank * 10) / 10);
-//         }
-//     });
-// }
-
-// 2️⃣ Function to select recommended keeper
-// function selectRecommendedKeeper(group, strategy = 'quality') {
-//     switch (strategy) {
-//         case 'quality':
-//             group.recommendedKeeper = group.files.reduce((best, current) => 
-//                 current.overallScore > best.overallScore ? current : best
-//             ).id;
-//             break;
-
-//         case 'size':
-//             group.recommendedKeeper = group.files.reduce((largest, current) =>
-//                 current.fileSize > largest.fileSize ? current : largest
-//             ).id;
-//             break;
-
-//         default:
-//             group.recommendedKeeper = null;
-//             break;
-//     }
-// }
-
-// 3️⃣ Example usage after analysis & grouping
-// similarGroups.forEach(group => {
-//     // Har group me files create karo using quality_array
-//     group.files = group.image_ids.map(id =>
-//         session.quality_array.find(q => q.name.startsWith(id))
-//     );
-
-//     calculateRelativeQualityRanks(group);
-//     selectRecommendedKeeper(group, 'quality');
-// });
-
-// 4️⃣ Rendering ke time ranking show karne ke liye
-// Example: generateArticles function me
-{/* <span class="text-[#9333ea] font-semibold !text-[15px]">
-  ${file.relativeQualityRank.toFixed(1)}/10
-</span> */}
 
 
 
@@ -1784,14 +1918,20 @@ calculateColorBalance(imageData) {
 
 
 
-
-
-
     calculateSimilarityFromHashes(fingerprint1, fingerprint2, similarityThreshold = 0.85) {
         try {
+            console.log("fingerprint1>>>",fingerprint1)
+            console.log("fingerprint2>>>",fingerprint2)
             // Use ImageMatcher's compareImages method for sophisticated similarity analysis
             const comparison = this.imageMatcher.compareImages(fingerprint1, fingerprint2);
-
+            console.log("hash>>>>",comparison.details)
+            console.log("🔎 Similarity score (overall):", comparison.overall.toFixed(4));
+            // console.log("   aHash:", comparison.details.aHash.toFixed(4),
+            // "dHash:", comparison.details.dHash.toFixed(4),
+            // "pHash:", comparison.details.pHash.toFixed(4),
+            // "edge:", comparison.details.edgeHash.toFixed(4),
+            // "histogram:", comparison.details.histogram.toFixed(4),
+            // "aspectRatio:", comparison.details.aspectRatio.toFixed(4));
             const isSimilar = comparison.overall >= similarityThreshold;
 
             // Only log detailed comparison info for matches to reduce console spam
@@ -1821,13 +1961,123 @@ calculateColorBalance(imageData) {
         }
     }
 
-    groupSimilarImages(comparisons) {
+    
+  calculateSimilarity(hash1, hash2) {
+    if (hash1.length !== hash2.length) return 0;
+
+    let hammingDistance = 0;
+    for (let i = 0; i < hash1.length; i++) {
+// console.log("hash1[i]",hash1[i]);
+// console.log("hash2[i]",hash2.length)
+      if (hash1[i] !== hash2[i]) {
+        hammingDistance++;
+      }
+    }
+    
+
+  const similarity = (hash1.length - hammingDistance) / hash1.length;  //for Console: ye hamne rakha
+  console.log("Similarity score:", similarity.toFixed(4));
+    // Convert to similarity percentage (now based on 90,000 pixels instead of 64)
+    return (hash1.length - hammingDistance) / hash1.length;
+  }
+
+groupSimilarImagesNew(comparisons, threshold = 0.85) {
+  const groups = [];
+  const processed = new Set();
+
+  // 🔎 Step 1: Build list of unique images from comparisons
+  const imageMap = {};
+  for (const comp of comparisons) {
+    if (!imageMap[comp.image1_id]) {
+      imageMap[comp.image1_id] = {
+        id: comp.image1_id,
+        fileSize: comp.image1_fileSize || 0,
+        qualityAssessment: comp.image1_quality || { overallScore: 0 }
+      };
+    }
+    if (!imageMap[comp.image2_id]) {
+      imageMap[comp.image2_id] = {
+        id: comp.image2_id,
+        fileSize: comp.image2_fileSize || 0,
+        qualityAssessment: comp.image2_quality || { overallScore: 0 }
+      };
+    }
+  }
+  const images = Object.values(imageMap);
+
+  // 🔎 Step 2: Group images by similarity threshold
+  for (let i = 0; i < images.length; i++) {
+    if (processed.has(images[i].id)) continue;
+
+    const currentGroup = [images[i]];
+    processed.add(images[i].id);
+
+    for (let j = i + 1; j < images.length; j++) {
+      if (processed.has(images[j].id)) continue;
+
+      const comp = comparisons.find(c =>
+        (c.image1_id === images[i].id && c.image2_id === images[j].id) ||
+        (c.image2_id === images[i].id && c.image1_id === images[j].id)
+      );
+
+      if (comp && comp.similarity >= threshold) {
+        currentGroup.push(images[j]);
+        processed.add(images[j].id);
+      }
+    }
+
+    // 🔎 Step 3: Only keep groups with 2+ images
+    if (currentGroup.length > 1) {
+      // Average similarity
+      let totalSim = 0;
+      let count = 0;
+      for (let x = 0; x < currentGroup.length; x++) {
+        for (let y = x + 1; y < currentGroup.length; y++) {
+          const comp = comparisons.find(c =>
+            (c.image1_id === currentGroup[x].id && c.image2_id === currentGroup[y].id) ||
+            (c.image2_id === currentGroup[x].id && c.image1_id === currentGroup[y].id)
+          );
+          if (comp) {
+            totalSim += comp.similarity;
+            count++;
+          }
+        }
+      }
+      const avgSim = count > 0 ? totalSim / count : 0;
+
+      // Potential savings
+      const sorted = [...currentGroup].sort((a, b) => b.fileSize - a.fileSize);
+      const potentialSavings = sorted.slice(1).reduce((sum, f) => sum + f.fileSize, 0);
+
+      // Best keeper
+      const bestQuality = currentGroup.reduce((best, curr) =>
+        curr.qualityAssessment.overallScore > best.qualityAssessment.overallScore ? curr : best
+      );
+
+      // 🔑 Extension-style output
+      groups.push({
+        image_ids: currentGroup.map(img => img.id),
+        similarity_score: avgSim,
+        group_size: currentGroup.length,
+        potential_savings: potentialSavings,
+        recommended_keeper: bestQuality.id
+      });
+    }
+  }
+
+  console.log(`🎯 Total groups found: ${groups.length}`);
+  return groups;
+}
+
+
+    groupSimilarImagesOld(comparisons) {
         // Build a graph of similar image connections
         const connections = {};
         const imageIdToIndex = {};
 
         // Initialize connections and build index mapping
         for (const comparison of comparisons) {
+             console.log("comparison1>>>",comparison)
             if (comparison.similarity.is_similar) {
                 const img1Idx = comparison.image1_index;
                 const img2Idx = comparison.image2_index;
@@ -1882,6 +2132,7 @@ calculateColorBalance(imageData) {
                     // Calculate average similarity score for the group
                     const groupSimilarities = [];
                     for (const comparison of comparisons) {
+                         console.log("comparison2>>>",comparison)
                         if (comparison.similarity.is_similar &&
                             currentGroup.includes(comparison.image1_index) &&
                             currentGroup.includes(comparison.image2_index)) {
@@ -2434,7 +2685,7 @@ class PhotoExtractor {
         }
     }
 
-	//convert to jquery
+    //convert to jquery
     refreshPanel() {
         // Remove existing panel and recreate it
         const existingPanel = $('#photo-cleaner-panel');
@@ -2455,7 +2706,7 @@ class PhotoExtractor {
         }
     }
 
-	//convert to jquery
+    //convert to jquery
     updateVersionDisplay() {
         const versionBadge = $('.pc-version-badge');
         const buyButton =  $('#pc-buy');
@@ -3108,7 +3359,7 @@ The extension page will open in a new tab and this scanning window will close.
     }
     }
 
-	//convert to jquery
+    //convert to jquery
     closePanel() {
         const panel = $('#photo-cleaner-panel');
         if (panel.length) {
@@ -3182,7 +3433,7 @@ The extension page will open in a new tab and this scanning window will close.
         }
     }
 
-	//convert to jquery
+    //convert to jquery
     async startScanning() {
         if (this.isProcessing && !this.resumeFromPause) return;
 
@@ -3309,7 +3560,7 @@ The extension page will open in a new tab and this scanning window will close.
       //  //console.log('ℹ️ Keeping URL parameters in new window for context');
     }
 
-	//convert to jquery
+    //convert to jquery
     clearPreviousResults() {
         // Clear photos array
         this.photos = [];
@@ -4661,6 +4912,7 @@ The extension page will open in a new tab and this scanning window will close.
             return;
         }
 
+
         // Reset group counting flag for new analysis
         this.groupsAlreadyCounted = false;
 
@@ -4890,7 +5142,7 @@ The extension page will open in a new tab and this scanning window will close.
                     console.log(`💾 Stored captured image data for photo ${photo.id} (for AI selection)`);
 
                     // Add to frontend session (compute hashes)
-                    const result = await this.frontendSessionManager.addImage(sessionId, photo.id, croppedImage);
+                    const result = await this.frontendSessionManager.addImage(sessionId, photo.id, croppedImage,photo.url);
 
                     if (result.success) {
                         uploaded++;
@@ -5087,7 +5339,7 @@ The extension page will open in a new tab and this scanning window will close.
                     console.log(`💾 Stored captured video thumbnail data for video ${video.id} (for AI selection)`);
 
                     // Add to frontend session (compute hashes) - treating video thumbnail as image
-                    const result = await this.frontendSessionManager.addImage(sessionId, video.id, croppedImage);
+                    const result = await this.frontendSessionManager.addImage(sessionId, video.id, croppedImage,photo.url);
 
                     if (result.success) {
                         uploaded++;
@@ -6873,7 +7125,9 @@ The extension page will open in a new tab and this scanning window will close.
                     </div>
                    <span class="ml-auto text-white text-[12px] 
                     ${isBest ? "bg-[#10b981]" : "bg-[#ef4444]"} 
-                    px-[8px] py-[5px] rounded-md flex gap-[2px] items-center">
+                    px-[8px] py-[5px] rounded-md flex gap-[2px] items-center
+                    ${!isBest ? "will-delete-btn" : ""}
+                    ">
                      ${isBest 
                     ? "Keeping this file" 
                     : `<svg class="w-[14px] text-[#fff]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
@@ -6901,7 +7155,7 @@ The extension page will open in a new tab and this scanning window will close.
 
                     <button 
     class="flex items-center px-[8px] py-[5px] border rounded-md text-[12px] 
-        ${isBest ? 'bg-[#10b981] text-white' : 'bg-transparent text-[#ef4444]'}">
+        ${isBest ? 'bg-[#10b981] text-white' : 'bg-transparent text-[#ef4444] will-delete-btn'}">
     <span>
         ${isBest 
           ? `<svg viewBox="0 0 130.2 130.2" class="check-icon w-[22px]">
@@ -7120,16 +7374,22 @@ overlay.on('click', '#select-all-btn', function () {
     updateAnalysisResults();
 });
 
-overlay.on('click', '.pc-image-item', function (e) {
-    const $article = $(this);
-    const hasWillDelete = $article.find('span:contains("Will delete")').length > 0;
-    if (hasWillDelete) {
-        $article.remove(); 
-    }
-});
+// overlay.on('click', '.pc-image-item', function (e) {
+//     const $article = $(this);
+//     const hasWillDelete = $article.find('span:contains("Will delete")').length > 0;
+//     if (hasWillDelete) {
+//         $article.remove(); 
+//     }
+// });
+
+    overlay.on('click', '.will-delete-btn', function (e) {
+    e.stopPropagation(); // parent click trigger na ho
+    $(this).closest('.pc-image-item').remove();
+    });
+
 
         // Add close functionality
-       $('#pc-results-close_').on('click', () => {
+    $('#pc-results-close_').on('click', () => {
             this.cleanupViewportObserver();
             overlay.remove();
         });
@@ -7142,7 +7402,7 @@ overlay.on('click', '.pc-image-item', function (e) {
 
         // Add done selecting functionality
         
-		$('#pc-done-selecting').on('click', async () => {
+        $('#pc-done-selecting').on('click', async () => {
             await this.finalizeSelectionAndSync(overlay);
         });
 
@@ -7154,14 +7414,14 @@ overlay.on('click', '.pc-image-item', function (e) {
         if (scrollUpBtn.length) {
             scrollUpBtn.on('click', () => {
                 // resultsContainer.scrollTo({ top: 0, behavior: 'smooth' });
-				resultsContainer.animate({ scrollTop: 0 }, 'slow');
+                resultsContainer.animate({ scrollTop: 0 }, 'slow');
             });
         }
 
         if (scrollDownBtn.length) {
             scrollDownBtn.on('click', () => {
               //  resultsContainer.scrollTo({ top: resultsContainer.scrollHeight, behavior: 'smooth' });
-			  resultsContainer.animate({ scrollTop: $resultsContainer[0].scrollHeight }, 'slow');
+              resultsContainer.animate({ scrollTop: $resultsContainer[0].scrollHeight }, 'slow');
             });
         }
 
@@ -7194,7 +7454,7 @@ overlay.on('click', '.pc-image-item', function (e) {
         // Add dumb-select functionality
         const dumbSelectBtn = $('#pc-dumb-select');
         if (dumbSelectBtn.length) {
-      		dumbSelectBtn.on('click', () => {
+            dumbSelectBtn.on('click', () => {
                 this.dumbSelectPhotos(overlay);
             });
         }
@@ -7334,7 +7594,7 @@ overlay.on('click', '.pc-image-item', function (e) {
         this.setupScrollHandlers(overlay);
     }
 
-	//convert to jquery
+    //convert to jquery
     setupScrollHandlers(overlay) {
         // Photo scroll buttons
         const scrollDownPhotosBtn = $('#pc-scroll-down-photos');
@@ -7365,7 +7625,7 @@ overlay.on('click', '.pc-image-item', function (e) {
         if (scrollDownVideosBtn.length) {
             scrollDownVideosBtn.on('click', function () {
                 // const videoGroupsSection = overlay.querySelector('.pc-video-groups');
-				const videoGroupsSection = $(overlay).find('.pc-video-groups');
+                const videoGroupsSection = $(overlay).find('.pc-video-groups');
                 if (videoGroupsSection.length) {
                     videoGroupsSection[0].scrollIntoView({ behavior: 'smooth', block: 'end' });
                 }
@@ -7377,7 +7637,7 @@ overlay.on('click', '.pc-image-item', function (e) {
                 const videoGroupsSection = $(overlay).find('.pc-video-groups');
                 if (videoGroupsSection.length) {
                   //  videoGroupsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
-				  videoGroupsSection[0].scrollIntoView({ behavior: 'smooth', block: 'start' });
+                  videoGroupsSection[0].scrollIntoView({ behavior: 'smooth', block: 'start' });
                 }
             });
         }
@@ -8338,7 +8598,7 @@ overlay.on('click', '.pc-image-item', function (e) {
             }, 3000);
         }
     }
-	//convert to jquery
+    //convert to jquery
     initializeCheckboxStates(overlay) {
         const imageItems = $(overlay).find('.pc-image-item');
 
@@ -9874,7 +10134,7 @@ if (!textElement.querySelector('input[type="range"]')) {
         window.addEventListener('resize', resizeHandler);
     }
 
-	//convert to jquery
+    //convert to jquery
     async startFullWorkflow() {
         if (this.isProcessing) return;
 
