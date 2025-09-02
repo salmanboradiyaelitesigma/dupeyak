@@ -262,13 +262,13 @@ div#pc-window-warning {
 }
 
 #pc-similarity-threshold {
-    flex: 1;
+    /* flex: 1;
     height: 6px;
     background: #dee2e6;
     border-radius: 3px;
     outline: none;
     -webkit-appearance: none;
-    appearance: none;
+    appearance: none; */
 }
 
 #pc-similarity-threshold::-webkit-slider-thumb {
@@ -888,7 +888,7 @@ div#pc-window-warning {
 }
 .pc-screenshot-container {
     position: relative;
-    width: 100%;
+    width: 97%;
     height: 100%;
     background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
 }
@@ -1940,6 +1940,39 @@ div#pc-screenshot-area {
     background: #fff !important;
     border-radius: 5px;
 }
+/* Jab overlay active ho */
+body.pc-overlay-active {
+    overflow: hidden; /* background scroll disable */
+}
+
+/* Screenshot area ko overlay banane ke liye */
+body.pc-overlay-active #pc-screenshot-area {
+    display: block !important;
+    position: fixed !important;
+    top: 15px;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(15, 23, 42, 0.85); /* dark semi-transparent overlay */
+    z-index: 99999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-sizing: border-box;
+}
+
+/* Screenshot container ko card-like box banado */
+body.pc-overlay-active #pc-screenshot-container {
+    background: #fff;
+    /* border-radius: 16px;
+    max-width: 90vw;
+    max-height: 90vh;
+    overflow: auto;
+    box-shadow: 0 8px 30px rgba(0,0,0,0.3); */
+    box-shadow:  0 10px 50px 10px rgba(0,0,0,0.5);
+    border: 2px solid #007bff !important;
+}
+
 
 span.percent-value {
     color: #fff !important;

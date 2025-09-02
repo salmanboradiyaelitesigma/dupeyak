@@ -78,85 +78,7 @@ class FrontendSessionManager {
     generateSessionId() {
         return 'session_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
     }
-
-    // async addImage(sessionId, imageId, imageData,photo_url) {
-    //     const session = this.sessions[sessionId];
-    //     if (!session) {
-    //         return { success: false, error: 'Session not found' };
-    //     }
-
-    //     if (session.status !== 'active') {
-    //         return { success: false, error: 'Session is not active' };
-    //     }
-
-    //     try {
-    //         console.log(`🖼️ Processing image ${imageId} for session ${sessionId}...`);
-
-    //         // Use base64 data URL directly for console output (more reliable than blob URLs)
-    //         const base64DataUrl = imageData; // This is already a complete data:image/... URL
-    //         const mimeType = imageData.match(/data:([^;]+)/)?.[1] || 'image/png';
-    //         const base64Size = Math.round((imageData.length * 3) / 4); // Approximate size in bytes
-          
-    //         console.log(`📊 Image data info:`, {
-    //             imageId: imageId,
-    //             size: `${(base64Size / 1024).toFixed(2)} KB`,
-    //             type: mimeType
-    //         });
-
-    //         // Display image in console using base64 data URL
-    //         this.displayImageInConsole(imageId, base64DataUrl, base64Size, mimeType);
-
-    //         // Convert base64 to image element for hash computation
-    //         const img = await this.createImageFromBase64(imageData);
-    //         // const dynamicFileName = `image_${imageId}.${ext}`;
-    //          const dynamicFileName = `image_${imageId}`;
-    //         // const file = this.base64ToFile(base64DataUrl, dynamicFileName, mimeType);
-    //           const file = await this.urlToFile(photo_url, dynamicFileName, mimeType);
-    //         const hash = await this.calculateImageHash(file);
-
-    //         // Wait for ImageMatcher library to be loaded
-    //         await this.waitForImageMatcher();
-
-    //         // Compute image fingerprint using ImageMatcher
-    //         console.log(`🔢 Computing image fingerprint for ${imageId}...`);
-    //         const frontendStartTime = Date.now();
-    //         const fingerprint = await this.imageMatcher.processImage(img, imageId);
-
-    //         const frontendHashTime = Date.now() - frontendStartTime;
-    //         console.log(`✅ Computed image fingerprint for ${imageId} in ${frontendHashTime}ms`);
-
-    //         // Store image info and hashes (frontend only)
-    //         const imageInfo = {
-    //             id: imageId,
-    //             added_at: new Date().toISOString(),
-    //             processed: true,
-    //             width: img.naturalWidth,
-    //             height: img.naturalHeight,
-    //             hash_cached: true,
-    //             imageData: imageData,
-    //             photo_url: photo_url  
-    //         };
-
-    //         session.images.push(imageInfo);
-    //         //session.imageHashes[imageId] = fingerprint;
-    //         session.imageHashes[imageId] = hash;
-    //         session.total_images = session.images.length;
-
-    //         console.log(`✅ Added image ${imageId} to frontend session ${sessionId}`);
-    //         console.log(`  - Dimensions: ${img.naturalWidth}x${img.naturalHeight}`);
-    //         // console.log(`  - aHash: ${fingerprint.aHash}`);
-    //         // console.log(`  - dHash: ${fingerprint.dHash}`);
-    //         // console.log(`  - pHash: ${fingerprint.pHash}`);
-    //         // console.log(`  - edgeHash: ${fingerprint.edgeHash}`);
-
-    //         return { success: true, message: 'Image added successfully' };
-
-    //     } catch (error) {
-    //         console.error(`❌ Error adding image to session ${sessionId}:`, error);
-    //         return { success: false, error: `Failed to process image: ${error.message}` };
-    //     }
-    // }
- async addImage(sessionId, imageId, imageData,photo_url) {
+    async addImage(sessionId, imageId, imageData,photo_url) {
         const session = this.sessions[sessionId];
         if (!session) {
             return { success: false, error: 'Session not found' };
@@ -395,474 +317,6 @@ async  urlToFile(url, fileName, mimeType) {
         return onesRatio >= 0.2 && onesRatio <= 0.8;
     }
 
-
-//21/8-5:26
-//     async analyzeSession(sessionId, similarityThreshold = 75) {
-//         const session = this.sessions[sessionId];
-//         if (!session) {
-//             throw new Error('Session not found');
-//         }
-
-//         console.log(`🎯 Starting frontend analysis for session ${sessionId}`);
-//         const analysisStartTime = Date.now();
-//          const allResults = [];
-//         session.analysis_status = 'analyzing';
-//         session.similarity_threshold = similarityThreshold;
-//         session.processed_images = 0;
-
-//         const threshold = similarityThreshold / 100.0; // Convert percentage to decimal
-//         console.log(`🎯 Using ${similarityThreshold}% similarity threshold (${threshold} decimal)`);
-
-//         try {
-//             const images = session.images;
-//             const totalImages = images.length;
-//             const totalComparisons = totalImages * (totalImages - 1) / 2;
-
-//             console.log(`🔍 Analyzing ${totalImages} images (${totalComparisons} comparisons)...`);
-
-//             const comparisons = [];
-//             let completedComparisons = 0;
-
-//             // Add progress callback for UI updates
-//             const progressCallback = this.progressCallback || (() => { });
-
-//             console.log(`🔄 Starting hash comparison phase...`);
-//             progressCallback(10, `Comparing ${totalComparisons.toLocaleString()} hash pairs...`);
-
-//             // Compare each pair of images with batching to prevent browser freeze
-//             const batchSize = 1000; // Process 1000 comparisons at a time
-//             let batchCount = 0;
-
-//             for (let i = 0; i < totalImages; i++) {
-//                 for (let j = i + 1; j < totalImages; j++) {
-//                     const img1Info = images[i];
-//                     const img2Info = images[j];
-
-//                     const img1Fingerprint = session.imageHashes[img1Info.id];
-//                     const img2Fingerprint = session.imageHashes[img2Info.id];
-
-//                     if (img1Fingerprint && img2Fingerprint) {
-//                         const similarity = this.calculateSimilarityFromHashes(img1Fingerprint, img2Fingerprint, threshold);
-
-//                         if (similarity && similarity.is_similar) {
-//                             comparisons.push({
-//                                 image1_index: i,
-//                                 image2_index: j,
-//                                 image1_id: img1Info.id,
-//                                 image2_id: img2Info.id,
-//                                 similarity: similarity
-//                             });
-
-//                             console.log(`🎯 MATCH: ${img1Info.id} ↔ ${img2Info.id} (score: ${similarity.combined_score.toFixed(3)})`);
-//                         }
-//                     }
-
-//                     completedComparisons++;
-//                     batchCount++;
-
-//                     // Update progress and yield control to prevent browser freeze
-//                     if (batchCount >= batchSize) {
-//                         const progress = 10 + (completedComparisons / totalComparisons) * 80; // 10-90% for comparison phase
-//                         session.processed_images = completedComparisons;
-//                         session.analysis_progress = progress;
-
-//                         const remainingComparisons = totalComparisons - completedComparisons;
-//                         const matchesFound = comparisons.length;
-
-//                         console.log(`📊 Progress: ${completedComparisons.toLocaleString()}/${totalComparisons.toLocaleString()} comparisons (${progress.toFixed(1)}%) - ${matchesFound} matches found`);
-//                         progressCallback(progress, `Comparing hashes: ${completedComparisons.toLocaleString()}/${totalComparisons.toLocaleString()} (${matchesFound} matches found)`);
-
-//                         // Yield control to prevent browser freeze
-//                         await new Promise(resolve => setTimeout(resolve, 1));
-//                         batchCount = 0;
-//                     }
-//                 }
-//             }
-
-//             // Final progress update for comparison phase
-//             const finalProgress = 90;
-//             session.analysis_progress = finalProgress;
-//             progressCallback(finalProgress, `Hash comparison complete! Found ${comparisons.length} similar pairs. Grouping results...`);
-
-//             // Group similar images
-//             console.log(`🔄 Grouping ${comparisons.length} similar pairs into groups...`);
-//             progressCallback(95, `Grouping ${comparisons.length} similar pairs...`);
-
-//             const similarGroups = this.groupSimilarImages(comparisons);
-
-//             // Update session with results
-//             session.analysis_status = 'completed';
-//             session.processed_images = totalImages;
-//             session.similar_groups = similarGroups;
-//             session.total_comparisons = totalComparisons;
-//             session.similar_pairs_found = comparisons.length;
-//             session.last_analysis = new Date().toISOString();
-//             session.analysis_progress = 100;
-
-//             progressCallback(100, `Analysis complete! Found ${similarGroups.length} groups of similar photos.`);
-
-//             const analysisTime = Date.now() - analysisStartTime;
-//             console.log(`🚀 Frontend analysis completed for session ${sessionId}:`);
-//             console.log(`  📊 Total comparisons made: ${totalComparisons}`);
-//             console.log(`  🎯 Similar pairs found: ${comparisons.length}`);
-//             console.log(`  📁 Similar groups found: ${similarGroups.length}`);
-//             console.log(`  ⏱️ Analysis time: ${analysisTime}ms`);
-
-//             console.log("assessImageQuality_assessImageQuality>>",session)
-
-
-// function base64ToBlob(dataURL) {
-//   const [meta, base64Data] = dataURL.split(',');
-//   const mime = meta.match(/:(.*?);/)[1];
-//   const byteString = atob(base64Data);
-//   const arrayBuffer = new ArrayBuffer(byteString.length);
-//   const uint8Array = new Uint8Array(arrayBuffer);
-//   for (let i = 0; i < byteString.length; i++) {
-//     uint8Array[i] = byteString.charCodeAt(i);
-//   }
-//   return new Blob([uint8Array], { type: mime });
-// }
-
-
-// async function buildNewParamsFromSession(session) {
-//     console.log("imageData>>>",session)
-//   return await Promise.all(session.images.map(async img => {
-//    const blob = base64ToBlob(img.imageData);
-//     return {
-//       blob,
-//       id: `${img.id}-${blob.size}-${Date.now()}`,
-//       preview: URL.createObjectURL(blob),
-//       lastModified: Date.now(),
-//       lastModifiedDate: new Date(),
-//       name: `${img.id}.jpg`,
-//       size: blob.size,
-//       type: blob.type,
-//       webkitRelativePath: ""
-//     };
-//   }));
-// }
-
-
-// (async () => {
-//   const newParamsList = await buildNewParamsFromSession(session);
-//   console.log("newParamsList>>>>>", newParamsList);
-
-   
-
-//   for (const new_params of newParamsList) {
-//     const quality = await this.assessImageQuality(new_params, 300);
-    
-//     console.log(`Quality for ${new_params.name}:`, quality);
-
-//       allResults.push({
-//       name: new_params.name,
-//       ...quality
-//     });
-//  console.log(allResults);
-//   }
-// })();
-//         //   const quality = await this.assessImageQuality(new_params, 300);
-//         //  console.log('quality__assessImageQuality',quality);
-//      console.log('quality__assessImageQuality',allResults);
-        
-
-//             return {
-//                 success: true,
-//                 session_id: sessionId,
-//                 total_images: totalImages,
-//                 similar_groups: similarGroups,
-//                 quality_array:allResults,
-//                 total_comparisons: totalComparisons,
-//                 similar_pairs_found: comparisons.length,
-//                 analysis_time: analysisTime
-//             };
-
-//         } catch (error) {
-//             console.error(`❌ Error during frontend analysis:`, error);
-//             session.analysis_status = 'error';
-//             session.error = error.message;
-//             throw error;
-//         }
-//     }
-
-
-
-
-
- // FOR_similarity_groups_changes
-
-// async analyzeSession(sessionId, similarityThreshold = 75) {
-//     const session = this.sessions[sessionId];
-//     if (!session) throw new Error('Session not found');
-
-//     console.log(`🎯 Starting frontend analysis for session ${sessionId}`);
-//     const analysisStartTime = Date.now();
-//     const allResults = [];
-
-//     session.analysis_status = 'analyzing';
-//     session.similarity_threshold = similarityThreshold;
-//     session.processed_images = 0;
-
-//     const threshold = similarityThreshold / 100.0;
-//     console.log(`🎯 Using ${similarityThreshold}% similarity threshold (${threshold} decimal)`);
-
-//     try {
-//         const images = session.images;
-//         const totalImages = images.length;
-//         const totalComparisons = totalImages * (totalImages - 1) / 2;
-
-//         console.log(`🔍 Analyzing ${totalImages} images (${totalComparisons} comparisons)...`);
-
-//         const comparisons = [];
-//         let completedComparisons = 0;
-//         const batchSize = 1000;
-//         let batchCount = 0;
-
-//         const progressCallback = this.progressCallback || (() => {});
-
-//         // Hash comparison phase
-//         console.log(`🔄 Starting hash comparison phase...`);
-//         progressCallback(10, `Comparing ${totalComparisons.toLocaleString()} hash pairs...`);
-
-//         for (let i = 0; i < totalImages; i++) {
-//             for (let j = i + 1; j < totalImages; j++) {
-//                 const img1Info = images[i];
-//                 const img2Info = images[j];
-//                 const img1Fingerprint = session.imageHashes[img1Info.id];
-//                 const img2Fingerprint = session.imageHashes[img2Info.id];
-
-//                 if (img1Fingerprint && img2Fingerprint) {
-//                     const similarity = this.calculateSimilarityFromHashes(img1Fingerprint, img2Fingerprint, threshold);
-//                     if (similarity?.is_similar) {
-//                         comparisons.push({
-//                             image1_index: i,
-//                             image2_index: j,
-//                             image1_id: img1Info.id,
-//                             image2_id: img2Info.id,
-//                             similarity
-//                         });
-//                         console.log(`🎯 MATCH: ${img1Info.id} ↔ ${img2Info.id} (score: ${similarity.combined_score.toFixed(3)})`);
-//                     }
-//                 }
-
-//                 completedComparisons++;
-//                 batchCount++;
-
-//                 if (batchCount >= batchSize) {
-//                     const progress = 10 + (completedComparisons / totalComparisons) * 80;
-//                     session.processed_images = completedComparisons;
-//                     session.analysis_progress = progress;
-
-//                     console.log(`📊 Progress: ${completedComparisons}/${totalComparisons} (${progress.toFixed(1)}%) - ${comparisons.length} matches found`);
-//                     progressCallback(progress, `Comparing hashes: ${completedComparisons}/${totalComparisons} (${comparisons.length} matches found)`);
-
-//                     await new Promise(resolve => setTimeout(resolve, 1));
-//                     batchCount = 0;
-//                 }
-//             }
-//         }
-
-//         // Final comparison update
-//         session.analysis_progress = 90;
-//         progressCallback(90, `Hash comparison complete! Found ${comparisons.length} similar pairs.`);
-
-//         // Group similar images
-//         console.log(`🔄 Grouping ${comparisons.length} similar pairs...`);
-//         progressCallback(95, `Grouping ${comparisons.length} similar pairs...`);
-//         const similarGroups = this.groupSimilarImages(comparisons);
-
-//         console.log("similarGroups>>>",similarGroups)
-//         // Quality check phase
-//         console.log("🔍 Starting quality analysis for each image...");
-//         const newParamsList = await buildNewParamsFromSession(session);
-
-//         for (const new_params of newParamsList) {
-//             console.log("new_params>>>",new_params)
-//             const quality = await this.assessImageQuality(new_params, 300);
-//             allResults.push({
-//                 name: new_params.name,
-//                 ...quality
-//             });
-//             console.log(`Quality for ${new_params.name}:`, quality);
-//         }
-// //////FOR TESING 19-8-score
-//         // 1️⃣ Function to calculate relative quality ranks
-// // function calculateRelativeQualityRanks(group) {
-// //     console.log("GROUP_calculate",group)
-// //     // group.files me quality_array se har image ka score le lo
-// //     const sortedFiles = [...group.files].sort((a, b) => 
-// //         b.overallScore - a.overallScore
-// //     );
-// // console.log("sortedFiles",sortedFiles)
-// //     sortedFiles.forEach((file, index) => {
-// //         if (sortedFiles.length <= 10) {
-// //             // Groups with 10 or fewer
-// //             file.relativeQualityRank = 10 - index;
-// //         } else {
-// //             // Groups with >10 images: use decimal ranking
-// //             const rankRange = 9; // from 10 down to 1
-// //             const step = rankRange / (sortedFiles.length - 1);
-// //             const rank = 10 - (index * step);
-// //             file.relativeQualityRank = Math.max(1.0, Math.round(rank * 10) / 10);
-// //         }
-// //     });
-// // }
-
-// // 2️⃣ Function to select recommended keeper
-// // function selectRecommendedKeeper(group, strategy = 'quality') {
-// //     switch (strategy) {
-// //         case 'quality':
-// //             group.recommendedKeeper = group.files.reduce((best, current) => 
-// //                 current.overallScore > best.overallScore ? current : best
-// //             ).id;
-// //             break;
-
-// //         case 'size':
-// //             group.recommendedKeeper = group.files.reduce((largest, current) =>
-// //                 current.fileSize > largest.fileSize ? current : largest
-// //             ).id;
-// //             break;
-
-// //         default:
-// //             group.recommendedKeeper = null;
-// //             break;
-// //     }
-// // }
-
-// // 3️⃣ Example usage after analysis & grouping
-// // similarGroups.forEach(group => {
-// //     // Har group me files create karo using quality_array
-// //     group.files = group.image_ids.map(id =>
-// //         session.quality_array.find(q => q.name.startsWith(id))
-// //     );
-
-// //     calculateRelativeQualityRanks(group);
-// //     selectRecommendedKeeper(group, 'quality');
-// // });
-
-// // 4️⃣ Rendering ke time ranking show karne ke liye
-// // Example: generateArticles function me
-// {/* <span class="text-[#9333ea] font-semibold !text-[15px]">
-//   ${file.relativeQualityRank.toFixed(1)}/10
-// </span> */}
-
-
-
-// /// for tetsting 19-8-score
-//         // Update session
-//         session.analysis_status = 'completed';
-//         session.processed_images = totalImages;
-//         session.similar_groups = similarGroups;
-//         session.quality_array = allResults;
-//         session.total_comparisons = totalComparisons;
-//         session.similar_pairs_found = comparisons.length;
-//         session.last_analysis = new Date().toISOString();
-//         session.analysis_progress = 100;
-
-//           console.log("session>>>",session)
-//         progressCallback(100, `Analysis complete! Found ${similarGroups.length} groups.`);
-
-//         const analysisTime = Date.now() - analysisStartTime;
-//         console.log(`🚀 Analysis completed in ${analysisTime}ms`);
-
-//         return {
-//             success: true,
-//             session_id: sessionId,
-//             total_images: totalImages,
-//             similar_groups: similarGroups,
-//             quality_array: allResults,
-//             total_comparisons: totalComparisons,
-//             similar_pairs_found: comparisons.length,
-//             analysis_time: analysisTime
-//         };
-
-//     } catch (error) {
-//         console.error(`❌ Error during analysis:`, error);
-//         session.analysis_status = 'error';
-//         session.error = error.message;
-//         throw error;
-//     }
-
-//     // Helper functions
-//     function base64ToBlob(dataURL) {
-//         const [meta, base64Data] = dataURL.split(',');
-//         const mime = meta.match(/:(.*?);/)[1];
-//         const byteString = atob(base64Data);
-//         const arrayBuffer = new ArrayBuffer(byteString.length);
-//         const uint8Array = new Uint8Array(arrayBuffer);
-//         for (let i = 0; i < byteString.length; i++) {
-//             uint8Array[i] = byteString.charCodeAt(i);
-//         }
-//         return new Blob([uint8Array], { type: mime });
-//     }
-
-//     async function buildNewParamsFromSession(session) {
-//         return Promise.all(session.images.map(async img => {
-//             const blob = base64ToBlob(img.imageData);
-//             return {
-//                 blob,
-//                 id: `${img.id}-${blob.size}-${Date.now()}`,
-//                 preview: URL.createObjectURL(blob),
-//                 lastModified: Date.now(),
-//                 lastModifiedDate: new Date(),
-//                 name: `${img.id}.jpg`,
-//                 size: blob.size,
-//                 type: blob.type,
-//                 webkitRelativePath: ""
-//             };
-//         }));
-//     }
-// }
-
-
-// async  analyzeSession(sessionId, similarityThreshold = 75) {
-//      const session = this.sessions[sessionId];
-//     if (!session) throw new Error("Session not found");
-
-//     console.log(`🎯 Starting analysis for session ${session.id}`);
-//     session.analysis_status = 'analyzing';
-//     const threshold = similarityThreshold / 100.0;
-//     const allResults = [];
-
-//     // 1️⃣ Hash comparison
-//     const images = session.images;
-//     for (let img of images) {
-//         // assume each image has perceptualHash calculated already
-//         // qualityAssessment will be filled later
-//     }
-
-//     // 2️⃣ Group similar images
-//     const similarGroups = this.groupSimilarImages(images, threshold, 'moderate');
-
-//     // 3️⃣ Quality assessment (dummy async simulation)
-//     for (let img of images) {
-//         // Simulate async quality assessment, replace with real function
-//         const quality = await this.assessImageQuality(img); // implement this
-//         img.qualityAssessment = quality;
-//         allResults.push({
-//             name: img.id,
-//             ...quality
-//         });
-//     }
-
-//     // 4️⃣ Calculate ranks & recommended keeper
-//     similarGroups.forEach(group => {
-//         this.calculateRelativeQualityRanks(group);
-//         this.selectRecommendedKeeper(group, 'quality');
-//     });
-
-//     // 5️⃣ Update session
-//     session.similar_groups = similarGroups;
-//     session.quality_array = allResults;
-//     session.analysis_status = 'completed';
-//     session.similarity_threshold = similarityThreshold;
-
-//     console.log("✅ Session analysis complete", session);
-//     return session;
-// }
-
-
-//20/8
 async analyzeSession(sessionId, similarityThreshold = 75) {
     const session = this.sessions[sessionId];
     if (!session) throw new Error('Session not found');
@@ -921,16 +375,6 @@ async analyzeSession(sessionId, similarityThreshold = 75) {
                             similarity
                         });
                      }
-                    // if (similarity?.is_similar) {
-                    //     comparisons.push({
-                    //         image1_index: i,
-                    //         image2_index: j,
-                    //         image1_id: img1Info.id,
-                    //         image2_id: img2Info.id,
-                    //         similarity
-                    //     });
-                    //     console.log(`🎯 MATCH: ${img1Info.id} ↔ ${img2Info.id} (score: ${similarity.combined_score.toFixed(3)})`);
-                    // }
                 }
 
                 completedComparisons++;
@@ -965,19 +409,32 @@ async analyzeSession(sessionId, similarityThreshold = 75) {
         console.log("🔍 Starting quality analysis for each image...");
         const newParamsList = await buildNewParamsFromSession(session);
 
-        for (const new_params of newParamsList) {
-            console.log("new_params>>>",new_params)
-            const quality = await this.assessImageQuality(new_params, 300);
-            allResults.push({
-                name: new_params.name,
-                ...quality
-            });
+        // for (const new_params of newParamsList) {
+        //     console.log("new_params>>>",new_params)
+        //     const quality = await this.assessImageQuality(new_params, 300);
+        //     allResults.push({
+        //         name: new_params.name,
+        //         ...quality
+        //     });
+        //     console.log(`Quality for ${new_params.name}:`, quality);
+        // }
+            // Parallel quality analysis
+        const qualityResults = await Promise.all(
+        newParamsList.map(async (new_params) => {
+            console.log("new_params>>>", new_params);
+            const quality = await this.assessImageQuality(new_params, 500);
             console.log(`Quality for ${new_params.name}:`, quality);
-        }
+            return {
+            name: new_params.name,
+            ...quality
+            };
+        })
+        );
+
+        allResults.push(...qualityResults);
 
 
 
-/// for tetsting 19-8-score
         // Update session
         session.analysis_status = 'completed';
         session.processed_images = totalImages;
@@ -1050,7 +507,7 @@ faceapiInitialized = false;
    if (this.faceapiInitialized) {
     console.log("⚠️ Models already loaded, skipping reload...");
     return;
-  } // agar pehle hi load ho gaya hai to wapas load na kare
+  } 
 
   try {
     console.log('Loading Tiny Face Detector and Face Landmarks models from /models...');
@@ -1061,26 +518,22 @@ faceapiInitialized = false;
     //   faceapi.nets.faceLandmark68TinyNet.loadFromUri('/models')
     // ]);
     const modelUrl = chrome.runtime.getURL("models");
-    console.log("🔍 Model URL being used:", modelUrl);
     await faceapi.nets.tinyFaceDetector.loadFromUri(modelUrl);
-    console.log("✅ tinyFaceDetector model loaded");
     await faceapi.nets.faceLandmark68TinyNet.loadFromUri(modelUrl);
-    console.log("✅ faceLandmark68TinyNet model loaded");
 
-
-    this.faceapiInitialized = true; // flag ko update karo
+    this.faceapiInitialized = true; 
     console.log('✅ Tiny Face Detector and Face Landmarks models loaded successfully!');
   } catch (error) {
     console.error('❌ Failed to load face-api.js models:', error);
     console.error('Error details:', error instanceof Error ? error.message : String(error));
 
-    this.faceapiInitialized = false; // fail hone par bhi reset rakho
+    this.faceapiInitialized = false; 
   }
 }
 
     
     
-  async assessImageQuality(imageFile, processingSize = 300) {
+  async assessImageQuality(imageFile, processingSize = 500) {
      await this.initializeFaceApi();
 
     const technical = await this.analyzeTechnicalQuality(imageFile, processingSize);
@@ -1100,63 +553,6 @@ faceapiInitialized = false;
   }
 
  // FOR_similarity_groups_changes
-// async  assessImageQuality(image) {
-//     // Replace with your real assessment logic
-//     return {
-//         overallScore: Math.random() * 100,
-//         sharpness: Math.random() * 100,
-//         brightness: Math.random() * 100
-//     };
-// }
-//  calculateRelativeQualityRanks(group) {
-//     const sortedFiles = [...group.files].sort((a, b) => b.qualityAssessment.overallScore - a.qualityAssessment.overallScore);
-//     sortedFiles.forEach((file, idx) => {
-//         if (sortedFiles.length <= 10) file.relativeQualityRank = 10 - idx;
-//         else {
-//             const step = 9 / (sortedFiles.length - 1);
-//             const rank = 10 - idx * step;
-//             file.relativeQualityRank = Math.max(1, Math.round(rank * 10) / 10);
-//         }
-//     });
-// }
-
- // FOR_similarity_groups_changes
-//  calculateSimilarity(hash1, hash2) {
-//       if (!hash1 || !hash2) {
-//         console.warn("Missing hash:", { hash1, hash2 });
-//         return 0;
-//     }
-//     if (hash1.length !== hash2.length) return 0;
-
-//     let hammingDistance = 0;
-//     for (let i = 0; i < hash1.length; i++) {
-//         if (hash1[i] !== hash2[i]) hammingDistance++;
-//     }
-
-//     return (hash1.length - hammingDistance) / hash1.length;
-// }
-
-
- // FOR_similarity_groups_changes
-//  selectRecommendedKeeper(group, strategy = 'quality') {
-//     switch (strategy) {
-//         case 'quality':
-//             group.recommendedKeeper = group.files.reduce((best, curr) =>
-//                 curr.qualityAssessment.overallScore > best.qualityAssessment.overallScore ? curr : best
-//             ).id;
-//             break;
-//         case 'size':
-//             group.recommendedKeeper = group.files.reduce((largest, curr) =>
-//                 curr.fileSize > largest.fileSize ? curr : largest
-//             ).id;
-//             break;
-//         default:
-//             group.recommendedKeeper = null;
-//     }
-// }
-
-
- // FOR_similarity_groups_changes
 calculateRelativeQualityRanks(group) {
     const sortedFiles = [...group.files].sort((a, b) => b.qualityAssessment.overallScore - a.qualityAssessment.overallScore);
     sortedFiles.forEach((file, idx) => {
@@ -1169,7 +565,7 @@ calculateRelativeQualityRanks(group) {
     });
 }
 
-  analyzeTechnicalQuality(imageFile, processingSize = 300) {
+  analyzeTechnicalQuality(imageFile, processingSize=500) {
     return new Promise((resolve, reject) => {
       if (!imageFile || !imageFile.type || !imageFile.type.startsWith('image/') || !imageFile.size || !imageFile.name) {
         reject(new Error('Invalid file object or not an image'));
@@ -1192,6 +588,7 @@ calculateRelativeQualityRanks(group) {
           ctx.drawImage(img, 0, 0, processingSize, processingSize);
 
           const imageData = ctx.getImageData(0, 0, processingSize, processingSize);
+          console.log("First 50 pixels:", imageData.data.slice(0, 50));
 
           const blurScore = this.calculateBlurScore(imageData);
           const exposureQuality = this.calculateExposureQuality(imageData);
@@ -1228,6 +625,8 @@ calculateRelativeQualityRanks(group) {
       };
 
       try {
+        console.log("imageFile:", imageFile);
+        console.log("imageFile.blob:", imageFile?.blob);
         objectUrl = URL.createObjectURL(imageFile.blob);
         img.src = objectUrl;
       } catch (error) {
@@ -1235,6 +634,79 @@ calculateRelativeQualityRanks(group) {
       }
     });
   }
+
+//   async analyzeFaceQuality(imageFile) {
+//     if (!this.faceapiInitialized) {
+//       console.log('Face-api.js not initialized, skipping face detection');
+//       return undefined;
+//     }
+
+//     try {
+//       const img = await this.loadImageElement(imageFile);
+//         console.log("🖼️ Loaded image element:", img);
+//         console.log("🖼️ Image dimensions:", img?.width, img?.height);
+//       console.log('Running Tiny Face Detector with facial landmarks...');
+//       let detectionsWithLandmarks = await faceapi.detectAllFaces(img, new faceapi.TinyFaceDetectorOptions({
+//         scoreThreshold: 0.2,
+//         inputSize: 416
+//       })).withFaceLandmarks(true);
+
+//       if (detectionsWithLandmarks.length === 0) {
+//         console.log('No faces with default settings, trying more sensitive detection...');
+//         detectionsWithLandmarks = await faceapi.detectAllFaces(img, new faceapi.TinyFaceDetectorOptions({
+//           scoreThreshold: 0.1,
+//           inputSize: 320
+//         })).withFaceLandmarks(true);
+//       }
+
+//       if (detectionsWithLandmarks.length === 0) {
+//         console.log('Still no faces, trying largest input size...');
+//         detectionsWithLandmarks = await faceapi.detectAllFaces(img, new faceapi.TinyFaceDetectorOptions({
+//           scoreThreshold: 0.1,
+//           inputSize: 512
+//         })).withFaceLandmarks(true);
+//       }
+
+//       if (detectionsWithLandmarks.length === 0) {
+//         console.log('No faces detected by Tiny Face Detector');
+//         return undefined;
+//       }
+
+//       console.log(`✅ Detected ${detectionsWithLandmarks.length} face(s) with landmarks using Tiny Face Detector!`);
+
+//       const faceWithLandmarks = detectionsWithLandmarks[0];
+//       const box = faceWithLandmarks.detection.box;
+//       const landmarks = faceWithLandmarks.landmarks;
+
+//       const faceSize = this.calculateFaceSize(box, img.width, img.height);
+//       const faceCentering = this.calculateFaceCentering(box, img.width, img.height);
+//       const lightingQuality = await this.calculateFaceLighting(img, box);
+//       const eyeContactScore = this.calculateEyeContactScore(landmarks);
+
+
+//           console.log("faceSize",faceSize);
+//           console.log("faceCentering",faceCentering);
+//           console.log("lightingQuality",lightingQuality);
+//          console.log("eyeContactScore",eyeContactScore);
+//       const portraitScore = (faceSize + faceCentering + lightingQuality + eyeContactScore) / 4;
+
+//       return {
+//         faceCount: detectionsWithLandmarks.length,
+//         eyeContactScore,
+//         faceCentering,
+//         faceSize,
+//         lightingQuality,
+//         portraitScore,
+//       };
+//     } catch (error) {
+//       console.error('Face detection with landmarks failed:', error);
+//       console.error('Error details:', error instanceof Error ? error.message : String(error));
+//       return undefined;
+//     }
+//   }
+
+
+
 
   async analyzeFaceQuality(imageFile) {
     if (!this.faceapiInitialized) {
@@ -1244,30 +716,43 @@ calculateRelativeQualityRanks(group) {
 
     try {
       const img = await this.loadImageElement(imageFile);
-console.log("🖼️ Loaded image element:", img);
-console.log("🖼️ Image dimensions:", img?.width, img?.height);
+        console.log("🖼️ Loaded image element:", img);
+        console.log("🖼️ Image dimensions:", img?.width, img?.height);
       console.log('Running Tiny Face Detector with facial landmarks...');
       let detectionsWithLandmarks = await faceapi.detectAllFaces(img, new faceapi.TinyFaceDetectorOptions({
-        scoreThreshold: 0.2,
-        inputSize: 416
+        // scoreThreshold: 0.5,
+        // inputSize: 416
+        scoreThreshold: 0.5,
+          inputSize: 416
       })).withFaceLandmarks(true);
 
       if (detectionsWithLandmarks.length === 0) {
         console.log('No faces with default settings, trying more sensitive detection...');
         detectionsWithLandmarks = await faceapi.detectAllFaces(img, new faceapi.TinyFaceDetectorOptions({
+        //   scoreThreshold: 0.23,
+        //   inputSize: 320
+
           scoreThreshold: 0.1,
-          inputSize: 320
+          inputSize: 608
         })).withFaceLandmarks(true);
       }
 
       if (detectionsWithLandmarks.length === 0) {
         console.log('Still no faces, trying largest input size...');
         detectionsWithLandmarks = await faceapi.detectAllFaces(img, new faceapi.TinyFaceDetectorOptions({
-          scoreThreshold: 0.1,
+          scoreThreshold: 0.30,
           inputSize: 512
+       
         })).withFaceLandmarks(true);
       }
 
+
+//          let detectionsWithLandmarks = await faceapi
+//   .detectAllFaces(img, new faceapi.TinyFaceDetectorOptions({
+//     scoreThreshold: 0.8,   // strict confidence
+//     inputSize: 416
+//   }))
+//   .withFaceLandmarks(true);
       if (detectionsWithLandmarks.length === 0) {
         console.log('No faces detected by Tiny Face Detector');
         return undefined;
@@ -1305,6 +790,7 @@ console.log("🖼️ Image dimensions:", img?.width, img?.height);
       return undefined;
     }
   }
+
 
   async detectFaceSimplified(img) {
     const canvas = document.createElement('canvas');
@@ -1629,47 +1115,99 @@ calculateEyeAlignment(leftEye, rightEye, jawLine) {
 
   return alignmentScore;
 }
+// calculateOverallScore(technical, faces) {
+//   let score = 0;
+
+//   // Base technical quality weights
+//   const baseWeights = {
+//     blur: 0.20,      // Reduced from 25% to 20%
+//     sharpness: 0.15, // Reduced from 20% to 15%
+//     exposure: 0.15,
+//     contrast: 0.12,
+//     noise: 0.08,
+//     colorBalance: 0.05
+//   };
+
+//   // Apply base technical scores (85% total weight)
+//   score += technical.blurScore * baseWeights.blur;
+//   score += technical.sharpnessScore * baseWeights.sharpness;
+//   score += technical.exposureQuality * baseWeights.exposure;
+//   score += technical.contrastScore * baseWeights.contrast;
+//   score += technical.noiseLevel * baseWeights.noise;
+//   score += technical.colorBalance * baseWeights.colorBalance;
+
+//   // Face quality bonus (27% weight if faces present)
+//   if (faces && faces.faceCount > 0) {
+//     // const faceBonus = (
+//     //   faces.faceCentering * 0.05 +
+//     //   faces.faceSize * 0.04 +
+//     //   faces.lightingQuality * 0.03 +
+//     //   faces.portraitScore * 0.02 +
+//     //   faces.eyeContactScore * 0.13
+//     // );
+//     const faceBonus = (
+//     faces.faceCentering * 0.01 +   // kam kiya
+//     faces.faceSize * 0.01 +
+//     faces.lightingQuality * 0.01 +
+//     faces.portraitScore * 0.01 +
+//     faces.eyeContactScore * 0.2   // bada kiya
+//     );
+
+//     score += faceBonus;
+
+//     console.log('Face quality detected:', {
+//       faceCount: faces.faceCount,
+//       faceCentering: faces.faceCentering.toFixed(2),
+//       faceSize: faces.faceSize.toFixed(2),
+//       lightingQuality: faces.lightingQuality.toFixed(2),
+//       faceBonus: faceBonus.toFixed(4)
+//     });
+//   }
+
+//   return Math.max(0, Math.min(100, score));
+// }
 calculateOverallScore(technical, faces) {
   let score = 0;
-
+ 
   // Base technical quality weights
   const baseWeights = {
-    blur: 0.20,      // Reduced from 25% to 20%
-    sharpness: 0.15, // Reduced from 20% to 15%
+    blur: 0.20,       // inverted so less blur = better
+    sharpness: 0.15,
     exposure: 0.15,
     contrast: 0.12,
     noise: 0.08,
     colorBalance: 0.05
   };
-
-  // Apply base technical scores (85% total weight)
-  score += technical.blurScore * baseWeights.blur;
+ 
+  // Technical scores
+  score += (1 - technical.blurScore) * baseWeights.blur;   // inverse blur
   score += technical.sharpnessScore * baseWeights.sharpness;
   score += technical.exposureQuality * baseWeights.exposure;
   score += technical.contrastScore * baseWeights.contrast;
-  score += technical.noiseLevel * baseWeights.noise;
+  score += (1 - technical.noiseLevel) * baseWeights.noise; // less noise = better
   score += technical.colorBalance * baseWeights.colorBalance;
-
-  // Face quality bonus (27% weight if faces present)
+ 
+  // Face quality (if detected)
   if (faces && faces.faceCount > 0) {
     const faceBonus = (
-      faces.faceCentering * 0.05 +
-      faces.faceSize * 0.04 +
-      faces.lightingQuality * 0.03 +
-      faces.portraitScore * 0.02 +
-      faces.eyeContactScore * 0.13
+      faces.faceCentering * 0.15 +      // reduced importance
+      faces.faceSize * 0.05 +
+      faces.lightingQuality * 0.05 +
+      faces.portraitScore * 0.05 +
+      faces.eyeContactScore * 0.70      // highest importance
     );
+ 
     score += faceBonus;
-
+ 
     console.log('Face quality detected:', {
       faceCount: faces.faceCount,
       faceCentering: faces.faceCentering.toFixed(2),
-      faceSize: faces.faceSize.toFixed(2),
-      lightingQuality: faces.lightingQuality.toFixed(2),
+      eyeContactScore: faces.eyeContactScore.toFixed(2),
       faceBonus: faceBonus.toFixed(4)
     });
   }
-
+ 
+  // Normalize to 0–100 range
   return Math.max(0, Math.min(100, score));
 }
 getQualityTier(score) {
@@ -1750,6 +1288,7 @@ getQualityTier(score) {
 }
 
  calculateBlurScore(imageData) {
+       console.log("imageData>>",imageData)
   // Simplified Laplacian variance calculation
   const data = imageData.data;
   const width = imageData.width;
@@ -1785,6 +1324,45 @@ getQualityTier(score) {
   const variance = count > 0 ? sum / count : 0;
   return Math.min(100, variance / 10); // Normalize to 0-100
 }
+
+//logic by salman
+//  calculateBlurScore(imageData) {
+//   const data = imageData.data;
+//   const width = imageData.width;
+//   const height = imageData.height;
+
+//   // Step 1: Grayscale conversion (luminance formula)
+//   const gray = new Float32Array(width * height);
+//   for (let i = 0; i < data.length; i += 4) {
+//     gray[i / 4] = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
+//   }
+
+//   // Step 2: Laplacian variance calculation
+//   let variance = 0, mean = 0, count = 0;
+//   for (let y = 1; y < height - 1; y++) {
+//     for (let x = 1; x < width - 1; x++) {
+//       const i = y * width + x;
+
+//       const laplacian =
+//         -4 * gray[i] +
+//         gray[i - 1] + gray[i + 1] +
+//         gray[i - width] + gray[i + width];
+
+//       variance += laplacian * laplacian;
+//       mean += laplacian;
+//       count++;
+//     }
+//   }
+
+//   if (count === 0) return 0;
+
+//   // Step 3: True variance
+//   variance = variance / count - (mean / count) ** 2;
+
+//   // Step 4: Normalize to 0–100 scale for readability
+//   const score = Math.min(100, variance / 50); // adjust divisor for sensitivity
+//   return score;
+// }
 
  calculateExposureQuality(imageData) {
   const data = imageData.data;
@@ -1882,46 +1460,10 @@ calculateColorBalance(imageData) {
   const balance = minChannel / maxChannel;
   return balance * 100;
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-    calculateSimilarityFromHashes(fingerprint1, fingerprint2, similarityThreshold = 0.85) {
+calculateSimilarityFromHashes(fingerprint1, fingerprint2, similarityThreshold = 0.85) {
         try {
-            console.log("fingerprint1>>>",fingerprint1)
-            console.log("fingerprint2>>>",fingerprint2)
+            // console.log("fingerprint1>>>",fingerprint1)
+            // console.log("fingerprint2>>>",fingerprint2)
             // Use ImageMatcher's compareImages method for sophisticated similarity analysis
             const comparison = this.imageMatcher.compareImages(fingerprint1, fingerprint2);
             console.log("hash>>>>",comparison.details)
@@ -2162,133 +1704,6 @@ groupSimilarImagesNew(comparisons, threshold = 0.85) {
         return similarGroups;
     }
 
-     // FOR_similarity_groups_changes
-//      groupSimilarImages(images, threshold = 0.75, strategy = 'moderate') {
-//     const groups = [];
-//     const processed = new Set();
-
-//     for (let i = 0; i < images.length; i++) {
-//         if (processed.has(images[i].id)) continue;
-
-//         const currentGroup = [images[i]];
-//         processed.add(images[i].id);
-
-//         for (let j = i + 1; j < images.length; j++) {
-//             if (processed.has(images[j].id)) continue;
-
-//             let sim = this.calculateSimilarity(images[i].perceptualHash, images[j].perceptualHash);
-//             let adjustedThreshold = threshold;
-//             if (strategy === 'strict') adjustedThreshold = Math.min(0.98, threshold + 0.05);
-//             if (strategy === 'loose') adjustedThreshold = Math.max(0.75, threshold - 0.05);
-
-//             if (sim >= adjustedThreshold) {
-//                 currentGroup.push(images[j]);
-//                 processed.add(images[j].id);
-//             }
-//         }
-
-//         if (currentGroup.length > 1) {
-//             // Average similarity in group
-//             let totalSim = 0, comparisons = 0;
-//             for (let x = 0; x < currentGroup.length; x++) {
-//                 for (let y = x + 1; y < currentGroup.length; y++) {
-//                     totalSim += this.calculateSimilarity(currentGroup[x].perceptualHash, currentGroup[y].perceptualHash);
-//                     comparisons++;
-//                 }
-//             }
-//             const avgSimilarity = comparisons > 0 ? totalSim / comparisons : 0;
-
-//             // Potential savings
-//             const sortedBySize = [...currentGroup].sort((a, b) => b.fileSize - a.fileSize);
-//             const potentialSavings = sortedBySize.slice(1).reduce((sum, f) => sum + f.fileSize, 0);
-
-//             // Best quality image
-//             const bestQuality = currentGroup.reduce((best, curr) =>
-//                 curr.qualityAssessment.overallScore > best.qualityAssessment.overallScore ? curr : best
-//             );
-
-//             groups.push({
-//                 id: `group-${groups.length + 1}`,
-//                 files: currentGroup,
-//                 averageSimilarity: avgSimilarity,
-//                 potentialSavings,
-//                 recommendedKeeper: bestQuality.id
-//             });
-//         }
-//     }
-
-//     return groups;
-// }
-
-
-// groupSimilarImages(images, threshold = 0.75, strategy = 'moderate') {
-//     const groups = [];
-//     const processed = new Set();
-
-//     for (let i = 0; i < images.length; i++) {
-//         if (processed.has(images[i].id)) continue;
-
-//         const currentGroup = [images[i]];
-//         processed.add(images[i].id);
-
-//         for (let j = i + 1; j < images.length; j++) {
-//             if (processed.has(images[j].id)) continue;
-
-//             // ✅ Checkpoint: make sure hashes exist
-//             if (!images[i].perceptualHash || !images[j].perceptualHash) {
-//                 console.warn("Skipping comparison, missing hash:", {
-//                     img1: images[i].id, hash1: images[i].perceptualHash,
-//                     img2: images[j].id, hash2: images[j].perceptualHash
-//                 });
-//                 continue; // skip this pair
-//             }
-
-//             let sim = this.calculateSimilarity(images[i].perceptualHash, images[j].perceptualHash);
-
-//             let adjustedThreshold = threshold;
-//             if (strategy === 'strict') adjustedThreshold = Math.min(0.98, threshold + 0.05);
-//             if (strategy === 'loose') adjustedThreshold = Math.max(0.75, threshold - 0.05);
-
-//             if (sim >= adjustedThreshold) {
-//                 currentGroup.push(images[j]);
-//                 processed.add(images[j].id);
-//             }
-//         }
-
-//         if (currentGroup.length > 1) {
-//             // Average similarity in group
-//             let totalSim = 0, comparisons = 0;
-//             for (let x = 0; x < currentGroup.length; x++) {
-//                 for (let y = x + 1; y < currentGroup.length; y++) {
-//                     if (!currentGroup[x].perceptualHash || !currentGroup[y].perceptualHash) continue;
-//                     totalSim += this.calculateSimilarity(currentGroup[x].perceptualHash, currentGroup[y].perceptualHash);
-//                     comparisons++;
-//                 }
-//             }
-//             const avgSimilarity = comparisons > 0 ? totalSim / comparisons : 0;
-
-//             // Potential savings
-//             const sortedBySize = [...currentGroup].sort((a, b) => b.fileSize - a.fileSize);
-//             const potentialSavings = sortedBySize.slice(1).reduce((sum, f) => sum + f.fileSize, 0);
-
-//             // Best quality image (guard agar qualityAssessment missing hai)
-//             const bestQuality = currentGroup.reduce((best, curr) =>
-//                 (curr.qualityAssessment?.overallScore || 0) > (best.qualityAssessment?.overallScore || 0) ? curr : best
-//             );
-
-//             groups.push({
-//                 id: `group-${groups.length + 1}`,
-//                 files: currentGroup,
-//                 averageSimilarity: avgSimilarity,
-//                 potentialSavings,
-//                 recommendedKeeper: bestQuality.id
-//             });
-//         }
-//     }
-
-//     return groups;
-// }
-
     getSessionStatus(sessionId) {
         const session = this.sessions[sessionId];
         if (!session) return null;
@@ -2341,36 +1756,12 @@ groupSimilarImagesNew(comparisons, threshold = 0.85) {
             link.textContent = `🔗 Click to open ${imageId} in new tab`;
             link.style.color = '#4285f4';
             link.style.textDecoration = 'underline';
-
-            // Method 1: Console image preview using CSS background
-            // console.log(`%c🖼️ ${imageId} Preview`,
-            //     `background-image: url(${dataUrl}); 
-            //      background-size: contain; 
-            //      background-repeat: no-repeat; 
-            //      background-position: center;
-            //      padding: 100px 150px; 
-            //      border: 2px solid #333; 
-            //      border-radius: 8px;
-            //      color: white; 
-            //      text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
-            //      font-weight: bold;
-            //      margin: 10px;`);
-
-            // Method 2: Log the image element (expandable in DevTools)
-            // console.log(`🖼️ Image ${imageId} (expandable):`, img);
-
             // Method 3: Console group with all options
             console.group(`🖼️ ${imageId} - All Display Options`);
-            // //console.log('🎨 CSS Background Preview:', `%c${imageId}`,
-            //     `background: url(${dataUrl}) no-repeat center; background-size: 100px 100px; padding: 50px; border: 1px solid #ccc;`);
             console.groupEnd();
-
-            // Method 4: Try to create a canvas preview
             this.createCanvasPreview(imageId, dataUrl);
 
         } catch (e) {
-            // console.log(`⚠️ Console image display failed: ${e.message}`);
-            // console.log(`Direct data URL: ${dataUrl}`);
         }
     }
 
@@ -2390,16 +1781,8 @@ groupSimilarImagesNew(comparisons, threshold = 0.85) {
                 // Draw image to canvas
                 ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
 
-                // Log canvas to console
-          //      console.log(`🎨 Canvas preview for ${imageId} (${canvas.width}x${canvas.height}):`, canvas);
-
                 // Also try to get canvas as data URL for additional preview
                 const canvasDataUrl = canvas.toDataURL();
-                // console.log(`%c🎨 Canvas as CSS background`,
-                //     `background: url(${canvasDataUrl}) no-repeat center; 
-                //      background-size: contain; 
-                //      padding: 75px; 
-                //      border: 1px solid #666;`);
             };
             img.src = dataUrl;
         } catch (e) {
@@ -2565,9 +1948,9 @@ class PhotoExtractor {
                 await this.loadDailyLimits();
             }
 
-            // //console.log('💰 Paid status loaded:', this.isPaidVersion ? 'PAID' : 'FREE');
+            //console.log('💰 Paid status loaded:', this.isPaidVersion ? 'PAID' : 'FREE');
             if (!this.isPaidVersion) {
-                // //console.log('📊 Daily limits - Similar groups:', this.todaySimilarGroupsShown, '/', this.dailySimilarGroupsLimit, ', Re-analysis:', this.todayReAnalysisCount, '/', this.dailyReAnalysisLimit);
+              
             }
 
             // Update UI after loading status
@@ -2616,8 +1999,6 @@ class PhotoExtractor {
                 dailySimilarGroupsShown: this.todaySimilarGroupsShown,
                 lastActivityDate: today
             });
-
-           // //console.log('📊 Updated daily similar groups count: +', newGroupsShown, 'new groups, total:', this.todaySimilarGroupsShown, '/', this.dailySimilarGroupsLimit);
         } catch (error) {
           //  console.warn('⚠️ Failed to update daily similar groups count:', error);
         }
@@ -2636,8 +2017,6 @@ class PhotoExtractor {
                 dailyReAnalysisCount: this.todayReAnalysisCount,
                 lastActivityDate: today
             });
-
-          //  //console.log('📊 Updated daily re-analysis count:', this.todayReAnalysisCount, '/', this.dailyReAnalysisLimit);
         } catch (error) {
           //  console.warn('⚠️ Failed to update daily re-analysis count:', error);
         }
@@ -2676,7 +2055,7 @@ class PhotoExtractor {
             //    //console.log('✅ Upgraded to Pro - removed all daily limits');
             }
 
-         //   //console.log('💰 Paid status updated:', isPaid ? 'PAID' : 'FREE');
+           //console.log('💰 Paid status updated:', isPaid ? 'PAID' : 'FREE');
 
             // Update UI immediately without full panel refresh
             this.updateUIForCurrentStatus();
@@ -2738,7 +2117,6 @@ class PhotoExtractor {
     }
 
     async openPurchasePopup() {
-      //  //console.log('🛒 Opening extension popup for purchase...');
 
         // Check if we're in a scanning window (has scan parameters)
         const urlParams = new URLSearchParams(window.location.search);
@@ -2819,8 +2197,6 @@ The extension page will open in a new tab and this scanning window will close.
     }
 
     returnToOriginalWindow() {
-        // Close current scanning window and return to original
-      //  //console.log('🔄 Returning to original window...');
 
         // Create a clean URL without scan parameters for the original window
         const currentUrl = new URL(window.location.href);
@@ -2847,7 +2223,6 @@ The extension page will open in a new tab and this scanning window will close.
 
     async openExtensionPageAndClose() {
         // Open extension page and close current scanning window
-      //  //console.log('🛒 Opening extension page for purchase and closing scanning window...');
 
         try {
             // Send message to background script to open extension page
@@ -2856,7 +2231,6 @@ The extension page will open in a new tab and this scanning window will close.
             });
 
             if (response && response.success) {
-            //    //console.log('✅ Extension page opened successfully, closing scanning window...');
                 // Close current scanning window after a brief delay to ensure extension page loads
                 setTimeout(() => {
                     window.close();
@@ -2873,7 +2247,6 @@ The extension page will open in a new tab and this scanning window will close.
 
     async openExtensionPage() {
         // Open extension page without closing current window
-       // //console.log('🛒 Opening extension page for purchase...');
 
         try {
             // Send message to background script to open extension page
@@ -2909,23 +2282,7 @@ The extension page will open in a new tab and this scanning window will close.
 
     // Debug method to show current status
     showDebugStatus() {
-        // //console.log('🔍 Current extension status:');
-        // //console.log('   isPaidVersion:', this.isPaidVersion);
-        // //console.log('   todaySimilarGroupsShown:', this.todaySimilarGroupsShown);
-        // //console.log('   dailySimilarGroupsLimit:', this.dailySimilarGroupsLimit);
-        // //console.log('   todayReAnalysisCount:', this.todayReAnalysisCount);
-        // //console.log('   dailyReAnalysisLimit:', this.dailyReAnalysisLimit);
-        // //console.log('   canShowMoreSimilarGroups:', this.canShowMoreSimilarGroups());
-        // //console.log('   canPerformReAnalysis:', this.canPerformReAnalysis());
-        // //console.log('   remainingGroupsToday:', this.getRemainingGroupsToday());
-        // //console.log('   remainingReAnalysisToday:', this.getRemainingReAnalysisToday());
-        // //console.log('');
-        // //console.log('🛠️ Debug commands:');
-        // //console.log('   To clear pro status: window.photoCleanerInstance.clearProStatus()');
-        // //console.log('   To set pro status: window.photoCleanerInstance.testPurchase()');
-        // //console.log('   To reset daily limits: window.photoCleanerInstance.resetDailyLimits()');
-        // //console.log('   To set group count: window.photoCleanerInstance.setGroupCount(X)');
-        // //console.log('   To set re-analysis count: window.photoCleanerInstance.setReAnalysisCount(X)');
+
     }
 
     async resetDailyLimits() {
@@ -2951,9 +2308,6 @@ The extension page will open in a new tab and this scanning window will close.
                 lastActivityDate: today
             });
             this.updateDailyLimitsDisplay();
-            // //console.log('✅ Group count set to:', count, '/', this.dailySimilarGroupsLimit);
-            // //console.log('   Can show more groups:', this.canShowMoreSimilarGroups());
-            // //console.log('   Remaining groups today:', this.getRemainingGroupsToday());
         } catch (error) {
            // console.error('❌ Failed to set group count:', error);
         }
@@ -2969,9 +2323,6 @@ The extension page will open in a new tab and this scanning window will close.
                 lastActivityDate: today
             });
             this.updateDailyLimitsDisplay();
-            // //console.log('✅ Re-analysis count set to:', count, '/', this.dailyReAnalysisLimit);
-            // //console.log('   Can perform re-analysis:', this.canPerformReAnalysis());
-            // //console.log('   Remaining re-analysis today:', this.getRemainingReAnalysisToday());
         } catch (error) {
             // console.error('❌ Failed to set re-analysis count:', error);
         }
@@ -3026,8 +2377,6 @@ The extension page will open in a new tab and this scanning window will close.
                 }
             }
         });
-
-    //    //console.log('👂 Storage listener setup complete - will sync changes across windows');
     }
 
 
@@ -3036,7 +2385,6 @@ The extension page will open in a new tab and this scanning window will close.
 
     async initializeFaceDetection() {
         try {
-        //    //console.log('🤖 Initializing face detection models...');
 
             // Wait for face-api.js to be available
             if (typeof faceapi === 'undefined') {
@@ -3096,14 +2444,6 @@ The extension page will open in a new tab and this scanning window will close.
             this.showViewportResizeMessage(viewportCheck);
             return;
         }
-
-        // const statusElement = $('<div class="">', { id: 'pc-floating-status',style: 'display:none;' }).html(`
-        // <div id="pc-floating-status pc-floating-status" class="g-btn absolute ">
-        // <span id="pc-photo-count">Idle</span>
-        //  <span id="pc-progress-text" style="display:none;">Preparing to analyze 0/0</span>
-        // </div>
-        // `);
-
         const newMagnifierIconUrl = chrome.runtime.getURL('../icons/magnifier.svg');
         const statusElement = $('<div>', { id: 'pc-floating-status',class:"pc-floating-Main",style: 'display:none;' }).html(`
         <div id="pc-floating-status" class=" g-btn absolute left-[20px] top-[20px] left-[50%] -translate-x-[50%] !w-[97%] bg-gradient p-4 rounded-[20px]">
@@ -3112,15 +2452,6 @@ The extension page will open in a new tab and this scanning window will close.
         </div>
         `);
         statusElement.find('.new-Magnifier').attr('src', newMagnifierIconUrl);
-    // const statusElement = $('<div class="!left-0 !w-[100%]">', { id: 'pc-floating-status',style: 'display:none;' }).html(`
-    //     <div id="pc-floating-status class="g-btn absolute left-[50%] -translate-x-[50%] top-[20px] !w-[97%]">
-    //     <span id="pc-photo-count">Idle</span>
-    //      <span id="pc-progress-text" style="display:none;" class="!flex">
-    //         <span class="rounded-[10px] new-Magnifier flex w-[40px] max-[767px]:w-[45px] items-center justify-center" src="chrome-extension://flcmckdkmfkfebllbphddhghjkmoijfl/icons/magnifier.svg"><img class="new-Magnifier" src="chrome-extension://flcmckdkmfkfebllbphddhghjkmoijfl/icons/magnifier.svg" alt="logo" data-iml="30530"><span>Analyzing 42 of 100 photos...</span></span>
-    //      Preparing to analyze 0/0</span>
-    //     </div>
-    //     `);
-        // const premiumIconUrl = chrome.runtime.getURL('../icons/icon/premium.svg');
         const playIconUrl = chrome.runtime.getURL('../icons/play-icon.svg');
         const paushIconUrl = chrome.runtime.getURL('../icons/pause-icon.svg');
   const panel = $(`
@@ -3223,6 +2554,7 @@ The extension page will open in a new tab and this scanning window will close.
         // Add event listeners
     $('#pc-close').on('click', () => {
             this.closePanel();
+            $('body').removeClass('pc-overlay-active');
         });
 
     // $('#pc-scan').on('click', () => {
@@ -3277,23 +2609,10 @@ The extension page will open in a new tab and this scanning window will close.
         const urlParams = new URLSearchParams(window.location.search);
         const shouldAutoStart = urlParams.has('pc_scan_start');
 
-        // //console.log('🔍 initializeFullPanel - Checking for auto-start condition:');
-        // //console.log('   URL search params:', window.location.search);
-        // //console.log('   URLSearchParams object:', urlParams.toString());
-        // //console.log('   Has pc_scan_start:', urlParams.has('pc_scan_start'));
-        // //console.log('   pc_scan_start value:', urlParams.get('pc_scan_start'));
-        // //console.log('   shouldAutoStart:', shouldAutoStart);
-        // //console.log('   Document ready state:', document.readyState);
-        // //console.log('   Window loaded:', document.readyState === 'complete');
-
         if (shouldAutoStart) {
             // Check if this is a full workflow restart
             const isFullWorkflow = urlParams.has('pc_full_workflow');
             const similarityThreshold = urlParams.get('pc_similarity') || 85;
-
-            // //console.log('🎯 Auto-start conditions met:');
-            // //console.log('   isFullWorkflow:', isFullWorkflow);
-            // //console.log('   similarityThreshold:', similarityThreshold);
 
             // Set similarity threshold in UI
            const similarityInput  = $('#pc-similarity');  //Already change
@@ -3306,44 +2625,19 @@ The extension page will open in a new tab and this scanning window will close.
 
             if (isFullWorkflow) {
                 // This is after a page reload for full workflow - continue with full workflow
-             //   //console.log('🔄 Page reloaded with full workflow parameter, auto-restarting full workflow...');
                 setTimeout(() => {
-                    // //console.log('🚀 Executing auto-start full workflow now...');
-                    // //console.log('   this.isProcessing:', this.isProcessing);
-                    // //console.log('   this.isScanning:', this.isScanning);
                     this.startFullWorkflow();
                 }, 1000); // Give page a moment to fully load
             } else {
                 // This is after a page reload for scanning only - start scanning
                 // //console.log('🔄 Page reloaded with scan parameter, auto-restarting scan...');
                 setTimeout(() => {
-                    // //console.log('🚀 Executing auto-start scanning now...');
-                    // //console.log('   this.isProcessing:', this.isProcessing);
-                    // //console.log('   this.isScanning:', this.isScanning);
                     this.startScanning();
                 }, 1000); // Give page a moment to fully load
             }
         } else {
            // //console.log('ℹ️ No auto-start parameters found, waiting for manual trigger');
         }
-    // $(document).on('click', '#pc-scan', () => {
-    // if (!this.isProcessing) {
-    //     this.isPaused = false;
-    //     this.resumeFromPause = false;
-    //     this.startFullWorkflow();
-    //     this.togglePlayPauseUI(true); 
-    // } else {
-    //     if (this.isPaused) {
-    //         this.isPaused = false;
-    //         this.resumeFromPause = true;
-    //         this.togglePlayPauseUI(true); 
-    //     } else {
-    //         // Pause scanning
-    //         this.isPaused = true;
-    //         this.togglePlayPauseUI(false); 
-    //     }
-    // }
-    // });
 
     }
     togglePlayPauseUI(isPlaying) {
@@ -3611,12 +2905,6 @@ The extension page will open in a new tab and this scanning window will close.
     }
 
     async scanWithScroll() {
-        // //console.log('🔄 Starting simple scroll-based photo collection...');
-        // console.log(`   Initial photos count: ${this.photos.length}`);
-        // //console.log('📋 Logic: 1) Get photos → 2) Scroll 1 viewport → 3) Get photos → Repeat');
-        // //console.log('🛑 Exit condition: No more scrolling available after 3 seconds wait');
-
-        // Wait 2 seconds before starting to scroll to let the page fully load
         // //console.log('⏳ Waiting 2 seconds for page to fully load before starting scroll...');
         await this.delay(2000);
         // //console.log('✅ Initial wait complete, starting photo collection...');
@@ -3736,10 +3024,6 @@ The extension page will open in a new tab and this scanning window will close.
         //    console.log(`📊 End of cycle ${totalScrolls}: ${this.photos.length} total photos`);
         }
 
-        // console.log(`\n🏁 Scrolling complete after ${totalScrolls} cycles`);
-        // console.log(`📊 Final photo count: ${this.photos.length}`);
-        // //console.log('🧹 Performing final cleanup...');
-
         // Show cleanup progress in UI
         const scanBtn = $('#pc-scan')
         const countElement = document.getElementById('pc-photo-count');
@@ -3785,7 +3069,7 @@ The extension page will open in a new tab and this scanning window will close.
         }
 
         // Step 2: Remove duplicates based on multiple criteria
-    //    //console.log('🔄 Removing duplicates...');
+       //console.log('🔄 Removing duplicates...');
         this.updateCleanupProgress('🔄 Removing duplicates...');
 
         const beforeDedup = this.photos.length;
@@ -3798,7 +3082,7 @@ The extension page will open in a new tab and this scanning window will close.
         }
 
         // Step 3: Final validation - remove duplicate photos
-    //    //console.log('🧽 Removing duplicate photos...');
+       //console.log('🧽 Removing duplicate photos...');
         this.updateCleanupProgress('🧽 Removing duplicates...');
 
         const beforeFinalDedup = this.photos.length;
@@ -3807,7 +3091,7 @@ The extension page will open in a new tab and this scanning window will close.
         const finalDuplicatesRemoved = beforeFinalDedup - afterFinalDedup;
 
         if (finalDuplicatesRemoved > 0) {
-     //       console.log(`✓ Final cleanup: Removed ${finalDuplicatesRemoved} additional duplicate photos`);
+        // console.log(`✓ Final cleanup: Removed ${finalDuplicatesRemoved} additional duplicate photos`);
         }
 
 
@@ -3816,7 +3100,7 @@ The extension page will open in a new tab and this scanning window will close.
         this.scanComplete = true; // Mark scan as complete to prevent overwriting results
         this.restorePhotoCountDisplay();
 
-   //     console.log(`🎯 Cleanup complete: ${beforeCleanup} → ${this.photos.length} photos (${newPhotosFound} added, ${duplicatesRemoved + finalDuplicatesRemoved} total duplicates removed)`);
+        // console.log(`🎯 Cleanup complete: ${beforeCleanup} → ${this.photos.length} photos (${newPhotosFound} added, ${duplicatesRemoved + finalDuplicatesRemoved} total duplicates removed)`);
 
         // Show cleanup summary if there were significant changes
         const totalChanges = newPhotosFound + duplicatesRemoved + finalDuplicatesRemoved;
@@ -3959,8 +3243,6 @@ The extension page will open in a new tab and this scanning window will close.
            //     console.log(`🔄 updateScanProgress: Updating display to "Scanning" (no photos/videos found yet)`);
                 countElement.innerHTML = 'Scanning';
             } else {
-          //      console.log(`🔄 updateScanProgress: Updating display to ${this.photos.length} photos and ${this.videos.length} videos found`);
-        //        countElement.innerHTML = `${this.photos.length} photos found<br/>${this.videos.length} videos found`;
             }
             countElement.className = ''; // Remove examining styling
             countElement.style.color = '';
@@ -3977,22 +3259,8 @@ The extension page will open in a new tab and this scanning window will close.
         const scrollableContainer = this.findScrollableContainer();
 
         if (scrollableContainer) {
-          //  //console.log('✅ Found scrollable container:', scrollableContainer.tagName, scrollableContainer.className);
-            // //console.log('   Container scroll info:', {
-            //     scrollTop: scrollableContainer.scrollTop,
-            //     scrollHeight: scrollableContainer.scrollHeight,
-            //     clientHeight: scrollableContainer.clientHeight,
-            //     canScroll: scrollableContainer.scrollHeight > scrollableContainer.clientHeight
-            // });
             return await this.scrollContainer(scrollableContainer);
         } else {
-            // //console.log('❌ No scrollable container found, trying document scroll');
-            // //console.log('   Document scroll info:', {
-            //     scrollY: window.scrollY,
-            //     documentHeight: Math.max(document.body.scrollHeight, document.documentElement.scrollHeight),
-            //     windowHeight: window.innerHeight,
-            //     canScroll: Math.max(document.body.scrollHeight, document.documentElement.scrollHeight) > window.innerHeight
-            // });
             return await this.scrollDocument();
         }
     }
@@ -4003,13 +3271,6 @@ The extension page will open in a new tab and this scanning window will close.
         // Strategy 1: Find first photo and traverse up to find scrollable parent
         const photoContainer = this.findScrollableContainerFromPhoto();
         if (photoContainer) {
-            // //console.log('✅ Found scrollable container via photo traversal:', {
-            //     tagName: photoContainer.tagName,
-            //     className: photoContainer.className,
-            //     scrollHeight: photoContainer.scrollHeight,
-            //     clientHeight: photoContainer.clientHeight,
-            //     scrollTop: photoContainer.scrollTop
-            // });
             return photoContainer;
         }
 
@@ -4036,14 +3297,6 @@ The extension page will open in a new tab and this scanning window will close.
             for (const element of elements) {
                 // Check if this element is actually scrollable
                 if (this.isScrollable(element)) {
-                    // console.log(`Found scrollable element with selector: ${selector}`);
-                    // //console.log('Element details:', {
-                    //     tagName: element.tagName,
-                    //     className: element.className,
-                    //     scrollHeight: element.scrollHeight,
-                    //     clientHeight: element.clientHeight,
-                    //     scrollTop: element.scrollTop
-                    // });
                     return element;
                 }
             }
@@ -4066,11 +3319,6 @@ The extension page will open in a new tab and this scanning window will close.
         }
 
         if (bestCandidate && maxScrollableHeight > 100) {
-            // //console.log('Found best scrollable candidate:', {
-            //     tagName: bestCandidate.tagName,
-            //     className: bestCandidate.className,
-            //     scrollableHeight: maxScrollableHeight
-            // });
             return bestCandidate;
         }
 
@@ -4092,7 +3340,7 @@ The extension page will open in a new tab and this scanning window will close.
 
         for (const selector of photoSelectors) {
             const elements = document.querySelectorAll(selector);
-       //     console.log(`   Testing selector "${selector}": ${elements.length} elements`);
+       // console.log(`   Testing selector "${selector}": ${elements.length} elements`);
 
             for (const element of elements) {
                 // For background image elements, look for photo links
@@ -4102,14 +3350,14 @@ The extension page will open in a new tab and this scanning window will close.
                         const ariaLabel = linkElement.getAttribute('aria-label');
                         if (ariaLabel && ariaLabel.includes('Photo')) {
                             firstPhotoElement = element;
-                  //          //console.log('✅ Found first photo element (background):', element.tagName, element.className);
+                          //console.log('✅ Found first photo element (background):', element.tagName, element.className);
                             break;
                         }
                     }
                 } else {
                     // Direct img element
                     firstPhotoElement = element;
-             //       //console.log('✅ Found first photo element (img):', element.tagName, element.src);
+                 //console.log('✅ Found first photo element (img):', element.tagName, element.src);
                     break;
                 }
             }
@@ -4118,7 +3366,7 @@ The extension page will open in a new tab and this scanning window will close.
         }
 
         if (!firstPhotoElement) {
-       //     //console.log('❌ No photo elements found');
+            //console.log('❌ No photo elements found');
             return null;
         }
 
@@ -4127,7 +3375,7 @@ The extension page will open in a new tab and this scanning window will close.
         let traversalDepth = 0;
         const maxTraversalDepth = 20; // Prevent infinite loops
 
-   //     //console.log('🔍 Traversing up DOM tree to find scrollable parent...');
+      //console.log('🔍 Traversing up DOM tree to find scrollable parent...');
 
         while (currentElement && currentElement !== document.body && traversalDepth < maxTraversalDepth) {
             traversalDepth++;
@@ -4201,17 +3449,6 @@ The extension page will open in a new tab and this scanning window will close.
         const startScrollTop = container.scrollTop;
         const scrollStep = Math.min(container.clientHeight * 0.5, 400); // Scroll by 50% of container height or 400px max
 
-        // console.log(`📜 Scrolling container - Current: ${startScrollTop}, Step: ${scrollStep}`);
-        // console.log(`📊 Container scroll info:`, {
-        //     tagName: container.tagName,
-        //     className: container.className.substring(0, 50) + (container.className.length > 50 ? '...' : ''),
-        //     scrollTop: container.scrollTop,
-        //     scrollHeight: container.scrollHeight,
-        //     clientHeight: container.clientHeight,
-        //     maxScroll: container.scrollHeight - container.clientHeight,
-        //     canScrollMore: container.scrollTop < (container.scrollHeight - container.clientHeight - 10)
-        // });
-
         // Count photos before scrolling
         const photosBeforeScroll = this.photos.length;
 
@@ -4249,7 +3486,7 @@ The extension page will open in a new tab and this scanning window will close.
             await this.delay(50);
             newScrollTop = container.scrollTop;
             scrolled = newScrollTop > startScrollTop; // Must actually move forward
-  //          console.log(`📊 ScrollBy result: ${scrolled ? 'SUCCESS' : 'FAILED'} (${startScrollTop} → ${newScrollTop})`);
+            // console.log(`📊 ScrollBy result: ${scrolled ? 'SUCCESS' : 'FAILED'} (${startScrollTop} → ${newScrollTop})`);
         }
 
         // Method 3: Try scrollIntoView on a lower element
@@ -4306,7 +3543,7 @@ The extension page will open in a new tab and this scanning window will close.
         const isAtBottom = startScrollY >= (maxScroll - 10); // 10px tolerance
 
         if (isAtBottom) {
-     //       //console.log('📊 Already at bottom of document - cannot scroll further');
+          //console.log('📊 Already at bottom of document - cannot scroll further');
             return false;
         }
 
@@ -4475,7 +3712,7 @@ The extension page will open in a new tab and this scanning window will close.
 
     async checkAndHandleIncompleteBackgrounds() {
         // Check if there are photos without loaded backgrounds and scroll back if needed
-    //    //console.log('🔍 Checking for photos with incomplete backgrounds...');
+     //console.log('🔍 Checking for photos with incomplete backgrounds...');
 
         const photosWithBackgrounds = await this.checkPhotosHaveBackgrounds();
         const backgroundLoadRatio = photosWithBackgrounds.checked > 0 ?
@@ -4485,7 +3722,7 @@ The extension page will open in a new tab and this scanning window will close.
 
         // If less than 80% of photos have backgrounds loaded, we need to backtrack
         if (backgroundLoadRatio < 0.8 && photosWithBackgrounds.checked > 0) {
-      //      //console.log('⚠️ Too many photos missing backgrounds - initiating backtrack...');
+         //console.log('⚠️ Too many photos missing backgrounds - initiating backtrack...');
 
             const currentScrollContainer = this.findScrollableContainer();
             const currentScrollPosition = currentScrollContainer ?
@@ -4498,7 +3735,7 @@ The extension page will open in a new tab and this scanning window will close.
                 Math.min(currentScrollContainer.clientHeight * 1.5, 800) :
                 Math.min(window.innerHeight * 1.5, 800);
 
-    //        console.log(`⏪ Scrolling back ${backtrackAmount}px to allow background loading...`);
+            //  console.log(`⏪ Scrolling back ${backtrackAmount}px to allow background loading...`);
 
             if (currentScrollContainer) {
                 const targetPosition = Math.max(0, currentScrollPosition - backtrackAmount);
@@ -4511,7 +3748,7 @@ The extension page will open in a new tab and this scanning window will close.
             }
 
             // Wait for backgrounds to load at the backtracked position
-    //        //console.log('⏳ Waiting for backgrounds to load at backtracked position...');
+         //console.log('⏳ Waiting for backgrounds to load at backtracked position...');
             await this.waitForPhotosToLoad(8000); // Longer wait for backtrack
 
             // Check if backtracking helped
@@ -4519,10 +3756,10 @@ The extension page will open in a new tab and this scanning window will close.
             const afterBacktrackRatio = afterBacktrackStatus.checked > 0 ?
                 afterBacktrackStatus.loaded / afterBacktrackStatus.checked : 1;
 
-    //        console.log(`📊 After backtrack: ${afterBacktrackStatus.loaded}/${afterBacktrackStatus.checked} (${(afterBacktrackRatio * 100).toFixed(1)}%)`);
+            // console.log(`📊 After backtrack: ${afterBacktrackStatus.loaded}/${afterBacktrackStatus.checked} (${(afterBacktrackRatio * 100).toFixed(1)}%)`);
 
             // Scroll back to where we were (or close to it)
-    //        //console.log('⏩ Returning to forward scroll position...');
+          //console.log('⏩ Returning to forward scroll position...');
             if (currentScrollContainer) {
                 currentScrollContainer.scrollTop = currentScrollPosition;
             } else {
@@ -4645,13 +3882,6 @@ The extension page will open in a new tab and this scanning window will close.
         const beforeCount = this.photos.length;
 
         if (!silent) {
-            // //console.log('🔍 extractPhotos called:');
-            // //console.log('   thorough:', thorough);
-            // //console.log('   silent:', silent);
-            // //console.log('   Current photos count:', beforeCount);
-            // //console.log('   DOM ready state:', document.readyState);
-            // //console.log('   Current URL:', window.location.href);
-            // //console.log('   isScanning:', this.isScanning);
         }
 
         // Find all elements with background images (back to original approach)
@@ -4958,6 +4188,7 @@ The extension page will open in a new tab and this scanning window will close.
             await this.delay(500);
             this.showProgress(false);
 
+              $('body').removeClass('pc-overlay-active');
             this.showResults(transformedResults);
 
         } catch (error) {
@@ -5010,56 +4241,6 @@ The extension page will open in a new tab and this scanning window will close.
         console.log(`Successfully processed ${uploaded}/${this.photos.length} photo screenshots in frontend`);
         return uploaded;
     }
-
-    // async uploadVideosToFrontendSession(sessionId) {
-    //     if (this.videos.length === 0) {
-    //         //console.log('No videos to process');
-    //         return 0;
-    //     }
-
-    //     console.log(`Processing ${this.videos.length} video thumbnails in frontend session using optimized batch screenshot method`);
-
-    //     // Calculate optimal batch layout for videos
-    //     const layout = this.calculateOptimalBatchLayout();
-    //     const batchSize = layout.batchSize;
-
-    //     console.log(`📹 Processing up to ${batchSize} video thumbnails simultaneously - estimated time: ~${Math.ceil(this.videos.length / batchSize * 0.8)} seconds`);
-
-    //     let uploaded = 0;
-
-    //     // Show screenshot area with dynamic layout
-    //     this.showScreenshotArea(layout);
-
-    //     for (let i = 0; i < this.videos.length; i += batchSize) {
-    //         const batch = this.videos.slice(i, i + batchSize);
-    //         const progressPercent = 5 + ((i / this.videos.length) * 75); // 5% to 80%
-
-    //         this.updateProgress(
-    //             progressPercent,
-    //             `Preparing ${i + batch.length}/${this.videos.length} video thumbnails`
-    //         );
-
-    //         try {
-    //             const batchResults = await this.processBatchScreenshotsForFrontendVideos(sessionId, batch, i, layout);
-    //             uploaded += batchResults;
-    //             console.log(`✅ Frontend video batch ${Math.floor(i / batchSize) + 1} complete: ${batchResults}/${batch.length} video thumbnails processed`);
-
-    //             // Brief pause between batches to avoid overwhelming the system
-    //             if (i + batchSize < this.videos.length) {
-    //                 await this.delay(400);
-    //             }
-    //         } catch (error) {
-    //             console.error(`❌ Frontend video batch ${Math.floor(i / batchSize) + 1} failed:`, error);
-    //         }
-    //     }
-
-    //     // Hide screenshot area
-    //     this.hideScreenshotArea();
-
-    //     console.log(`Successfully processed ${uploaded}/${this.videos.length} video thumbnail screenshots in frontend`);
-    //     return uploaded;
-    // }
-
     transformFrontendResults(frontendResults, sessionId) {
         // Transform frontend results to match the expected server format
         const session = this.frontendSessionManager.getSessionStatus(sessionId);
@@ -5603,7 +4784,8 @@ The extension page will open in a new tab and this scanning window will close.
         // Use dynamic layout dimensions
         const slotSize = layout.slotSize; // Scaled based on device pixel ratio
         const targetImageSize = layout.targetImageSize; // Always 400x400 for final output
-        const spacing = layout.spacing;
+        // const spacing = layout.spacing;
+        const spacing = 5;
         const startX = 10; // Fixed margin from left edge of screenshot area
         const startY = 10; // Fixed margin from top edge of screenshot area
 
@@ -5641,6 +4823,13 @@ The extension page will open in a new tab and this scanning window will close.
             note: `Borderless: ${slotSize}x${slotSize} slot → ${targetImageSize}x${targetImageSize} final image`
         });
 
+
+        setTimeout(() => {
+                const container = document.getElementById('pc-screenshot-container');
+                if (container && container.querySelectorAll('.pc-screenshot-slot').length > 0) {
+                    document.body.classList.add('pc-overlay-active');
+                }
+            }, 0)
         return {
             element: slot,
             photo: photo,
@@ -6657,11 +5846,14 @@ The extension page will open in a new tab and this scanning window will close.
                                 <li class="dark-color font-semibold flex"><span class="w-[170px] flex items-center">Similar Groups Found </span> : <span class="dec-color font-normal pl-2">${results.similar_groups.length}</span></li>
                             </ul>
                         </div>
-                        <div class="results-summary bg-gradient p-4 rounded-[20px]">
+                        
+
+                       <div class="results-summary bg-gradient p-4 rounded-[20px]">
                             <div class="input-group flex flex-col">
                                 <label class="dark-color font-semibold">Similarity Threshold:</label>
                                 <span class="flex w-full gap-2">
-                                    <input type="range" class="w-full">
+                                    <input id="pc-similarity-threshold" type="range" class="w-full" min="0.1" max="1.0" value="${(results.similarity_threshold || 75) / 100}" step="0.01">
+                                      <span id="pc-threshold-value">${results.similarity_threshold || 75}%</span>
                                     <button id="pc-reanalyze" class="whitespace-nowrap background-one text-white py-[6px] px-[15px] inline-flex rounded-full font-medium gap-1 items-center">Re-analyze</button>
                                 </span>
                             </div>
@@ -6705,294 +5897,25 @@ The extension page will open in a new tab and this scanning window will close.
                                 }
                             });
 
-                            // const generateArticles = (groups, mediaType) => {
-                            //        console.log("generateArticlesGROPUS",groups);
-                            //     const mediaArray = mediaType === 'video' ? this.videos : this.photos;
-
-                            //     return groups.map((group, index) => {
-                            //     const isSelectable = this.isPaidVersion || index < 2;
-                            //     // const keptImages = new Set(mediaArray.map(item => item.id)); 
-                            //     return group.image_ids.map((id, idx) => {
-                            //         const mediaItem = mediaArray.find(item => item.id === id);
-                            //         if (!mediaItem) return '';
-                            //     const isKept = groups.some(g => g.image_ids.includes(mediaItem.id));
-                            // //    const isKept = groups.has(mediaItem.id)
-                            // //     const shouldShowDelete = !isKept;
-                            //     // const shouldShowDelete = !isDuplicate;
-                            //     console.log("mediaItem<<<<<<<",mediaItem)
-                            //         const fullSizeUrl = this.convertToFullResolution(mediaItem.url);
-                            //         const similarityPercent = Math.round(group.similarity_score * 100);
-                            //     const quality = results.quality_array.find(q => q.name.startsWith(id));
-                            //      const qualityHTML = quality ? `
-                            //             <ul class="grid grid-cols-2 gap-[3px] my-[8px]">
-                            //                 <li class="bg-gradient flex items-center p-[2px] px-[2px] rounded-[6px]"><span class="text-[11px] dec-color dark-color">Blur:${quality.technical.blurScore.toFixed(2)}</span></li>
-                            //                 <li class="bg-gradient flex items-center p-[2px] px-[2px] rounded-[6px]"><span class="text-[11px] dec-color dark-color">Sharpness:${quality.technical.sharpnessScore.toFixed(2)}</span></li>
-                            //                 <li class="bg-gradient flex items-center p-[2px] px-[2px] rounded-[6px]"><span class="text-[11px] dec-color dark-color">Exposure:${quality.technical.exposureQuality.toFixed(2)}</span></li>
-                            //                 <li class="bg-gradient flex items-center p-[2px] px-[2px] rounded-[6px]"><span class="text-[11px] dec-color dark-color">Contrast:${quality.technical.contrastScore.toFixed(2)}</span></li>
-                            //                 <li class="bg-gradient flex items-center p-[2px] px-[2px] rounded-[6px]"><span class="text-[11px] dec-color dark-color">Noise:${quality.technical.noiseLevel.toFixed(2)}</span></li>
-                            //                 <li class="bg-gradient flex items-center p-[2px] px-[2px] rounded-[6px]"><span class="text-[11px] dec-color dark-color">Color balance:${quality.technical.colorBalance.toFixed(2)}</span></li>
-                            //             </ul>
-                            //             <p class="!text-[12px] mt-[8px] dec-color font-medium">Overall Score:${quality.overallScore.toFixed(2)}%</p>
-                            //         ` : '';
-                            //         return `
-                            //         <article class="pc-image-item border rounded-[8px]  border-[2px] border-[#fca5a5] mb-6 relative" data-photo-id="${mediaItem.id}" data-photo-url="${mediaItem.url}" data-media-type="${mediaType}">
-                            //             <div class="p-[12px] bg-white border-b border-[#e2e8f0] flex gap-[5px] items-center rounded-t-[8px]">
-                            //            <div class="quality_a_details">
-                            //               <span class="quality_a_details_nu text-[#9333ea] font-semibold !text-[15px]">${index + 1}/${group.image_ids.length}</span>
-                            //               <span class="quality_a_details_nu text-[#94a3b8] !text-[15px]">(${quality.overallScore.toFixed(2)}%)</span>
-                            //             <div class="quality_a_details_po rounded-[10px] border-color-two border p-[15px] w-[240px] absolute top-[40px] -left-[30px] z-[999] bg-white">
-                                       
-                            //             <div class="articlecontent">
-                            //                 <h4 class="text-[14px] font-bold dark-color">Quality Assessment Details</h4>
-                            //                 <span class="h-[1px] flex items-center justify-center w-full bg-[#DBF7FE] my-[8px]"></span>
-                            //                 <p class="!text-[12px] dec-color font-medium">Technical quality</p>
-                            //                 ${qualityHTML}
-                            //                 <span class="h-[1px] flex items-center justify-center w-full bg-[#DBF7FE] my-[8px]"></span>
-                       
-                            //             </div>
-                            //          </div>
-                            //             </div>
-                            //             ${
-                            //                 isSelectable
-                            //                 ? `<span class="px-[8px] py-[5px] gap-[4px] border bg-[#10b981] border-[#10b981] rounded-md !text-[12px] text-white ml-auto">Keeping this file</span>`
-                            //                : `<span class="px-[8px] py-[5px] gap-[4px] border bg-[#10b981] border-[#10b981] rounded-md !text-[12px] text-white ml-auto">Keeping this file</span>`
-                            //             }
-                            //             </div>
-                            //             <div class="relative">
-                            //             <img src="${fullSizeUrl}" alt="${mediaItem.ariaLabel}" class="w-full h-[190px] object-cover">
-                            //             </div>
-                            //             <div class="p-[10px] bg-white border-t border-slate-200 rounded-b-[8px]">
-                            //             <h4 class="text-[14px] font-semibold text-[#0f172a] mb-1 truncate">${mediaItem.ariaLabel}</h4>
-                            //             <div class="pc-image-size" data-photo-id="${mediaItem.id}"></div>
-                            //             <div class="flex items-center justify-between">
-                            //                 <button class="px-[8px] py-[5px] gap-[4px] border border-[#e7e5e4] rounded-md !text-[12px]"><i class="fa-solid fa-eye"></i> <span>View</span></button>
-                            //                 <button class="px-[8px] py-[5px] gap-[4px] border bg-[#10b981] border-[#10b981] rounded-md !text-[12px] text-white"><i class="fa-solid fa-check"></i> <span>Keep</span></button>
-                            //             </div>
-                            //             </div>
-                            //         </article>
-                            //         `;
-                            //     }).join('');
-                            //     }).join('');
-                            // };
-
-    //Runnign 18/8
-                            // const generateArticles = (groups, mediaType) => {
-                            //        console.log("generateArticlesGROPUS",groups);
-                            //     const mediaArray = mediaType === 'video' ? this.videos : this.photos;
-
-                            //     return groups.map((group, index) => {
-                            //     const isSelectable = this.isPaidVersion || index < 2;
-                            //     // const keptImages = new Set(mediaArray.map(item => item.id)); 
-                            //     return group.image_ids.map((id, idx) => {
-                            //         const mediaItem = mediaArray.find(item => item.id === id);
-                            //         if (!mediaItem) return '';
-                            //     const isKept = groups.some(g => g.image_ids.includes(mediaItem.id));
-                            // //    const isKept = groups.has(mediaItem.id)
-                            // //     const shouldShowDelete = !isKept;
-                            //     // const shouldShowDelete = !isDuplicate;
-                            //     console.log("mediaItem<<<<<<<",mediaItem)
-                            //         const fullSizeUrl = this.convertToFullResolution(mediaItem.url);
-                            //         const similarityPercent = Math.round(group.similarity_score * 100);
-                            //     const quality = results.quality_array.find(q => q.name.startsWith(id));
-                            //      const qualityHTML = quality ? `
-                            //             <ul class="grid grid-cols-2 gap-[3px] my-[8px]">
-                            //                 <li class="bg-gradient flex items-center p-[2px] px-[2px] rounded-[6px]"><span class="text-[11px] dec-color dark-color">Blur:${quality.technical.blurScore.toFixed(2)}</span></li>
-                            //                 <li class="bg-gradient flex items-center p-[2px] px-[2px] rounded-[6px]"><span class="text-[11px] dec-color dark-color">Sharpness:${quality.technical.sharpnessScore.toFixed(2)}</span></li>
-                            //                 <li class="bg-gradient flex items-center p-[2px] px-[2px] rounded-[6px]"><span class="text-[11px] dec-color dark-color">Exposure:${quality.technical.exposureQuality.toFixed(2)}</span></li>
-                            //                 <li class="bg-gradient flex items-center p-[2px] px-[2px] rounded-[6px]"><span class="text-[11px] dec-color dark-color">Contrast:${quality.technical.contrastScore.toFixed(2)}</span></li>
-                            //                 <li class="bg-gradient flex items-center p-[2px] px-[2px] rounded-[6px]"><span class="text-[11px] dec-color dark-color">Noise:${quality.technical.noiseLevel.toFixed(2)}</span></li>
-                            //                 <li class="bg-gradient flex items-center p-[2px] px-[2px] rounded-[6px]"><span class="text-[11px] dec-color dark-color">Color balance:${quality.technical.colorBalance.toFixed(2)}</span></li>
-                            //             </ul>
-                            //             <p class="!text-[12px] mt-[8px] dec-color font-medium">Overall Score:${quality.overallScore.toFixed(2)}%</p>
-                            //         ` : '';
-                            //         return `
-                            //         <article class="pc-image-item border rounded-[8px]  border-[2px] border-[#fca5a5] mb-6 relative" data-photo-id="${mediaItem.id}" data-photo-url="${mediaItem.url}" data-media-type="${mediaType}">
-                            //             <div class="p-[12px] bg-white border-b border-[#e2e8f0] flex gap-[5px] items-center rounded-t-[8px]">
-                            //            <div class="quality_a_details">
-                            //               <span class="quality_a_details_nu text-[#9333ea] font-semibold !text-[15px]">${index + 1}/${group.image_ids.length}</span>
-                            //               <span class="quality_a_details_nu text-[#94a3b8] !text-[15px]">(${quality.overallScore.toFixed(2)}%)</span>
-                            //             <div class="quality_a_details_po rounded-[10px] border-color-two border p-[15px] w-[240px] absolute top-[40px] -left-[30px] z-[999] bg-white">
-                                       
-                            //             <div class="articlecontent">
-                            //                 <h4 class="text-[14px] font-bold dark-color">Quality Assessment Details</h4>
-                            //                 <span class="h-[1px] flex items-center justify-center w-full bg-[#DBF7FE] my-[8px]"></span>
-                            //                 <p class="!text-[12px] dec-color font-medium">Technical quality</p>
-                            //                 ${qualityHTML}
-                            //                 <span class="h-[1px] flex items-center justify-center w-full bg-[#DBF7FE] my-[8px]"></span>
-                       
-                            //             </div>
-                            //          </div>
-                            //             </div>
-                            //             ${
-                            //                 isSelectable
-                            //                 ? `<span class="px-[8px] py-[5px] gap-[4px] border bg-[#10b981] border-[#10b981] rounded-md !text-[12px] text-white ml-auto">Keeping this file</span>`
-                            //                : `<span class="px-[8px] py-[5px] gap-[4px] border bg-[#10b981] border-[#10b981] rounded-md !text-[12px] text-white ml-auto">Keeping this file</span>`
-                            //             }
-                            //             </div>
-                            //             <div class="relative">
-                            //             <img src="${fullSizeUrl}" alt="${mediaItem.ariaLabel}" class="w-full h-[190px] object-cover">
-                            //             </div>
-                            //             <div class="p-[10px] bg-white border-t border-slate-200 rounded-b-[8px]">
-                            //             <h4 class="text-[14px] font-semibold text-[#0f172a] mb-1 truncate">${mediaItem.ariaLabel}</h4>
-                            //             <div class="pc-image-size" data-photo-id="${mediaItem.id}"></div>
-                            //             <div class="flex items-center justify-between">
-                            //                 <button class="px-[8px] py-[5px] gap-[4px] border border-[#e7e5e4] rounded-md !text-[12px]"><i class="fa-solid fa-eye"></i> <span>View</span></button>
-                            //                 <button class="px-[8px] py-[5px] gap-[4px] border bg-[#10b981] border-[#10b981] rounded-md !text-[12px] text-white"><i class="fa-solid fa-check"></i> <span>Keep</span></button>
-                            //             </div>
-                            //             </div>
-                            //         </article>
-                            //         `;
-                            //     }).join('');
-                            //     }).join('');
-                            // };
-
-
-
                             
+    const generateArticles = (groups, mediaType) => {
+        console.log("generateArticlesGROPUS", groups);
+        const mediaArray = mediaType === "video" ? this.videos : this.photos;
 
-//    const generateArticles = (groups, mediaType) => {
-//   console.log("generateArticlesGROPUS", groups);
-//   const mediaArray = mediaType === "video" ? this.videos : this.photos;
+        return groups.map((group, gIndex) => {
+        const similarityPercent = Math.round(group.similarity_score * 100);
 
-//   return groups
-//     .map((group, index) => {
-//       const similarityPercent = Math.round(group.similarity_score * 100);
-
-//       // Group heading + cards
-//       return `
-//         <section class="mb-8">
-//           <h3 class="text-lg font-semibold text-[#0f172a] mb-4">
-//             Group ${index + 1} - ${similarityPercent}% Match
-//           </h3>
-//           <div class="grid grid-cols-3 gap-5">
-//             ${group.image_ids
-//               .map((id, idx) => {
-//                 const mediaItem = mediaArray.find((item) => item.id === id);
-//                 if (!mediaItem) return "";
-
-//                 const fullSizeUrl = this.convertToFullResolution(mediaItem.url);
-//                 const quality = results.quality_array.find((q) =>
-//                   q.name.startsWith(id)
-//                 );
-
-//                 const qualityHTML = quality
-//                   ? `
-//                   <ul class="grid grid-cols-2 gap-[3px] my-[8px]">
-//                     <li class="bg-gradient flex items-center p-[2px] px-[2px] rounded-[6px]"><span class="text-[11px] dec-color dark-color">Blur: ${quality.technical.blurScore.toFixed(2)}</span></li>
-//                     <li class="bg-gradient flex items-center p-[2px] px-[2px] rounded-[6px]"><span class="text-[11px] dec-color dark-color">Sharpness: ${quality.technical.sharpnessScore.toFixed(2)}</span></li>
-//                     <li class="bg-gradient flex items-center p-[2px] px-[2px] rounded-[6px]"><span class="text-[11px] dec-color dark-color">Exposure: ${quality.technical.exposureQuality.toFixed(2)}</span></li>
-//                     <li class="bg-gradient flex items-center p-[2px] px-[2px] rounded-[6px]"><span class="text-[11px] dec-color dark-color">Contrast: ${quality.technical.contrastScore.toFixed(2)}</span></li>
-//                     <li class="bg-gradient flex items-center p-[2px] px-[2px] rounded-[6px]"><span class="text-[11px] dec-color dark-color">Noise: ${quality.technical.noiseLevel.toFixed(2)}</span></li>
-//                     <li class="bg-gradient flex items-center p-[2px] px-[2px] rounded-[6px]"><span class="text-[11px] dec-color dark-color">Color Balance: ${quality.technical.colorBalance.toFixed(2)}</span></li>
-//                   </ul>
-//                   <p class="!text-[12px] mt-[8px] dec-color font-medium">Overall Score: ${quality.overallScore.toFixed(
-//                     2
-//                   )}%</p>
-//                 `
-//                   : "";
-
-//                 return `
-//                   <article class="pc-image-item border rounded-[8px] border-[2px] border-[#fca5a5] mb-6 relative"
-//                     data-photo-id="${mediaItem.id}" 
-//                     data-photo-url="${mediaItem.url}" 
-//                     data-media-type="${mediaType}">
-                    
-//                     <div class="p-[12px] bg-white border-b border-[#e2e8f0] flex gap-[5px] items-center rounded-t-[8px]">
-//                       <div class="quality_a_details">
-//                         <span class="quality_a_details_nu text-[#9333ea] font-semibold !text-[15px]">${idx + 1}/${
-//                   group.image_ids.length
-//                 }</span>
-//                         <span class="quality_a_details_nu text-[#94a3b8] !text-[15px]">
-//                           (${quality ? quality.overallScore.toFixed(2) : 0}%)
-//                         </span>
-//                         <div class="quality_a_details_po rounded-[10px] border-color-two border p-[15px] w-[240px] absolute top-[40px] -left-[30px] z-[999] bg-white">
-//                           <div class="articlecontent">
-//                             <h4 class="text-[14px] font-bold dark-color">Quality Assessment Details</h4>
-//                             <span class="h-[1px] flex items-center justify-center w-full bg-[#DBF7FE] my-[8px]"></span>
-//                             <p class="!text-[12px] dec-color font-medium">Technical quality</p>
-//                             ${qualityHTML}
-//                             <span class="h-[1px] flex items-center justify-center w-full bg-[#DBF7FE] my-[8px]"></span>
-//                           </div>
-//                         </div>
-//                       </div>
-//                       <span class="px-[8px] py-[5px] gap-[4px] border bg-[#10b981] border-[#10b981] rounded-md !text-[12px] text-white ml-auto">
-//                         Keeping this file
-//                       </span>
-//                     </div>
-
-//                     <div class="relative">
-//                       <img src="${fullSizeUrl}" alt="${mediaItem.ariaLabel}" class="w-full h-[190px] object-cover">
-//                     </div>
-
-//                     <div class="p-[10px] bg-white border-t border-slate-200 rounded-b-[8px]">
-//                       <h4 class="text-[14px] font-semibold text-[#0f172a] mb-1 truncate">${mediaItem.ariaLabel}</h4>
-//                       <div class="pc-image-size" data-photo-id="${mediaItem.id}"></div>
-//                       <div class="flex items-center justify-between">
-//                         <button class="px-[8px] py-[5px] gap-[4px] border border-[#e7e5e4] rounded-md !text-[12px]">
-//                           <i class="fa-solid fa-eye"></i> <span>View</span>
-//                         </button>
-//                         <button class="px-[8px] py-[5px] gap-[4px] border bg-[#10b981] border-[#10b981] rounded-md !text-[12px] text-white">
-//                           <i class="fa-solid fa-check"></i> <span>Keep</span>
-//                         </button>
-//                       </div>
-//                     </div>
-//                   </article>
-//                 `;
-//               })
-//               .join("")}
-//           </div>
-//         </section>
-//       `;
-//     })
-//     .join("");
-// };
-
-
-//Latest 18/8
-        const generateArticles = (groups, mediaType) => {
-  console.log("generateArticlesGROPUS", groups);
-  const mediaArray = mediaType === "video" ? this.videos : this.photos;
-
-  return groups.map((group, gIndex) => {
-    const similarityPercent = Math.round(group.similarity_score * 100);
-
-
-    // const sortedIds = [...group.image_ids].sort((a, b) => {
-    //   const bestImage = group.image_ids.reduce((best, imgId) => {
-    //     const q = results.quality_array.find((qq) => qq.name.startsWith(imgId));
-    //     if (!q) return best;
-    //     if (!best) return { id: imgId, score: q.overallScore };
-    //     return q.overallScore > best.score ? { id: imgId, score: q.overallScore } : best;
-    //   }, null);
-
-    //   const aIsBest = bestImage && bestImage.id === a;
-    //   const bIsBest = bestImage && bestImage.id === b;
-
-    //   if (aIsBest && !bIsBest) return -1;
-    //   if (!aIsBest && bIsBest) return 1;
-    //   return 0;
-    // });
-
-    const bestImage = group.image_ids.reduce((best, imgId) => {
-      const q = results.quality_array.find((qq) => qq.name.startsWith(imgId));
-      if (!q) return best;
-      if (!best) return { id: imgId, score: q.overallScore };
-      return q.overallScore > best.score ? { id: imgId, score: q.overallScore } : best;
-    }, null);
-
-    // Sorting me use kar lo
-    // const sortedIds = [...group.image_ids].sort((a, b) => {
-    //   const aIsBest = bestImage && bestImage.id === a;
-    //   const bIsBest = bestImage && bestImage.id === b;
-    //   if (aIsBest && !bIsBest) return -1;
-    //   if (!aIsBest && bIsBest) return 1;
-    //   return 0;
-    // });
-    const sortedIds = [...group.image_ids].sort((a, b) => {
-  const qa = results.quality_array.find(q => q.name.startsWith(a));
-  const qb = results.quality_array.find(q => q.name.startsWith(b));
-  return (qb?.overallScore || 0) - (qa?.overallScore || 0); // high to low
-});
+        const bestImage = group.image_ids.reduce((best, imgId) => {
+        const q = results.quality_array.find((qq) => qq.name.startsWith(imgId));
+        if (!q) return best;
+        if (!best) return { id: imgId, score: q.overallScore };
+        return q.overallScore > best.score ? { id: imgId, score: q.overallScore } : best;
+        }, null);
+        const sortedIds = [...group.image_ids].sort((a, b) => {
+        const qa = results.quality_array.find(q => q.name.startsWith(a));
+        const qb = results.quality_array.find(q => q.name.startsWith(b));
+        return (qb?.overallScore || 0) - (qa?.overallScore || 0); // high to low
+        });
 
     // Group wrapper
     return `
@@ -7002,7 +5925,14 @@ The extension page will open in a new tab and this scanning window will close.
           <div class="flex items-center justify-between">
             <div class="flex items-center gap-[10px]">
               <span>
-                <button><i class="fa-solid fa-angle-down text-[#94a3b8]"></i></button>
+                <button class="toggle-group-btn">
+                <svg xmlns="http://www.w3.org/2000/svg" 
+                    class="h-5 w-5 text-[#94a3b8]" 
+                    fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                        d="M19 9l-7 7-7-7" />
+                </svg>
+                </button>
               </span>
               <span>
                 <input type="checkbox" class="border border-[#2094f3] rounded-[8px]">
@@ -7037,7 +5967,7 @@ The extension page will open in a new tab and this scanning window will close.
         </div>
 
         <!-- Group Body -->
-        <div class="p-[24px]">
+        <div class="group-body p-[24px]">
           <div class="grid grid-cols-3 gap-5">
                 ${sortedIds.map((id, idx) => {
               const mediaItem = mediaArray.find((item) => item.id === id);
@@ -7061,16 +5991,6 @@ The extension page will open in a new tab and this scanning window will close.
                 q.name.startsWith(id)
               );
               console.log("quality>>>",quality);
-
-            //   const bestImage = group.image_ids.reduce((best, imgId) => {
-            //     const q = results.quality_array.find((qq) =>
-            //     qq.name.startsWith(imgId)
-            //     );
-            //     if (!q) return best;
-            //     if (!best) return { id: imgId, score: q.overallScore };
-            //     return q.overallScore > best.score ? { id: imgId, score: q.overallScore } : best;
-            // }, null);
-
             const isBest = bestImage && bestImage.id === id;
               const qualityHTML = quality
                 ? `
@@ -7147,16 +6067,16 @@ The extension page will open in a new tab and this scanning window will close.
 
                   <div class="p-[16px] bg-white rounded-b-[12px] rounded-[12px]">
                     <h4 class="text-[14px] font-semibold text-[#0f172a] mb-1 truncate">${mediaItem.ariaLabel}</h4>
-<div class="pc-image-size" data-photo-id="${mediaItem.id}"></div>
+        <div class="pc-image-size" data-photo-id="${mediaItem.id}"></div>
                     <div class="flex items-center justify-between">
                       <button class="px-[8px] py-[5px] border rounded-md text-[12px]">
                         <i class="fa-solid fa-eye"></i> View
                       </button>
 
                     <button 
-    class="flex items-center px-[8px] py-[5px] border rounded-md text-[12px] 
+        class="flex items-center px-[8px] py-[5px] border rounded-md text-[12px] 
         ${isBest ? 'bg-[#10b981] text-white' : 'bg-transparent text-[#ef4444] will-delete-btn'}">
-    <span>
+        <span>
         ${isBest 
           ? `<svg viewBox="0 0 130.2 130.2" class="check-icon w-[22px]">
                <polyline fill="none" stroke="#fff" stroke-width="6" points="100.2,40.2 51.5,88.8 29.8,67.5 "/>
@@ -7165,9 +6085,9 @@ The extension page will open in a new tab and this scanning window will close.
                <line fill="none" stroke="#f00" stroke-width="6" x1="34.4" y1="37.9" x2="95.8" y2="92.3"/>
                <line fill="none" stroke="#f00" stroke-width="6" x1="95.8" y1="38" x2="34.4" y2="92.2"/>
              </svg>`}
-    </span>
-    ${isBest ? 'Keep' : 'Delete'}
-</button>
+        </span>
+        ${isBest ? 'Keep' : 'Delete'}
+        </button>
 
 
                     </div>
@@ -7182,13 +6102,6 @@ The extension page will open in a new tab and this scanning window will close.
   }).join("");
 };
 
-
-                            // return `
-                            //     <div class="grid gap-6 grid-cols-1 md:grid-cols-2 lg:grid-cols-4">
-                            //     ${generateArticles(videoGroups, 'video')}
-                            //     ${generateArticles(photoGroups, 'photo')}
-                            //     </div>
-                            // `;
                             return `
                                 <div class="">
                                 ${generateArticles(videoGroups, 'video')}
@@ -7214,8 +6127,8 @@ The extension page will open in a new tab and this scanning window will close.
         $('body').append(overlay);
 
 
-            // Track selected groups globally
-let selectedGroups = new Set();
+        // Track selected groups globally
+        let selectedGroups = new Set();
 
 // Handle Select / Deselect Group
 overlay.on('click', '.select-group-btn', function () {
@@ -7238,34 +6151,6 @@ overlay.on('click', '.select-group-btn', function () {
     // Update Analysis Results summary
     updateAnalysisResults();
 });
-
-// Update summary + Process button
-// function updateAnalysisResults() {
-//     const $summary = overlay.find('#analysis-summary'); 
-//     const $processBtn = overlay.find('#process-selected-groups'); 
-//     // if (selectedGroups.size === 0) {
-//     //     $summary.text("Select All");
-//     //     $processBtn.hide();
-//     // } else {
-//     //     // $summary.text(`${selectedGroups.size} groups selected`);
-//     //     //  $summary.html(`Select All <span class="ml-2">(${selectedGroups.size} groups selected)</span>`);
-//     //     $summary.html(`Select All <span class="ml-2">(${selectedGroups.size} groups selected)</span>`);
-//     //     $processBtn.show();
-//     // }
-//     if (selectedGroups.size === 0) {
-//     $summary.html(`
-//         <button id="select-all-btn">Select All</button>
-//     `);
-//     $processBtn.hide();
-// } else {
-//     $summary.html(`
-//         <div class="mb-2 font-semibold">${selectedGroups.size} Group(s) selected</div>
-//         <button id="select-all-btn">Select All</button>
-//     `);
-//     $processBtn.show();
-// }
-
-// }
 function updateAnalysisResults() {
     const $summary = overlay.find('#group-summary'); 
     const $processBtn = overlay.find('#process-selected-groups'); 
@@ -7278,21 +6163,6 @@ function updateAnalysisResults() {
         $processBtn.show();
     }
 }
-
-// Handle Process Selected Groups
-// overlay.on('click', '#process-selected-groups', function () {
-//     selectedGroups.forEach(idx => {
-//         const $group = overlay.find('.analysisresults-group').eq(idx);
-//         $group.find('article').each(function () {
-//             if (!$(this).find('span:contains("Keeping this file")').length) {
-//                 $(this).remove(); 
-//             }
-//         });
-//     });
-  
-// });
-
-
     overlay.on('click', '#process-selected-groups', function () {
     selectedGroups.forEach(idx => {
         const $group = overlay.find('.analysisresults-group').eq(idx);
@@ -7316,26 +6186,6 @@ function updateAnalysisResults() {
     overlay.find('#select-all-btn').text('Select All');
     updateAnalysisResults();
 });
-
-//         overlay.on('click', '#select-all-btn', function () {
-//     // sabhi groups ko loop karo
-//     overlay.find('.analysisresults-group').each(function (idx) {
-//         const $group = $(this);
-//         const $btn = $group.find('.select-group-btn');
-
-//         // Agar already selected nahi hai to select kar do
-//         if (!selectedGroups.has(idx)) {
-//             selectedGroups.add(idx);
-//             $btn.text('Deselect Group');
-//             $group.find('input[type=checkbox]').prop('checked', true);
-//         }
-//     });
-
-//     // update summary call karo
-//     updateAnalysisResults();
-// });
-
-
 overlay.on('click', '#select-all-btn', function () {
     const $btn = $(this);
     const $processBtn = overlay.find('#process-selected-groups');
@@ -7374,22 +6224,13 @@ overlay.on('click', '#select-all-btn', function () {
     updateAnalysisResults();
 });
 
-// overlay.on('click', '.pc-image-item', function (e) {
-//     const $article = $(this);
-//     const hasWillDelete = $article.find('span:contains("Will delete")').length > 0;
-//     if (hasWillDelete) {
-//         $article.remove(); 
-//     }
-// });
-
-    overlay.on('click', '.will-delete-btn', function (e) {
-    e.stopPropagation(); // parent click trigger na ho
-    $(this).closest('.pc-image-item').remove();
-    });
+        overlay.on('click', '.will-delete-btn', function (e) {
+        e.stopPropagation(); // parent click trigger na ho
+        $(this).closest('.pc-image-item').remove();
+        });
 
 
-        // Add close functionality
-    $('#pc-results-close_').on('click', () => {
+        $('#pc-results-close_').on('click', () => {
             this.cleanupViewportObserver();
             overlay.remove();
         });
@@ -7399,12 +6240,31 @@ overlay.on('click', '#select-all-btn', function () {
         console.log("Dismissed Group:", groupIndex);
         $(this).closest('.analysisresults-group').remove();
         });
-
-        // Add done selecting functionality
         
         $('#pc-done-selecting').on('click', async () => {
             await this.finalizeSelectionAndSync(overlay);
         });
+
+        $(document).on('click', '.toggle-group-btn', function () {
+            const $btn = $(this);
+            const $group = $btn.closest('.analysisresults-group');
+            const $body = $group.find('.group-body');
+
+            // Show / Hide body
+            $body.toggleClass('hidden');
+
+            // Change arrow (down ↔ up)
+            const $icon = $btn.find('svg path');
+            if ($body.hasClass('hidden')) {
+                // Arrow down
+                $icon.attr("d", "M19 9l-7 7-7-7");
+            } else {
+                // Arrow up
+                $icon.attr("d", "M5 15l7-7 7 7");
+            }
+        });
+
+
 
         // Add scroll navigation functionality
         const scrollUpBtn =$('#pc-scroll-up');
@@ -7413,14 +6273,12 @@ overlay.on('click', '#select-all-btn', function () {
 
         if (scrollUpBtn.length) {
             scrollUpBtn.on('click', () => {
-                // resultsContainer.scrollTo({ top: 0, behavior: 'smooth' });
                 resultsContainer.animate({ scrollTop: 0 }, 'slow');
             });
         }
 
         if (scrollDownBtn.length) {
             scrollDownBtn.on('click', () => {
-              //  resultsContainer.scrollTo({ top: resultsContainer.scrollHeight, behavior: 'smooth' });
               resultsContainer.animate({ scrollTop: $resultsContainer[0].scrollHeight }, 'slow');
             });
         }
@@ -7476,112 +6334,109 @@ overlay.on('click', '#select-all-btn', function () {
         // const reanalyzeBtn =$('#pc-reanalyze');
 
         //Comment on 18-8 start
-        // const thresholdSlider = document.getElementById('pc-similarity-threshold');
-        // const thresholdValue = document.getElementById('pc-threshold-value');
-        // const reanalyzeBtn = document.getElementById('pc-reanalyze');
-        // if (thresholdSlider.length && thresholdValue.length) {
-        //     thresholdSlider.addEventListener('input', (e) => {
-        //         const percentage = Math.round(parseFloat(e.target.value) * 100);
-        //         thresholdValue.textContent = percentage + '%';
-        //     });
-        // }
 
-        // if (reanalyzeBtn.length) {
-        //    reanalyzeBtn.addEventListener('click', async () => {
-        //         // Check daily re-analysis limit for non-pro users
-        //         if (!this.isPaidVersion && !this.canPerformReAnalysis()) {
-        //             alert('You have reached limit of re-analysis today. Upgrade to PRO to unlock this or try again tomorrow.');
-        //             const shouldUpgrade = confirm(
-        //                 '🔥 Upgrade to Pro Version!\n\n' +
-        //                 'Unlimited re-analysis is available in the Pro version.\n\n' +
-        //                 '✨ Features included:\n' +
-        //                 '• Unlimited similar groups detection\n' +
-        //                 '• Unlimited re-analysis\n' +
-        //                 '• AI face detection for smart selection\n' +
-        //                 '• Advanced metadata-based selection\n' +
-        //                 '• Priority support\n\n' +
-        //                 'Price: €9.99 (one-time payment)\n\n' +
-        //                 'Click OK to upgrade, or Cancel to continue.'
-        //             );
-        //             if (shouldUpgrade) {
-        //                 this.openPurchasePopup();
-        //             }
-        //             return;
-        //         }
+    const $thresholdSlider = $('#pc-similarity-threshold');
+    const $thresholdValue = $('#pc-threshold-value');
+    const $reanalyzeBtn = $('#pc-reanalyze');
 
-        //         const newThreshold = Math.round(parseFloat(thresholdSlider.val()) * 100);
-        //         console.log(`🔄 Re-analyzing with similarity threshold: ${newThreshold}%`);
+    // Slider change
+    if ($thresholdSlider.length && $thresholdValue.length) {
+        $thresholdSlider.on('input', function () {
+            const percentage = Math.round(parseFloat($(this).val()) * 100);
+            $thresholdValue.text(percentage + '%');
+        });
+    }
 
-        //         // Update re-analysis count for non-pro users
-        //         if (!this.isPaidVersion) {
-        //             await this.updateDailyReAnalysisCount();
-        //         }
+    // Re-analyze button click
+    if ($reanalyzeBtn.length) {
+        $reanalyzeBtn.on('click', async () => {
+            console.log("Button clicked ✅");
 
-        //         // Disable button during re-analysis
-        //         reanalyzeBtn.disabled = true;
-        //         reanalyzeBtn.textContent = 'Re-analyzing...';
+            if (!this.isPaidVersion && !this.canPerformReAnalysis()) {
+                alert('You have reached limit of re-analysis today. Upgrade to PRO to unlock this or try again tomorrow.');
 
-        //         // Show progress overlay
-        //         this.showProgress(true);
-        //         this.updateProgress(0, 'Starting re-analysis...');
+                const shouldUpgrade = confirm(
+                    '🔥 Upgrade to Pro Version!\n\n' +
+                    'Unlimited re-analysis is available in the Pro version.\n\n' +
+                    '✨ Features included:\n' +
+                    '• Unlimited similar groups detection\n' +
+                    '• Unlimited re-analysis\n' +
+                    '• AI face detection for smart selection\n' +
+                    '• Advanced metadata-based selection\n' +
+                    '• Priority support\n\n' +
+                    'Price: €9.99 (one-time payment)\n\n' +
+                    'Click OK to upgrade, or Cancel to continue.'
+                );
 
-        //         try {
-        //             // Get the current session ID from the frontend session manager
-        //             const sessionId = this.frontendSessionManager.currentSessionId;
-        //             if (sessionId) {
-        //                 // Set up progress callback for re-analysis
-        //                 this.frontendSessionManager.progressCallback = (progress, message) => {
-        //                     this.updateProgress(progress, message);
-        //                 };
+                if (shouldUpgrade) {
+                    this.openPurchasePopup();
+                }
+                return;
+            }
 
-        //                 // Re-run analysis with new threshold and progress tracking
-        //                 await this.frontendSessionManager.analyzeSession(sessionId, newThreshold);
+            const newThreshold = Math.round(parseFloat($thresholdSlider.val()) * 100);
+            console.log(`🔄 Re-analyzing with similarity threshold: ${newThreshold}%`);
 
-        //                 // Clear progress callback
-        //                 this.frontendSessionManager.progressCallback = null;
+            if (!this.isPaidVersion) {
+                await this.updateDailyReAnalysisCount();
+            }
 
-        //                 this.updateProgress(100, 'Re-analysis complete! Updating results...');
+            $reanalyzeBtn.prop('disabled', true).text('Re-analyzing...');
+            this.showProgress(true);
+            this.updateProgress(0, 'Starting re-analysis...');
 
-        //                 const updatedResults = this.transformFrontendResults(
-        //                     this.frontendSessionManager.sessions[sessionId],
-        //                     sessionId
-        //                 );
+            try {
+                const sessionId = this.frontendSessionManager.currentSessionId;
+                if (sessionId) {
+                    this.frontendSessionManager.progressCallback = (progress, message) => {
+                        this.updateProgress(progress, message);
+                    };
 
-        //                 // Small delay to show completion message
-        //                 await new Promise(resolve => setTimeout(resolve, 500));
+                    await this.frontendSessionManager.analyzeSession(sessionId, newThreshold);
+                    this.frontendSessionManager.progressCallback = null;
 
-        //                 // Hide progress and update the overlay with new results
-        //                 this.showProgress(false);
-        //                 overlay.remove();
-        //                 this.createResultsOverlay(updatedResults);
-        //             }
-        //         } catch (error) {
-        //             console.error('❌ Error during re-analysis:', error);
-        //             this.updateProgress(0, 'Re-analysis failed! Please try again.');
-        //             setTimeout(() => {
-        //                 this.showProgress(false);
-        //                 alert('Error during re-analysis. Please try again.');
-        //                 reanalyzeBtn.prop('disabled', false).text('Re-analyze');
-        //             }, 2000);
-        //             return; // Exit early to prevent finally block from running immediately
-        //         } finally {
-        //             // Only run this if we didn't have an error (normal completion)
-        //             if (reanalyzeBtn.prop('disabled')) {
-        //         		reanalyzeBtn.prop('disabled', false).text('Re-analyze');
-        //    	        }
-        //         }
-        //     });
-        // }
+                    this.updateProgress(100, 'Re-analysis complete! Updating results...');
+
+                    const updatedResults = this.transformFrontendResults(
+                        this.frontendSessionManager.sessions[sessionId],
+                        sessionId
+                    );
+
+                    await new Promise(resolve => setTimeout(resolve, 500));
+
+                    this.showProgress(false);
+                    $('#overlay').remove(); // agar overlay jQuery se lena ho
+                    this.createResultsOverlay(updatedResults);
+                }
+            } catch (error) {
+                console.error('❌ Error during re-analysis:', error);
+                this.updateProgress(0, 'Re-analysis failed! Please try again.');
+
+                setTimeout(() => {
+                    this.showProgress(false);
+                    alert('Error during re-analysis. Please try again.');
+                    $reanalyzeBtn.prop('disabled', false).text('Re-analyze');
+                }, 2000);
+
+                return;
+            } finally {
+                if ($reanalyzeBtn.prop('disabled')) {
+                    $reanalyzeBtn.prop('disabled', false).text('Re-analyze');
+                }
+            }
+        });
+    }
+
 
    
 
-        // Add photo click handlers for checkbox toggling
+         //comment: Add photo click handlers for checkbox toggling
         // this.setupPhotoToggleHandlers(overlay);
 
-        // // Add group toggle functionality
+        // // //comment: Add group toggle functionality
         // this.setupGroupToggleHandlers(overlay);
 
-        // // Initialize checkbox states based on current DupeYak Duplicate Remover state
+        // // //comment: Initialize checkbox states based on current DupeYak Duplicate Remover state
         // this.initializeCheckboxStates(overlay);
 
 
@@ -7644,8 +6499,8 @@ overlay.on('click', '#select-all-btn', function () {
     }
 //convert to jquery
     setupPhotoToggleHandlers(overlay) {
-        const imageItems = $(overlay).find('.pc-image-item');
-
+       // const imageItems = $(overlay).find('.pc-image-item');
+             const imageItems =  overlay.find('.pc-image-item');
        imageItems.each(function() {
             const imageContainer = item.querySelector('.pc-image-container');
             if (imageContainer.length) {
@@ -7674,7 +6529,7 @@ overlay.on('click', '#select-all-btn', function () {
             }
         });
     }
-//convert to jquery
+    //convert to jquery
     setupGroupToggleHandlers(overlay) {
         const groupToggleButtons = $(overlay).find('.pc-group-toggle');
 
@@ -9758,27 +8613,6 @@ overlay.on('click', '#select-all-btn', function () {
         }
     }
 
-    // showWindowWarning(show) {
-    //     let warningElement = document.getElementById('pc-window-warning');
-
-    //     if (show) {
-    //         // Create warning element if it doesn't exist
-    //         if (!warningElement) {
-    //             warningElement = document.createElement('div');
-    //             warningElement.id = 'pc-window-warning';
-                
-    //             warningElement.innerHTML = 'Please keep this window active — resizing may interrupt your task';
-    //             document.body.appendChild(warningElement);
-    //         }
-    //         warningElement.style.display = 'block';
-    //     } else {
-    //         // Hide warning element
-    //         if (warningElement) {
-    //             warningElement.style.display = 'none';
-    //         }
-    //     }
-    // }
-
     showWindowWarning(show) {
     let warningElement = $('#pc-window-warning');
 
@@ -9803,124 +8637,6 @@ overlay.on('click', '#select-all-btn', function () {
         warningElement.hide();
     }
 }
-
-
-    // updateProgress(percent, text) {
-
-    //        document.querySelectorAll('.rtIMgb, .fCPuz, .nV0gYe').forEach(el => el.remove());
-    // const floatingStatusElement = document.getElementById('pc-floating-status');
-    // const newMagnifierIconUrl = chrome.runtime.getURL('../icons/magnifier.svg');
-    // if (floatingStatusElement && floatingStatusElement.style.display === 'none') {
-    //     floatingStatusElement.style.display = 'block'; // pehli bar show karo
-    // }
-    //     const textElement = document.getElementById('pc-progress-text');
-
-    //      if (textElement) {
-    //     if (!textElement.querySelector('input[type="range"]')) {
-    //          const label = document.createElement('label');
-    //         label.className = 'labelrange';
-    //         // label.textContent = text;
-    //           label.innerHTML = `<img src="${newMagnifierIconUrl}" alt="icon" style="width:16px;height:16px;">${text}`;
-    //         const range = document.createElement('input');
-    //         range.type = 'range';
-    //         range.min = 0;
-    //         range.max = 100;
-    //         range.value = 0;
-    //         range.className = 'w-full';
-    //         textElement.innerHTML = ''; 
-    //        textElement.appendChild(label);
-    //         label.appendChild(range);
-    //     }
-
-    //     const rangeInput = textElement.querySelector('input[type="range"]');
-    //     if (percent < 87) {
-    //         rangeInput.value = percent; // upload phase
-    //     } else {
-    //         const analysisPercent = ((percent - 87) * (100 / 13)).toFixed(4);
-    //         rangeInput.value = analysisPercent;
-    //     }
-    //   textElement.innerHTML = `<img src="${newMagnifierIconUrl}" alt="icon" style="width:16px;height:16px;">${text}`;
-    //     textElement.title = text; // Hover par detailed text
-    // }
-    // }
-
-    //RUNNING :
-//     updateProgress(percent, text) {
-//     document.querySelectorAll('.rtIMgb, .fCPuz, .nV0gYe').forEach(el => el.remove());
-
-//     const floatingStatusElement = document.getElementById('pc-floating-status');
-//     const newMagnifierIconUrl = chrome.runtime.getURL('../icons/magnifier.svg');
-
-//     if (floatingStatusElement && floatingStatusElement.style.display === 'none') {
-//         floatingStatusElement.style.display = 'block';
-//     }
-
-//     const textElement = document.getElementById('pc-progress-text');
-
-//     if (textElement) {
-//         // if (!textElement.querySelector('input[type="range"]')) {
-//         //     const label = document.createElement('label');
-//         //     label.className = 'labelrange';
-
-//         //     const img = document.createElement('img');
-//         //     img.src = newMagnifierIconUrl;
-//         //     img.alt = "icon";
-//         //     img.style.width = "16px";
-//         //     img.style.height = "16px";
-
-//         //     const textNode = document.createTextNode(text);
-
-//         //     const range = document.createElement('input');
-//         //     range.type = 'range';
-//         //     range.min = 0;
-//         //     range.max = 100;
-//         //     range.value = 0;
-//         //     range.className = 'w-full';
-
-//         //     textElement.innerHTML = ''; // purana content clear
-//         //     label.appendChild(img);
-//         //     label.appendChild(textNode);
-//         //     label.appendChild(range);
-//         //     textElement.appendChild(label);
-//         // }
-// if (!textElement.querySelector('input[type="range"]')) {
-//     const label = document.createElement('label');
-//     label.className = 'labelrange';
-//     // Icon + text (upar)
-//     label.innerHTML = `<img src="${newMagnifierIconUrl}" alt="icon" style="width:16px;height:16px;">${text}`;
-
-//     const range = document.createElement('input');
-//     range.type = 'range';
-//     range.min = 0;
-//     range.max = 100;
-//     range.value = 0;
-//     range.className = 'w-full';
-
-//     // HTML reset
-//     textElement.innerHTML = '';
-//     // Pehle icon + text
-//     textElement.appendChild(label);
-//     // Fir slider niche
-//     textElement.appendChild(range);
-// }
-
-//         const rangeInput = textElement.querySelector('input[type="range"]');
-//         if (percent < 87) {
-//             rangeInput.value = percent;
-//         } else {
-//             const analysisPercent = ((percent - 87) * (100 / 13)).toFixed(4);
-//             rangeInput.value = analysisPercent;
-//         }
-
-//         // Sirf text update karo, pura HTML overwrite na karo
-//         const label = textElement.querySelector('label');
-//         if (label) {
-//             label.childNodes[1].nodeValue = text; // second child text node update
-//         }
-
-//         textElement.title = text;
-//     }
-// }
 
     updateProgress(percent, text) {
     document.querySelectorAll('.rtIMgb, .fCPuz, .nV0gYe').forEach(el => el.remove());
@@ -10149,8 +8865,6 @@ if (!textElement.querySelector('input[type="range"]')) {
             // Fetch user-defined similarity threshold value
             const similarityInput = $('#pc-similarity');
             const similarityThreshold = parseInt(similarityInput.text()) || 75;
-            // const similarityInput = document.getElementById('pc-similarity');
-            // const similarityThreshold = parseInt(similarityInput.innerText) || 75;
 
             console.log(`▶️ Full scan initiated with similarity set to ${similarityThreshold}%`);
             console.log(`📥 Raw input: "${similarityInput?.value}", Parsed: ${similarityThreshold}`);
@@ -10835,13 +9549,6 @@ if (!textElement.querySelector('input[type="range"]')) {
                 console.warn('⚠️ Invalid API response structure:', data);
                 return [];
             }
-
-            // Based on the actual response structure:
-            // data[0][1][0][1][3] = filename 
-            // data[0][1][0][1][9] = size
-            // data[0][1][0][1].at(-1)[0] = takesUpSpace (1 = true, 0 = false)
-            // data[0][1][0][1].at(-1)[1] = spaceTaken (actual space used)
-            // data[0][1][0][1].at(-1)[2] = isOriginalQuality (2 = original quality)
             const mediaInfo = data[0][1][0];
             const mediaKey = mediaInfo[0]; // "AF1QipNwY8Mp-chWTwJv2DcZAiZXKeKFHNhMGI8QPj9Q"
             const infoArray = mediaInfo[1]; // Array with 35 elements
@@ -11377,10 +10084,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
 // Initialize extension based on URL pattern
 function initializeExtension() {
-    //console.log('🔧 initializeExtension() called');
-    //console.log('   Document ready state:', document.readyState);
-    //console.log('   Current URL:', window.location.href);
-
     const currentUrl = window.location.href;
     const isGooglePhotos = currentUrl.includes('photos.google.com/');
     const isValidPage = isValidGooglePhotosPage(currentUrl);
@@ -11491,22 +10194,6 @@ function showInfoMessage() {
     $('body').append(infoMessage);
     //console.log('ℹ️ Info message displayed');
 }
-
-
-// Initialize when page loads
-//console.log('📋 Setting up extension initialization...');
-//console.log('   Document ready state:', document.readyState);
-
-// if (document.readyState === 'loading') {
-//     //console.log('🔄 Document still loading, adding DOMContentLoaded listener...');
-//     document.addEventListener('DOMContentLoaded', () => {
-//         //console.log('🎯 DOMContentLoaded event fired, calling initializeExtension...');
-//         initializeExtension();
-//     });
-// } else {
-//     //console.log('🚀 Document already loaded, calling initializeExtension immediately...');
-//     initializeExtension();
-// }
 
 //convert to jquery
 
