@@ -1166,50 +1166,98 @@ calculateEyeAlignment(leftEye, rightEye, jawLine) {
 
 //   return Math.max(0, Math.min(100, score));
 // }
+// calculateOverallScoreOld(technical, faces) {
+//   let score = 0;
+ 
+//   // Base technical quality weights
+//   const baseWeights = {
+//     blur: 0.20,       // inverted so less blur = better
+//     sharpness: 0.15,
+//     exposure: 0.15,
+//     contrast: 0.12,
+//     noise: 0.08,
+//     colorBalance: 0.05
+//   };
+ 
+//   // Technical scores
+//   score += (1 - technical.blurScore) * baseWeights.blur;   // inverse blur
+//   score += technical.sharpnessScore * baseWeights.sharpness;
+//   score += technical.exposureQuality * baseWeights.exposure;
+//   score += technical.contrastScore * baseWeights.contrast;
+//   score += (1 - technical.noiseLevel) * baseWeights.noise; // less noise = better
+//   score += technical.colorBalance * baseWeights.colorBalance;
+ 
+//   // Face quality (if detected)
+//   if (faces && faces.faceCount > 0) {
+//     const faceBonus = (
+//       faces.faceCentering * 0.15 +      // reduced importance
+//       faces.faceSize * 0.05 +
+//       faces.lightingQuality * 0.05 +
+//       faces.portraitScore * 0.05 +
+//       faces.eyeContactScore * 0.70      // highest importance
+//     );
+ 
+//     score += faceBonus;
+ 
+//     console.log('Face quality detected:', {
+//       faceCount: faces.faceCount,
+//       faceCentering: faces.faceCentering.toFixed(2),
+//       eyeContactScore: faces.eyeContactScore.toFixed(2),
+//       faceBonus: faceBonus.toFixed(4)
+//     });
+//   }
+ 
+//   // Normalize to 0–100 range
+//   return Math.max(0, Math.min(100, score));
+// }
+
 calculateOverallScore(technical, faces) {
   let score = 0;
- 
-  // Base technical quality weights
+
   const baseWeights = {
-    blur: 0.20,       // inverted so less blur = better
-    sharpness: 0.15,
-    exposure: 0.15,
-    contrast: 0.12,
-    noise: 0.08,
-    colorBalance: 0.05
+    blur: 0.40,
+    sharpness: 0.20,
+    exposure: 0.02,
+    contrast: 0.02,
+    noise: 0.01,
+    colorBalance: 0.0
   };
- 
-  // Technical scores
-  score += (1 - technical.blurScore) * baseWeights.blur;   // inverse blur
-  score += technical.sharpnessScore * baseWeights.sharpness;
-  score += technical.exposureQuality * baseWeights.exposure;
-  score += technical.contrastScore * baseWeights.contrast;
-  score += (1 - technical.noiseLevel) * baseWeights.noise; // less noise = better
-  score += technical.colorBalance * baseWeights.colorBalance;
- 
-  // Face quality (if detected)
+
+  const faceWeights = {
+    eyeContact: 0.25,
+    faceCentering: 0.05,
+    faceSize: 0.02,
+    lighting: 0.02,
+    portraitScore: 0.01
+  };
+
+  const totalWeight =
+    baseWeights.blur + baseWeights.sharpness + baseWeights.exposure +
+    baseWeights.contrast + baseWeights.noise + baseWeights.colorBalance +
+    faceWeights.eyeContact + faceWeights.faceCentering +
+    faceWeights.faceSize + faceWeights.lighting + faceWeights.portraitScore;
+
+  // Technical Scores
+  score += ((100 - technical.blurScore) / 100) * baseWeights.blur;
+  score += (technical.sharpnessScore / 100) * baseWeights.sharpness;
+  score += (technical.exposureQuality / 100) * baseWeights.exposure;
+  score += (technical.contrastScore / 100) * baseWeights.contrast;
+  score += ((100 - technical.noiseLevel) / 100) * baseWeights.noise;
+  score += (technical.colorBalance / 100) * baseWeights.colorBalance;
+
+  // Face Quality
   if (faces && faces.faceCount > 0) {
-    const faceBonus = (
-      faces.faceCentering * 0.15 +      // reduced importance
-      faces.faceSize * 0.05 +
-      faces.lightingQuality * 0.05 +
-      faces.portraitScore * 0.05 +
-      faces.eyeContactScore * 0.70      // highest importance
-    );
- 
-    score += faceBonus;
- 
-    console.log('Face quality detected:', {
-      faceCount: faces.faceCount,
-      faceCentering: faces.faceCentering.toFixed(2),
-      eyeContactScore: faces.eyeContactScore.toFixed(2),
-      faceBonus: faceBonus.toFixed(4)
-    });
+    score += (faces.eyeContactScore / 100) * faceWeights.eyeContact;
+    score += (faces.faceCentering / 100) * faceWeights.faceCentering;
+    score += (faces.faceSize / 100) * faceWeights.faceSize;
+    score += (faces.lightingQuality / 100) * faceWeights.lighting;
+    score += (faces.portraitScore / 100) * faceWeights.portraitScore;
   }
- 
-  // Normalize to 0–100 range
-  return Math.max(0, Math.min(100, score));
+
+  return Math.max(0, Math.min(100, (score / totalWeight) * 100));
 }
+
+
 getQualityTier(score) {
   if (score >= 85) return 'excellent';
   if (score >= 70) return 'good';
