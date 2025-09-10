@@ -33,12 +33,9 @@ class FrontendSessionManager {
 
     async loadImageMatcher() {
         try {
-            // Since the library is loaded via manifest.json, just verify it's available
             if (typeof window.ImageMatcher !== 'undefined') {
                 this.imageMatcher = new window.ImageMatcher();
                 this.imageMatcherLoaded = true;
-                // //console.log('✅ ImageMatcher library loaded successfully via manifest');
-                // //console.log('📋 ImageMatcher instance created');
                 return Promise.resolve();
             } else {
                 console.error('❌ ImageMatcher library not available', {
@@ -71,7 +68,6 @@ class FrontendSessionManager {
 
         this.sessions[sessionId] = session;
         this.currentSessionId = sessionId;
-        console.log(`📝 Created frontend session: ${sessionId}`);
         return sessionId;
     }
 
@@ -89,37 +85,17 @@ class FrontendSessionManager {
         }
 
         try {
-            console.log(`🖼️ Processing image ${imageId} for session ${sessionId}...`);
 
             // Use base64 data URL directly for console output (more reliable than blob URLs)
-            const base64DataUrl = imageData; // This is already a complete data:image/... URL
+            const base64DataUrl = imageData; 
             const mimeType = imageData.match(/data:([^;]+)/)?.[1] || 'image/png';
-            const base64Size = Math.round((imageData.length * 3) / 4); // Approximate size in bytes
-
-            console.log(`📊 Image data info:`, {
-                imageId: imageId,
-                size: `${(base64Size / 1024).toFixed(2)} KB`,
-                type: mimeType
-            });
-
-            // Display image in console using base64 data URL
+            const base64Size = Math.round((imageData.length * 3) / 4); 
             this.displayImageInConsole(imageId, base64DataUrl, base64Size, mimeType);
-
-            // Convert base64 to image element for hash computation
             const img = await this.createImageFromBase64(imageData);
-
-            // Wait for ImageMatcher library to be loaded
             await this.waitForImageMatcher();
-
-            // Compute image fingerprint using ImageMatcher
-            console.log(`🔢 Computing image fingerprint for ${imageId}...`);
             const frontendStartTime = Date.now();
             const fingerprint = await this.imageMatcher.processImage(img, imageId);
-            console.log("fingerprint>>>",fingerprint)
             const frontendHashTime = Date.now() - frontendStartTime;
-            console.log(`✅ Computed image fingerprint for ${imageId} in ${frontendHashTime}ms`);
-
-            // Store image info and hashes (frontend only)
             const imageInfo = {
                 id: imageId,
                 added_at: new Date().toISOString(),
@@ -135,13 +111,6 @@ class FrontendSessionManager {
             session.imageHashes[imageId] = fingerprint;
             session.total_images = session.images.length;
 
-            console.log(`✅ Added image ${imageId} to frontend session ${sessionId}`);
-            console.log(`  - Dimensions: ${img.naturalWidth}x${img.naturalHeight}`);
-            console.log(`  - aHash: ${fingerprint.aHash}`);
-            console.log(`  - dHash: ${fingerprint.dHash}`);
-            console.log(`  - pHash: ${fingerprint.pHash}`);
-            console.log(`  - edgeHash: ${fingerprint.edgeHash}`);
-
             return { success: true, message: 'Image added successfully' };
 
         } catch (error) {
@@ -155,7 +124,6 @@ class FrontendSessionManager {
         try {
             // Since library is loaded via manifest, just verify it's ready
             if (this.imageMatcherLoaded && this.imageMatcher) {
-                console.log(`✅ ImageMatcher library confirmed ready`);
                 return;
             }
 
@@ -171,7 +139,6 @@ class FrontendSessionManager {
     }
  async calculateImageHash(imageFile) {
   return new Promise((resolve, reject) => {
-    // Basic validation
     if (
       !imageFile ||
       !imageFile.type?.startsWith("image/") ||
@@ -189,8 +156,6 @@ class FrontendSessionManager {
         // Prepare canvas
         const canvas = document.createElement("canvas");
         const ctx = canvas.getContext("2d");
-
-        // Resize consistently to improve perceptual hashing accuracy
         const size = 300;
         canvas.width = size;
         canvas.height = size;
@@ -198,14 +163,10 @@ class FrontendSessionManager {
         ctx.imageSmoothingEnabled = true;
         ctx.imageSmoothingQuality = "high";
         ctx.drawImage(img, 0, 0, size, size);
-
-        // Extract image data
         const { data } = ctx.getImageData(0, 0, size, size);
 
         // Generate hash
         const hash = this.calculatePerceptualHash(data);
-
-        console.log(`🖼️ Generated hash for ${imageFile.name}: ${hash}`);
 
         resolve(hash);
       } catch (err) {
@@ -224,7 +185,6 @@ class FrontendSessionManager {
   });
 }
  calculatePerceptualHash(imageData) {
-  // Convert to grayscale and calculate average
   const grayscale = [];
   for (let i = 0; i < imageData.length; i += 4) {
     const gray = Math.round(
@@ -244,9 +204,6 @@ class FrontendSessionManager {
   for (let i = 0; i < grayscale.length; i++) {
     hash += grayscale[i] > median ? '1' : '0';
   }
-
-//  console.log("Perceptual hash length:", hash.length, "Hash snippet:", hash.slice(0, 50));
-  console.log("hash>>>", hash);
   return hash;
 }
 
@@ -272,7 +229,7 @@ async  urlToFile(url, fileName, mimeType) {
     async createImageFromBase64(base64Data) {
         return new Promise((resolve, reject) => {
             const img = new Image();
-            const timeout = 5000; // 5 second timeout
+            const timeout = 5000; 
 
             const timer = setTimeout(() => {
                 console.error('❌ Image creation timeout');
@@ -281,7 +238,6 @@ async  urlToFile(url, fileName, mimeType) {
 
             img.onload = () => {
                 clearTimeout(timer);
-                console.log(`✅ Image created: ${img.naturalWidth}x${img.naturalHeight}`);
                 resolve(img);
             };
 
@@ -293,7 +249,6 @@ async  urlToFile(url, fileName, mimeType) {
 
             img.crossOrigin = 'anonymous';
             img.src = base64Data;
-            console.log(`📸 Creating image from base64 (${base64Data.length} chars)...`);
         });
     }
 
@@ -320,8 +275,6 @@ async  urlToFile(url, fileName, mimeType) {
 async analyzeSession(sessionId, similarityThreshold = 75) {
     const session = this.sessions[sessionId];
     if (!session) throw new Error('Session not found');
-
-    console.log(`🎯 Starting frontend analysis for session ${sessionId}`);
     const analysisStartTime = Date.now();
     const allResults = [];
 
@@ -330,14 +283,11 @@ async analyzeSession(sessionId, similarityThreshold = 75) {
     session.processed_images = 0;
 
     const threshold = similarityThreshold / 100.0;
-    console.log(`🎯 Using ${similarityThreshold}% similarity threshold (${threshold} decimal)`);
 
     try {
         const images = session.images;
         const totalImages = images.length;
         const totalComparisons = totalImages * (totalImages - 1) / 2;
-
-        console.log(`🔍 Analyzing ${totalImages} images (${totalComparisons} comparisons)...`);
 
         const comparisons = [];
         let completedComparisons = 0;
@@ -347,7 +297,6 @@ async analyzeSession(sessionId, similarityThreshold = 75) {
         const progressCallback = this.progressCallback || (() => {});
 
         // Hash comparison phase
-        console.log(`🔄 Starting hash comparison phase...`);
         progressCallback(10, `Comparing ${totalComparisons.toLocaleString()} hash pairs...`);
 
         for (let i = 0; i < totalImages; i++) {
@@ -358,14 +307,7 @@ async analyzeSession(sessionId, similarityThreshold = 75) {
                 const img2Fingerprint = session.imageHashes[img2Info.id];
 
                 if (img1Fingerprint && img2Fingerprint) {
-                    //  console.log("  Image1:", img1Info.id, "hash length:", img1Fingerprint.length, "snippet:", img1Fingerprint);
-                    // console.log("  Image2:", img2Info.id, "hash length:", img2Fingerprint.length, "snippet:", img2Fingerprint);
-                  //  const similarity = this.calculateSimilarity(img1Fingerprint, img2Fingerprint);
                   const similarity = this.calculateSimilarityFromHashes(img1Fingerprint, img2Fingerprint, threshold);
-                    //let adjustedThreshold = similarityThreshold / 100
-                    console.log("similarity_",similarity);
-                 console.log("adjustedThreshold_",threshold);
-                    //  if (similarity >= threshold) {
                           if (similarity && similarity.is_similar) {
                            comparisons.push({
                             image1_index: i,
@@ -384,8 +326,6 @@ async analyzeSession(sessionId, similarityThreshold = 75) {
                     const progress = 10 + (completedComparisons / totalComparisons) * 80;
                     session.processed_images = completedComparisons;
                     session.analysis_progress = progress;
-
-                    console.log(`📊 Progress: ${completedComparisons}/${totalComparisons} (${progress.toFixed(1)}%) - ${comparisons.length} matches found`);
                     progressCallback(progress, `Comparing hashes: ${completedComparisons}/${totalComparisons} (${comparisons.length} matches found)`);
 
                     await new Promise(resolve => setTimeout(resolve, 1));
@@ -396,52 +336,15 @@ async analyzeSession(sessionId, similarityThreshold = 75) {
 
         // Final comparison update
         session.analysis_progress = 90;
-        // progressCallback(90, `Hash comparison complete! Found ${comparisons.length} similar pairs.`);
-
-        // Group similar images
-        console.log(`🔄 Grouping ${comparisons.length} similar pairs...`);
         // progressCallback(95, `Grouping ${comparisons.length} similar pairs...`);
-        // const similarGroups = this.groupSimilarImagesNew(comparisons, threshold);
-          const similarGroups = this.groupSimilarImagesOld(comparisons);
-          console.log("comparisons>>>",comparisons);
-        console.log("similarGroups>>>",similarGroups)
-        // Quality check phase
-        console.log("🔍 Starting quality analysis for each image...");
+          const similarGroups = this.groupSimilarImages(comparisons);
         const newParamsList = await buildNewParamsFromSession(session);
-
-        // for (const new_params of newParamsList) {
-        //     console.log("new_params>>>",new_params)
-        //     const quality = await this.assessImageQuality(new_params, 300);
-        //     allResults.push({
-        //         name: new_params.name,
-        //         ...quality
-        //     });
-        //     console.log(`Quality for ${new_params.name}:`, quality);
-        // }
-
-
-            // Parallel quality analysis
-        // const qualityResults = await Promise.all(
-        // newParamsList.map(async (new_params) => {
-        //     // console.log("new_params>>>", new_params);
-        //     const quality = await this.assessImageQuality(new_params, 500);
-        //     // console.log(`Quality for ${new_params.name}:`, quality);
-        //     return {
-        //     name: new_params.name,
-        //     ...quality
-        //     };
-        // })
-        // );
-
-        // allResults.push(...qualityResults);
-
         const totalQuality = newParamsList.length;
         let completedQuality = 0;
 
         const qualityResults = [];
 
         for (const new_params of newParamsList) {
-            // ek chhota sa "fake tick" dal do while faceapi heavy task chal raha hai
             const tick = setInterval(() => {
                 const baseProgress = 90 + (completedQuality / totalQuality) * 10;
                 if (session.analysis_progress < baseProgress + 0.5) {
@@ -476,12 +379,9 @@ async analyzeSession(sessionId, similarityThreshold = 75) {
         session.similar_pairs_found = comparisons.length;
         session.last_analysis = new Date().toISOString();
         session.analysis_progress = 100;
-
-          console.log("session>>>",session)
         progressCallback(100, `Analysis complete! Found ${similarGroups.length} groups.`);
 
         const analysisTime = Date.now() - analysisStartTime;
-        console.log(`🚀 Analysis completed in ${analysisTime}ms`);
 
         return {
             success: true,
@@ -537,24 +437,15 @@ faceapiInitialized = false;
 
  async initializeFaceApi() {
    if (this.faceapiInitialized) {
-    console.log("⚠️ Models already loaded, skipping reload...");
     return;
   } 
 
   try {
-    console.log('Loading Tiny Face Detector and Face Landmarks models from /models...');
-
-    console.log("📂 Trying to load models from /models folder...");
-    // await Promise.all([
-    //   faceapi.nets.tinyFaceDetector.loadFromUri('/models'),
-    //   faceapi.nets.faceLandmark68TinyNet.loadFromUri('/models')
-    // ]);
     const modelUrl = chrome.runtime.getURL("models");
     await faceapi.nets.tinyFaceDetector.loadFromUri(modelUrl);
     await faceapi.nets.faceLandmark68TinyNet.loadFromUri(modelUrl);
 
     this.faceapiInitialized = true; 
-    console.log('✅ Tiny Face Detector and Face Landmarks models loaded successfully!');
   } catch (error) {
     console.error('❌ Failed to load face-api.js models:', error);
     console.error('Error details:', error instanceof Error ? error.message : String(error));
@@ -563,16 +454,11 @@ faceapiInitialized = false;
   }
 }
 
-    
-    
   async assessImageQuality(imageFile, processingSize = 500) {
      await this.initializeFaceApi();
 
     const technical = await this.analyzeTechnicalQuality(imageFile, processingSize);
-   console.log("technical >>>",technical);
-
     const faces = await this.analyzeFaceQuality(imageFile);
-   console.log("faces >>>",faces);
     const overallScore = this.calculateOverallScore(technical, faces);
     const qualityTier = this.getQualityTier(overallScore);
 
@@ -620,7 +506,6 @@ calculateRelativeQualityRanks(group) {
           ctx.drawImage(img, 0, 0, processingSize, processingSize);
 
           const imageData = ctx.getImageData(0, 0, processingSize, processingSize);
-          console.log("First 50 pixels:", imageData.data.slice(0, 50));
 
           const blurScore = this.calculateBlurScore(imageData);
           const exposureQuality = this.calculateExposureQuality(imageData);
@@ -657,8 +542,6 @@ calculateRelativeQualityRanks(group) {
       };
 
       try {
-        console.log("imageFile:", imageFile);
-        console.log("imageFile.blob:", imageFile?.blob);
         objectUrl = URL.createObjectURL(imageFile.blob);
         img.src = objectUrl;
       } catch (error) {
@@ -667,99 +550,19 @@ calculateRelativeQualityRanks(group) {
     });
   }
 
-//   async analyzeFaceQuality(imageFile) {
-//     if (!this.faceapiInitialized) {
-//       console.log('Face-api.js not initialized, skipping face detection');
-//       return undefined;
-//     }
-
-//     try {
-//       const img = await this.loadImageElement(imageFile);
-//         console.log("🖼️ Loaded image element:", img);
-//         console.log("🖼️ Image dimensions:", img?.width, img?.height);
-//       console.log('Running Tiny Face Detector with facial landmarks...');
-//       let detectionsWithLandmarks = await faceapi.detectAllFaces(img, new faceapi.TinyFaceDetectorOptions({
-//         scoreThreshold: 0.2,
-//         inputSize: 416
-//       })).withFaceLandmarks(true);
-
-//       if (detectionsWithLandmarks.length === 0) {
-//         console.log('No faces with default settings, trying more sensitive detection...');
-//         detectionsWithLandmarks = await faceapi.detectAllFaces(img, new faceapi.TinyFaceDetectorOptions({
-//           scoreThreshold: 0.1,
-//           inputSize: 320
-//         })).withFaceLandmarks(true);
-//       }
-
-//       if (detectionsWithLandmarks.length === 0) {
-//         console.log('Still no faces, trying largest input size...');
-//         detectionsWithLandmarks = await faceapi.detectAllFaces(img, new faceapi.TinyFaceDetectorOptions({
-//           scoreThreshold: 0.1,
-//           inputSize: 512
-//         })).withFaceLandmarks(true);
-//       }
-
-//       if (detectionsWithLandmarks.length === 0) {
-//         console.log('No faces detected by Tiny Face Detector');
-//         return undefined;
-//       }
-
-//       console.log(`✅ Detected ${detectionsWithLandmarks.length} face(s) with landmarks using Tiny Face Detector!`);
-
-//       const faceWithLandmarks = detectionsWithLandmarks[0];
-//       const box = faceWithLandmarks.detection.box;
-//       const landmarks = faceWithLandmarks.landmarks;
-
-//       const faceSize = this.calculateFaceSize(box, img.width, img.height);
-//       const faceCentering = this.calculateFaceCentering(box, img.width, img.height);
-//       const lightingQuality = await this.calculateFaceLighting(img, box);
-//       const eyeContactScore = this.calculateEyeContactScore(landmarks);
-
-
-//           console.log("faceSize",faceSize);
-//           console.log("faceCentering",faceCentering);
-//           console.log("lightingQuality",lightingQuality);
-//          console.log("eyeContactScore",eyeContactScore);
-//       const portraitScore = (faceSize + faceCentering + lightingQuality + eyeContactScore) / 4;
-
-//       return {
-//         faceCount: detectionsWithLandmarks.length,
-//         eyeContactScore,
-//         faceCentering,
-//         faceSize,
-//         lightingQuality,
-//         portraitScore,
-//       };
-//     } catch (error) {
-//       console.error('Face detection with landmarks failed:', error);
-//       console.error('Error details:', error instanceof Error ? error.message : String(error));
-//       return undefined;
-//     }
-//   }
-
-
-
-
   async analyzeFaceQuality(imageFile) {
     if (!this.faceapiInitialized) {
-      console.log('Face-api.js not initialized, skipping face detection');
       return undefined;
     }
 
     try {
       const img = await this.loadImageElement(imageFile);
-        console.log("🖼️ Loaded image element:", img);
-        console.log("🖼️ Image dimensions:", img?.width, img?.height);
-      console.log('Running Tiny Face Detector with facial landmarks...');
       let detectionsWithLandmarks = await faceapi.detectAllFaces(img, new faceapi.TinyFaceDetectorOptions({
-        // scoreThreshold: 0.5,
-        // inputSize: 416
         scoreThreshold: 0.5,
           inputSize: 416
       })).withFaceLandmarks(true);
 
       if (detectionsWithLandmarks.length === 0) {
-        console.log('No faces with default settings, trying more sensitive detection...');
         detectionsWithLandmarks = await faceapi.detectAllFaces(img, new faceapi.TinyFaceDetectorOptions({
         //   scoreThreshold: 0.23,
         //   inputSize: 320
@@ -770,27 +573,15 @@ calculateRelativeQualityRanks(group) {
       }
 
       if (detectionsWithLandmarks.length === 0) {
-        console.log('Still no faces, trying largest input size...');
         detectionsWithLandmarks = await faceapi.detectAllFaces(img, new faceapi.TinyFaceDetectorOptions({
           scoreThreshold: 0.30,
           inputSize: 512
        
         })).withFaceLandmarks(true);
-      }
-
-
-//          let detectionsWithLandmarks = await faceapi
-//   .detectAllFaces(img, new faceapi.TinyFaceDetectorOptions({
-//     scoreThreshold: 0.8,   // strict confidence
-//     inputSize: 416
-//   }))
-//   .withFaceLandmarks(true);
+      };
       if (detectionsWithLandmarks.length === 0) {
-        console.log('No faces detected by Tiny Face Detector');
         return undefined;
       }
-
-      console.log(`✅ Detected ${detectionsWithLandmarks.length} face(s) with landmarks using Tiny Face Detector!`);
 
       const faceWithLandmarks = detectionsWithLandmarks[0];
       const box = faceWithLandmarks.detection.box;
@@ -800,12 +591,6 @@ calculateRelativeQualityRanks(group) {
       const faceCentering = this.calculateFaceCentering(box, img.width, img.height);
       const lightingQuality = await this.calculateFaceLighting(img, box);
       const eyeContactScore = this.calculateEyeContactScore(landmarks);
-
-
-          console.log("faceSize",faceSize);
-          console.log("faceCentering",faceCentering);
-          console.log("lightingQuality",lightingQuality);
-         console.log("eyeContactScore",eyeContactScore);
       const portraitScore = (faceSize + faceCentering + lightingQuality + eyeContactScore) / 4;
 
       return {
@@ -822,7 +607,6 @@ calculateRelativeQualityRanks(group) {
       return undefined;
     }
   }
-
 
   async detectFaceSimplified(img) {
     const canvas = document.createElement('canvas');
@@ -854,11 +638,6 @@ calculateRelativeQualityRanks(group) {
     const lightingQuality = faceIndicators.lightingQuality;
     const eyeContactScore = faceIndicators.eyeRegionQuality;
     const portraitScore = (faceCentering + faceSize + lightingQuality + eyeContactScore) / 4;
-
-    console.log("faceSize",faceSize);
-          console.log("faceCentering",faceCentering);
-          console.log("lightingQuality",lightingQuality);
-         console.log("eyeContactScore",eyeContactScore);
     return {
       hasFace: true,
       eyeContactScore,
@@ -1097,13 +876,6 @@ calculateRelativeQualityRanks(group) {
     const gazeScore = this.approximateGazeDirection(leftEye, rightEye);
     eyeContactScore += gazeScore * 10;
 
-    console.log('Eye contact analysis:', {
-      leftEyeOpenness: leftEyeOpenness.toFixed(3),
-      rightEyeOpenness: rightEyeOpenness.toFixed(3),
-      eyeSymmetry: eyeSymmetry.toFixed(3),
-      finalScore: Math.min(100, eyeContactScore).toFixed(2)
-    });
-
     return Math.min(100, eyeContactScore);
   }
 
@@ -1147,102 +919,6 @@ calculateEyeAlignment(leftEye, rightEye, jawLine) {
 
   return alignmentScore;
 }
-// calculateOverallScore(technical, faces) {
-//   let score = 0;
-
-//   // Base technical quality weights
-//   const baseWeights = {
-//     blur: 0.20,      // Reduced from 25% to 20%
-//     sharpness: 0.15, // Reduced from 20% to 15%
-//     exposure: 0.15,
-//     contrast: 0.12,
-//     noise: 0.08,
-//     colorBalance: 0.05
-//   };
-
-//   // Apply base technical scores (85% total weight)
-//   score += technical.blurScore * baseWeights.blur;
-//   score += technical.sharpnessScore * baseWeights.sharpness;
-//   score += technical.exposureQuality * baseWeights.exposure;
-//   score += technical.contrastScore * baseWeights.contrast;
-//   score += technical.noiseLevel * baseWeights.noise;
-//   score += technical.colorBalance * baseWeights.colorBalance;
-
-//   // Face quality bonus (27% weight if faces present)
-//   if (faces && faces.faceCount > 0) {
-//     // const faceBonus = (
-//     //   faces.faceCentering * 0.05 +
-//     //   faces.faceSize * 0.04 +
-//     //   faces.lightingQuality * 0.03 +
-//     //   faces.portraitScore * 0.02 +
-//     //   faces.eyeContactScore * 0.13
-//     // );
-//     const faceBonus = (
-//     faces.faceCentering * 0.01 +   // kam kiya
-//     faces.faceSize * 0.01 +
-//     faces.lightingQuality * 0.01 +
-//     faces.portraitScore * 0.01 +
-//     faces.eyeContactScore * 0.2   // bada kiya
-//     );
-
-//     score += faceBonus;
-
-//     console.log('Face quality detected:', {
-//       faceCount: faces.faceCount,
-//       faceCentering: faces.faceCentering.toFixed(2),
-//       faceSize: faces.faceSize.toFixed(2),
-//       lightingQuality: faces.lightingQuality.toFixed(2),
-//       faceBonus: faceBonus.toFixed(4)
-//     });
-//   }
-
-//   return Math.max(0, Math.min(100, score));
-// }
-// calculateOverallScoreOld(technical, faces) {
-//   let score = 0;
- 
-//   // Base technical quality weights
-//   const baseWeights = {
-//     blur: 0.20,       // inverted so less blur = better
-//     sharpness: 0.15,
-//     exposure: 0.15,
-//     contrast: 0.12,
-//     noise: 0.08,
-//     colorBalance: 0.05
-//   };
- 
-//   // Technical scores
-//   score += (1 - technical.blurScore) * baseWeights.blur;   // inverse blur
-//   score += technical.sharpnessScore * baseWeights.sharpness;
-//   score += technical.exposureQuality * baseWeights.exposure;
-//   score += technical.contrastScore * baseWeights.contrast;
-//   score += (1 - technical.noiseLevel) * baseWeights.noise; // less noise = better
-//   score += technical.colorBalance * baseWeights.colorBalance;
- 
-//   // Face quality (if detected)
-//   if (faces && faces.faceCount > 0) {
-//     const faceBonus = (
-//       faces.faceCentering * 0.15 +      // reduced importance
-//       faces.faceSize * 0.05 +
-//       faces.lightingQuality * 0.05 +
-//       faces.portraitScore * 0.05 +
-//       faces.eyeContactScore * 0.70      // highest importance
-//     );
- 
-//     score += faceBonus;
- 
-//     console.log('Face quality detected:', {
-//       faceCount: faces.faceCount,
-//       faceCentering: faces.faceCentering.toFixed(2),
-//       eyeContactScore: faces.eyeContactScore.toFixed(2),
-//       faceBonus: faceBonus.toFixed(4)
-//     });
-//   }
- 
-//   // Normalize to 0–100 range
-//   return Math.max(0, Math.min(100, score));
-// }
-
 calculateOverallScore(technical, faces) {
   let score = 0;
 
@@ -1363,13 +1039,10 @@ getQualityTier(score) {
   // Calculate deviation from center
   const deviation = Math.abs(actualCenter - expectedCenter) / (eyeWidth / 2);
 
-  // Score decreases with deviation from center
   return Math.max(0, 1 - deviation);
 }
 
  calculateBlurScore(imageData) {
-       console.log("imageData>>",imageData)
-  // Simplified Laplacian variance calculation
   const data = imageData.data;
   const width = imageData.width;
   const height = imageData.height;
@@ -1404,45 +1077,6 @@ getQualityTier(score) {
   const variance = count > 0 ? sum / count : 0;
   return Math.min(100, variance / 10); // Normalize to 0-100
 }
-
-//logic by salman
-//  calculateBlurScore(imageData) {
-//   const data = imageData.data;
-//   const width = imageData.width;
-//   const height = imageData.height;
-
-//   // Step 1: Grayscale conversion (luminance formula)
-//   const gray = new Float32Array(width * height);
-//   for (let i = 0; i < data.length; i += 4) {
-//     gray[i / 4] = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
-//   }
-
-//   // Step 2: Laplacian variance calculation
-//   let variance = 0, mean = 0, count = 0;
-//   for (let y = 1; y < height - 1; y++) {
-//     for (let x = 1; x < width - 1; x++) {
-//       const i = y * width + x;
-
-//       const laplacian =
-//         -4 * gray[i] +
-//         gray[i - 1] + gray[i + 1] +
-//         gray[i - width] + gray[i + width];
-
-//       variance += laplacian * laplacian;
-//       mean += laplacian;
-//       count++;
-//     }
-//   }
-
-//   if (count === 0) return 0;
-
-//   // Step 3: True variance
-//   variance = variance / count - (mean / count) ** 2;
-
-//   // Step 4: Normalize to 0–100 scale for readability
-//   const score = Math.min(100, variance / 50); // adjust divisor for sensitivity
-//   return score;
-// }
 
  calculateExposureQuality(imageData) {
   const data = imageData.data;
@@ -1542,25 +1176,9 @@ calculateColorBalance(imageData) {
 }
 calculateSimilarityFromHashes(fingerprint1, fingerprint2, similarityThreshold = 0.85) {
         try {
-            // console.log("fingerprint1>>>",fingerprint1)
-            // console.log("fingerprint2>>>",fingerprint2)
-            // Use ImageMatcher's compareImages method for sophisticated similarity analysis
             const comparison = this.imageMatcher.compareImages(fingerprint1, fingerprint2);
-            console.log("hash>>>>",comparison.details)
-            console.log("🔎 Similarity score (overall):", comparison.overall.toFixed(4));
-            // console.log("   aHash:", comparison.details.aHash.toFixed(4),
-            // "dHash:", comparison.details.dHash.toFixed(4),
-            // "pHash:", comparison.details.pHash.toFixed(4),
-            // "edge:", comparison.details.edgeHash.toFixed(4),
-            // "histogram:", comparison.details.histogram.toFixed(4),
-            // "aspectRatio:", comparison.details.aspectRatio.toFixed(4));
             const isSimilar = comparison.overall >= similarityThreshold;
-
-            // Only log detailed comparison info for matches to reduce console spam
             if (isSimilar) {
-                console.log(`🎯 MATCH FOUND! Overall similarity: ${comparison.overall.toFixed(3)}`);
-                console.log(`  aHash: ${comparison.details.aHash.toFixed(3)}, dHash: ${comparison.details.dHash.toFixed(3)}, pHash: ${comparison.details.pHash.toFixed(3)}`);
-                console.log(`  edgeHash: ${comparison.details.edgeHash.toFixed(3)}, histogram: ${comparison.details.histogram.toFixed(3)}, aspectRatio: ${comparison.details.aspectRatio.toFixed(3)}`);
             }
 
             return {
@@ -1589,117 +1207,24 @@ calculateSimilarityFromHashes(fingerprint1, fingerprint2, similarityThreshold = 
 
     let hammingDistance = 0;
     for (let i = 0; i < hash1.length; i++) {
-// console.log("hash1[i]",hash1[i]);
-// console.log("hash2[i]",hash2.length)
       if (hash1[i] !== hash2[i]) {
         hammingDistance++;
       }
     }
     
 
-  const similarity = (hash1.length - hammingDistance) / hash1.length;  //for Console: ye hamne rakha
-  console.log("Similarity score:", similarity.toFixed(4));
+  const similarity = (hash1.length - hammingDistance) / hash1.length; 
     // Convert to similarity percentage (now based on 90,000 pixels instead of 64)
     return (hash1.length - hammingDistance) / hash1.length;
   }
 
-groupSimilarImagesNew(comparisons, threshold = 0.85) {
-  const groups = [];
-  const processed = new Set();
-
-  // 🔎 Step 1: Build list of unique images from comparisons
-  const imageMap = {};
-  for (const comp of comparisons) {
-    if (!imageMap[comp.image1_id]) {
-      imageMap[comp.image1_id] = {
-        id: comp.image1_id,
-        fileSize: comp.image1_fileSize || 0,
-        qualityAssessment: comp.image1_quality || { overallScore: 0 }
-      };
-    }
-    if (!imageMap[comp.image2_id]) {
-      imageMap[comp.image2_id] = {
-        id: comp.image2_id,
-        fileSize: comp.image2_fileSize || 0,
-        qualityAssessment: comp.image2_quality || { overallScore: 0 }
-      };
-    }
-  }
-  const images = Object.values(imageMap);
-
-  // 🔎 Step 2: Group images by similarity threshold
-  for (let i = 0; i < images.length; i++) {
-    if (processed.has(images[i].id)) continue;
-
-    const currentGroup = [images[i]];
-    processed.add(images[i].id);
-
-    for (let j = i + 1; j < images.length; j++) {
-      if (processed.has(images[j].id)) continue;
-
-      const comp = comparisons.find(c =>
-        (c.image1_id === images[i].id && c.image2_id === images[j].id) ||
-        (c.image2_id === images[i].id && c.image1_id === images[j].id)
-      );
-
-      if (comp && comp.similarity >= threshold) {
-        currentGroup.push(images[j]);
-        processed.add(images[j].id);
-      }
-    }
-
-    // 🔎 Step 3: Only keep groups with 2+ images
-    if (currentGroup.length > 1) {
-      // Average similarity
-      let totalSim = 0;
-      let count = 0;
-      for (let x = 0; x < currentGroup.length; x++) {
-        for (let y = x + 1; y < currentGroup.length; y++) {
-          const comp = comparisons.find(c =>
-            (c.image1_id === currentGroup[x].id && c.image2_id === currentGroup[y].id) ||
-            (c.image2_id === currentGroup[x].id && c.image1_id === currentGroup[y].id)
-          );
-          if (comp) {
-            totalSim += comp.similarity;
-            count++;
-          }
-        }
-      }
-      const avgSim = count > 0 ? totalSim / count : 0;
-
-      // Potential savings
-      const sorted = [...currentGroup].sort((a, b) => b.fileSize - a.fileSize);
-      const potentialSavings = sorted.slice(1).reduce((sum, f) => sum + f.fileSize, 0);
-
-      // Best keeper
-      const bestQuality = currentGroup.reduce((best, curr) =>
-        curr.qualityAssessment.overallScore > best.qualityAssessment.overallScore ? curr : best
-      );
-
-      // 🔑 Extension-style output
-      groups.push({
-        image_ids: currentGroup.map(img => img.id),
-        similarity_score: avgSim,
-        group_size: currentGroup.length,
-        potential_savings: potentialSavings,
-        recommended_keeper: bestQuality.id
-      });
-    }
-  }
-
-  console.log(`🎯 Total groups found: ${groups.length}`);
-  return groups;
-}
-
-
-    groupSimilarImagesOld(comparisons) {
+    groupSimilarImages(comparisons) {
         // Build a graph of similar image connections
         const connections = {};
         const imageIdToIndex = {};
 
         // Initialize connections and build index mapping
         for (const comparison of comparisons) {
-             console.log("comparison1>>>",comparison)
             if (comparison.similarity.is_similar) {
                 const img1Idx = comparison.image1_index;
                 const img2Idx = comparison.image2_index;
@@ -1754,7 +1279,6 @@ groupSimilarImagesNew(comparisons, threshold = 0.85) {
                     // Calculate average similarity score for the group
                     const groupSimilarities = [];
                     for (const comparison of comparisons) {
-                         console.log("comparison2>>>",comparison)
                         if (comparison.similarity.is_similar &&
                             currentGroup.includes(comparison.image1_index) &&
                             currentGroup.includes(comparison.image2_index)) {
@@ -1774,13 +1298,9 @@ groupSimilarImagesNew(comparisons, threshold = 0.85) {
                         internal_connections: groupSimilarities.length
                     };
                     similarGroups.push(group);
-
-                    console.log(`📊 Found similarity group of ${currentGroup.length} images with ${groupSimilarities.length} connections (avg similarity: ${avgSimilarity.toFixed(3)})`);
                 }
             }
         }
-
-        console.log(`🎯 Total similarity groups found: ${similarGroups.length}`);
         return similarGroups;
     }
 
@@ -1866,7 +1386,6 @@ groupSimilarImagesNew(comparisons, threshold = 0.85) {
             };
             img.src = dataUrl;
         } catch (e) {
-            // console.log(`Canvas preview failed for ${imageId}:`, e.message);
         }
     }
 }
@@ -1877,12 +1396,12 @@ class PhotoExtractor {
         this.resumeFromPause = false;
         this.frontendSessionManager = new FrontendSessionManager();
         this.photos = [];
-        this.videos = []; // Track videos found during extraction
-        this.videosFound = 0; // Track videos found during extraction
+        // this.videos = []; 
+        // this.videosFound = 0; 
         this.isProcessing = false;
         this.scrollAttempts = 0;
         this.maxScrollAttempts = 10;
-        this.scrollDelay = 300; // 300ms between scrolls - much faster
+        this.scrollDelay = 300; // 300ms between scrolls
         this.isInitialized = false;
         this.isScanning = false;
         this.isFullWorkflow = false; // Flag to indicate full workflow vs standalone scan
@@ -1892,12 +1411,11 @@ class PhotoExtractor {
         this.lastScreenshotTime = 0; // Track last screenshot for rate limiting
         this.faceApiLoaded = false;
         this.modelsLoaded = false;
-        this.isPaidVersion = false; // Will be loaded from storage
-        // NEW: Daily limits for non-pro users
-        this.dailySimilarGroupsLimit = 2; // Max 2 similar groups per day for free version
-        this.dailyReAnalysisLimit = 10; // Max 10 re-analysis per day for free version
-        this.todaySimilarGroupsShown = 0; // Similar groups shown today
-        this.todayReAnalysisCount = 0; // Re-analysis count today
+        // this.isPaidVersion = false; 
+        // this.dailySimilarGroupsLimit = 2; 
+        // this.dailyReAnalysisLimit = 10; 
+        // this.todaySimilarGroupsShown = 0; 
+        // this.todayReAnalysisCount = 0; 
         this.groupsAlreadyCounted = false; // Flag to prevent double-counting groups
         this.imageSizeCache = {}; // Cache for image sizes to avoid repeated requests
         this.authDataCache = null; // Cache for DupeYak Duplicate Remover authentication data
@@ -1989,8 +1507,6 @@ class PhotoExtractor {
                     if (updateCallback) {
                         updateCallback(processedPhotos, totalPhotos);
                     }
-
-                    console.log(`📊 Got metadata for photo ${result.photoId}:`, result.metadata);
                 }
             });
 
@@ -2004,147 +1520,143 @@ class PhotoExtractor {
     }
 
     async init() {
-        // Always show full panel immediately
-        // //console.log('🚀 Initializing full panel...');
-        await this.loadPaidStatus();
+        // await this.loadPaidStatus();
         this.initializeFaceDetection();
         this.initializeFullPanel();
 
         // Update UI to reflect current status
-        this.updateUIForCurrentStatus();
+        // this.updateUIForCurrentStatus();
 
         // Listen for storage changes to sync daily count across windows
-        this.setupStorageListener();
+        // this.setupStorageListener();
     }
 
-    async loadPaidStatus() {
-        try {
-            // Check local storage for cached status
-            const result = await chrome.storage.local.get(['isPaidVersion', 'dailySimilarGroupsShown', 'dailyReAnalysisCount', 'lastActivityDate']);
-            this.isPaidVersion = result.isPaidVersion || false;
+    // async loadPaidStatus() {
+    //     try {
+    //         const result = await chrome.storage.local.get(['isPaidVersion', 'dailySimilarGroupsShown', 'dailyReAnalysisCount', 'lastActivityDate']);
+    //         this.isPaidVersion = result.isPaidVersion || false;
 
-            // Load daily limits for free version
-            if (!this.isPaidVersion) {
-                await this.loadDailyLimits();
-            }
+    //         // Load daily limits for free version
+    //         if (!this.isPaidVersion) {
+    //             await this.loadDailyLimits();
+    //         }
 
-            //console.log('💰 Paid status loaded:', this.isPaidVersion ? 'PAID' : 'FREE');
-            if (!this.isPaidVersion) {
+    //         //console.log('💰 Paid status loaded:', this.isPaidVersion ? 'PAID' : 'FREE');
+    //         if (!this.isPaidVersion) {
               
-            }
+    //         }
 
-            // Update UI after loading status
-            setTimeout(() => this.updateUIForCurrentStatus(), 100);
-        } catch (error) {
-            console.warn('⚠️ Failed to load paid status:', error);
-            this.isPaidVersion = false;
-        }
-    }
+    //         // Update UI after loading status
+    //         setTimeout(() => this.updateUIForCurrentStatus(), 100);
+    //     } catch (error) {
+    //         console.warn('⚠️ Failed to load paid status:', error);
+    //         this.isPaidVersion = false;
+    //     }
+    // }
 
-    async loadDailyLimits() {
-        try {
-            const today = new Date().toDateString();
-            const result = await chrome.storage.local.get(['dailySimilarGroupsShown', 'dailyReAnalysisCount', 'lastActivityDate']);
+    // async loadDailyLimits() {
+    //     try {
+    //         const today = new Date().toDateString();
+    //         const result = await chrome.storage.local.get(['dailySimilarGroupsShown', 'dailyReAnalysisCount', 'lastActivityDate']);
 
-            // Reset counts if it's a new day
-            if (result.lastActivityDate !== today) {
-                this.todaySimilarGroupsShown = 0;
-                this.todayReAnalysisCount = 0;
-                await chrome.storage.local.set({
-                    dailySimilarGroupsShown: 0,
-                    dailyReAnalysisCount: 0,
-                    lastActivityDate: today
-                });
-            } else {
-                this.todaySimilarGroupsShown = result.dailySimilarGroupsShown || 0;
-                this.todayReAnalysisCount = result.dailyReAnalysisCount || 0;
-            }
-        } catch (error) {
-            console.warn('⚠️ Failed to load daily limits:', error);
-            this.todaySimilarGroupsShown = 0;
-            this.todayReAnalysisCount = 0;
-        }
-    }
+    //         // Reset counts if it's a new day
+    //         if (result.lastActivityDate !== today) {
+    //             this.todaySimilarGroupsShown = 0;
+    //             this.todayReAnalysisCount = 0;
+    //             await chrome.storage.local.set({
+    //                 dailySimilarGroupsShown: 0,
+    //                 dailyReAnalysisCount: 0,
+    //                 lastActivityDate: today
+    //             });
+    //         } else {
+    //             this.todaySimilarGroupsShown = result.dailySimilarGroupsShown || 0;
+    //             this.todayReAnalysisCount = result.dailyReAnalysisCount || 0;
+    //         }
+    //     } catch (error) {
+    //         console.warn('⚠️ Failed to load daily limits:', error);
+    //         this.todaySimilarGroupsShown = 0;
+    //         this.todayReAnalysisCount = 0;
+    //     }
+    // }
 
-    async updateDailySimilarGroupsCount(newGroupsShown) {
-        if (this.isPaidVersion) return; // No limits for paid version
+    // async updateDailySimilarGroupsCount(newGroupsShown) {
+    //     if (this.isPaidVersion) return; // No limits for paid version
 
-        try {
-            const today = new Date().toDateString();
+    //     try {
+    //         const today = new Date().toDateString();
 
-            // Add new groups to existing count
-            this.todaySimilarGroupsShown += newGroupsShown;
+    //         // Add new groups to existing count
+    //         this.todaySimilarGroupsShown += newGroupsShown;
 
-            await chrome.storage.local.set({
-                dailySimilarGroupsShown: this.todaySimilarGroupsShown,
-                lastActivityDate: today
-            });
-        } catch (error) {
-          //  console.warn('⚠️ Failed to update daily similar groups count:', error);
-        }
-    }
+    //         await chrome.storage.local.set({
+    //             dailySimilarGroupsShown: this.todaySimilarGroupsShown,
+    //             lastActivityDate: today
+    //         });
+    //     } catch (error) {
+    //       //  console.warn('⚠️ Failed to update daily similar groups count:', error);
+    //     }
+    // }
 
-    async updateDailyReAnalysisCount() {
-        if (this.isPaidVersion) return; // No limits for paid version
+    // async updateDailyReAnalysisCount() {
+    //     if (this.isPaidVersion) return; // No limits for paid version
 
-        try {
-            const today = new Date().toDateString();
+    //     try {
+    //         const today = new Date().toDateString();
 
-            // Increment re-analysis count
-            this.todayReAnalysisCount += 1;
+    //         // Increment re-analysis count
+    //         this.todayReAnalysisCount += 1;
 
-            await chrome.storage.local.set({
-                dailyReAnalysisCount: this.todayReAnalysisCount,
-                lastActivityDate: today
-            });
-        } catch (error) {
-          //  console.warn('⚠️ Failed to update daily re-analysis count:', error);
-        }
-    }
+    //         await chrome.storage.local.set({
+    //             dailyReAnalysisCount: this.todayReAnalysisCount,
+    //             lastActivityDate: today
+    //         });
+    //     } catch (error) {
+    //     }
+    // }
 
-    canShowMoreSimilarGroups() {
-        if (this.isPaidVersion) return true; // No limits for paid version
-        return this.todaySimilarGroupsShown < this.dailySimilarGroupsLimit;
-    }
+    // canShowMoreSimilarGroups() {
+    //     if (this.isPaidVersion) return true; 
+    //     return this.todaySimilarGroupsShown < this.dailySimilarGroupsLimit;
+    // }
 
-    canPerformReAnalysis() {
-        if (this.isPaidVersion) return true; // No limits for paid version
-        return this.todayReAnalysisCount < this.dailyReAnalysisLimit;
-    }
+    // canPerformReAnalysis() {
+    //     if (this.isPaidVersion) return true; 
+    //     return this.todayReAnalysisCount < this.dailyReAnalysisLimit;
+    // }
 
-    getRemainingGroupsToday() {
-        if (this.isPaidVersion) return Infinity; // No limits for paid version
-        return Math.max(0, this.dailySimilarGroupsLimit - this.todaySimilarGroupsShown);
-    }
+    // getRemainingGroupsToday() {
+    //     if (this.isPaidVersion) return Infinity; 
+    //     return Math.max(0, this.dailySimilarGroupsLimit - this.todaySimilarGroupsShown);
+    // }
 
-    getRemainingReAnalysisToday() {
-        if (this.isPaidVersion) return Infinity; // No limits for paid version
-        return Math.max(0, this.dailyReAnalysisLimit - this.todayReAnalysisCount);
-    }
+    // getRemainingReAnalysisToday() {
+    //     if (this.isPaidVersion) return Infinity; 
+    //     return Math.max(0, this.dailyReAnalysisLimit - this.todayReAnalysisCount);
+    // }
 
-    async setPaidStatus(isPaid) {
-        try {
-            this.isPaidVersion = isPaid;
-            await chrome.storage.local.set({ isPaidVersion: isPaid });
+    // async setPaidStatus(isPaid) {
+    //     try {
+    //         this.isPaidVersion = isPaid;
+    //         await chrome.storage.local.set({ isPaidVersion: isPaid });
 
-            // If upgrading to paid, reset daily limits
-            if (isPaid) {
-                await chrome.storage.local.remove(['dailySimilarGroupsShown', 'dailyReAnalysisCount', 'lastActivityDate']);
-                this.todaySimilarGroupsShown = 0;
-                this.todayReAnalysisCount = 0;
-            //    //console.log('✅ Upgraded to Pro - removed all daily limits');
-            }
+    //         // If upgrading to paid, reset daily limits
+    //         if (isPaid) {
+    //             await chrome.storage.local.remove(['dailySimilarGroupsShown', 'dailyReAnalysisCount', 'lastActivityDate']);
+    //             this.todaySimilarGroupsShown = 0;
+    //             this.todayReAnalysisCount = 0;
+    //         //    //console.log('✅ Upgraded to Pro - removed all daily limits');
+    //         }
 
-           //console.log('💰 Paid status updated:', isPaid ? 'PAID' : 'FREE');
+    //        //console.log('💰 Paid status updated:', isPaid ? 'PAID' : 'FREE');
 
-            // Update UI immediately without full panel refresh
-            this.updateUIForCurrentStatus();
-        } catch (error) {
-          //  console.error('❌ Failed to save paid status:', error);
-        }
-    }
+    //         // Update UI immediately without full panel refresh
+    //         // this.updateUIForCurrentStatus();
+    //     } catch (error) {
+    //       //  console.error('❌ Failed to save paid status:', error);
+    //     }
+    // }
 
-    //convert to jquery
+
     refreshPanel() {
         // Remove existing panel and recreate it
         const existingPanel = $('#photo-cleaner-panel');
@@ -2152,178 +1664,178 @@ class PhotoExtractor {
             existingPanel.remove();
         }
         this.initializeFullPanel();
-        this.updateUIForCurrentStatus();
+        // this.updateUIForCurrentStatus();
     }
 
-    updateUIForCurrentStatus() {
-        // Update version badge and buy button
-        this.updateVersionDisplay();
+    // updateUIForCurrentStatus() {
+    //     // Update version badge and buy button
+    //     this.updateVersionDisplay();
 
-        // Update daily limits display
-        if (!this.isPaidVersion) {
-            this.updateDailyLimitsDisplay();
-        }
-    }
+    //     // Update daily limits display
+    //     if (!this.isPaidVersion) {
+    //         this.updateDailyLimitsDisplay();
+    //     }
+    // }
 
-    //convert to jquery
-    updateVersionDisplay() {
-        const versionBadge = $('.pc-version-badge');
-        const buyButton =  $('#pc-buy');
 
-        if (versionBadge.length) {
-            if (this.isPaidVersion) {
-                versionBadge.attr('class', 'pc-version-badge pc-paid').text('💎 PRO');
-            } else {
-                versionBadge.attr('class', 'pc-version-badge pc-free').text('🆓 FREE');
-            }
-        }
+    // updateVersionDisplay() {
+    //     const versionBadge = $('.pc-version-badge');
+    //     const buyButton =  $('#pc-buy');
 
-        if (buyButton.length) {
-            if (this.isPaidVersion) {
-                buyButton.style.display = 'none';
-            } else {
-                buyButton.style.display = 'block';
-            }
-        }
-    }
+    //     if (versionBadge.length) {
+    //         if (this.isPaidVersion) {
+    //             versionBadge.attr('class', 'pc-version-badge pc-paid').text('💎 PRO');
+    //         } else {
+    //             versionBadge.attr('class', 'pc-version-badge pc-free').text('🆓 FREE');
+    //         }
+    //     }
 
-    updateDailyLimitsDisplay() {
-        if (this.isPaidVersion) return;
+    //     if (buyButton.length) {
+    //         if (this.isPaidVersion) {
+    //             buyButton.style.display = 'none';
+    //         } else {
+    //             buyButton.style.display = 'block';
+    //         }
+    //     }
+    // }
 
-        const versionBadge = document.querySelector('.pc-version-badge.pc-free');
-        if (versionBadge) {
-            versionBadge.textContent = `2 groups | Re-analysis: ${this.todayReAnalysisCount}/${this.dailyReAnalysisLimit}`;
-        }
-    }
+    // updateDailyLimitsDisplay() {
+    //     if (this.isPaidVersion) return;
 
-    async openPurchasePopup() {
+    //     const versionBadge = document.querySelector('.pc-version-badge.pc-free');
+    //     if (versionBadge) {
+    //         versionBadge.textContent = `2 groups | Re-analysis: ${this.todayReAnalysisCount}/${this.dailyReAnalysisLimit}`;
+    //     }
+    // }
 
-        // Check if we're in a scanning window (has scan parameters)
-        const urlParams = new URLSearchParams(window.location.search);
-        const isInScanningWindow = urlParams.has('pc_scan_start');
+    // async openPurchasePopup() {
 
-        if (isInScanningWindow) {
-            // We're in a scanning window - offer to return to original window
-            this.showReturnToOriginalWindowMessage();
-            return;
-        }
+    //     // Check if we're in a scanning window (has scan parameters)
+    //     const urlParams = new URLSearchParams(window.location.search);
+    //     const isInScanningWindow = urlParams.has('pc_scan_start');
 
-        // Send message to background script to open extension page
-        try {
-            const response = await chrome.runtime.sendMessage({
-                action: 'openExtensionPage'
-            });
+    //     if (isInScanningWindow) {
+    //         // We're in a scanning window - offer to return to original window
+    //         this.showReturnToOriginalWindowMessage();
+    //         return;
+    //     }
 
-            if (response && response.success) {
-             //   //console.log('✅ Extension page opened for purchase');
-            } else {
-                console.warn('⚠️ Could not open extension page:', response?.error);
-                // Fallback: show inline message
-                this.showInlinePurchaseMessage();
-            }
-        } catch (error) {
-          //  console.error('❌ Failed to send message to background script:', error);
-            // Fallback: show inline message
-            this.showInlinePurchaseMessage();
-        }
-    }
+    //     // Send message to background script to open extension page
+    //     try {
+    //         const response = await chrome.runtime.sendMessage({
+    //             action: 'openExtensionPage'
+    //         });
 
-    showInlinePurchaseMessage() {
-        // Fallback method to show purchase info if popup fails
-        const message = `
-🔥 Upgrade to Pro Version! 🔥
+    //         if (response && response.success) {
+    //          //   //console.log('✅ Extension page opened for purchase');
+    //         } else {
+    //             console.warn('⚠️ Could not open extension page:', response?.error);
+    //             // Fallback: show inline message
+    //             this.showInlinePurchaseMessage();
+    //         }
+    //     } catch (error) {
+    //       //  console.error('❌ Failed to send message to background script:', error);
+    //         // Fallback: show inline message
+    //         this.showInlinePurchaseMessage();
+    //     }
+    // }
 
-✨ AI-powered smart photo selection
-🎯 Advanced similarity detection  
-⚡ Unlimited photo processing
-🔧 Priority support
+//     showInlinePurchaseMessage() {
+//         // Fallback method to show purchase info if popup fails
+//         const message = `
+// 🔥 Upgrade to Pro Version! 🔥
 
-Price: €9.99 (one-time payment)
+// ✨ AI-powered smart photo selection
+// 🎯 Advanced similarity detection  
+// ⚡ Unlimited photo processing
+// 🔧 Priority support
 
-Would you like to open the extension page to purchase Pro now?
-        `.trim();
+// Price: €9.99 (one-time payment)
 
-        const shouldOpenExtension = confirm(message + '\n\nClick OK to open extension page, or Cancel to continue.');
+// Would you like to open the extension page to purchase Pro now?
+//         `.trim();
 
-        if (shouldOpenExtension) {
-         //   //console.log('🛒 User chose to open extension page for purchase');
-            this.openExtensionPage();
-        } else {
-          //  //console.log('ℹ️ User chose to continue without purchasing');
-        }
-    }
+//         const shouldOpenExtension = confirm(message + '\n\nClick OK to open extension page, or Cancel to continue.');
 
-    showReturnToOriginalWindowMessage() {
-        // Show message when trying to buy from scanning window
-        const message = `
-🛒 Purchase Pro Version
+//         if (shouldOpenExtension) {
+//          //   //console.log('🛒 User chose to open extension page for purchase');
+//             this.openExtensionPage();
+//         } else {
+//           //  //console.log('ℹ️ User chose to continue without purchasing');
+//         }
+//     }
 
-You're currently in a scanning window. To purchase the Pro version:
+//     showReturnToOriginalWindowMessage() {
+//         // Show message when trying to buy from scanning window
+//         const message = `
+// 🛒 Purchase Pro Version
 
-1. Click "Open Extension Page" below
-2. Complete your purchase in the extension page
+// You're currently in a scanning window. To purchase the Pro version:
 
-The extension page will open in a new tab and this scanning window will close.
-        `.trim();
+// 1. Click "Open Extension Page" below
+// 2. Complete your purchase in the extension page
 
-        const shouldProceed = confirm(message + '\n\nClick OK to open extension page, or Cancel to continue scanning.');
+// The extension page will open in a new tab and this scanning window will close.
+//         `.trim();
 
-        if (shouldProceed) {
-         //   //console.log('🔄 User chose to open extension page for purchase');
-            this.openExtensionPageAndClose();
-        } else {
-         //   //console.log('ℹ️ User chose to continue scanning');
-        }
-    }
+//         const shouldProceed = confirm(message + '\n\nClick OK to open extension page, or Cancel to continue scanning.');
 
-    returnToOriginalWindow() {
+//         if (shouldProceed) {
+//          //   //console.log('🔄 User chose to open extension page for purchase');
+//             // this.openExtensionPageAndClose();
+//         } else {
+//          //   //console.log('ℹ️ User chose to continue scanning');
+//         }
+//     }
 
-        // Create a clean URL without scan parameters for the original window
-        const currentUrl = new URL(window.location.href);
-        currentUrl.searchParams.delete('pc_scan_start');
-        currentUrl.searchParams.delete('pc_full_workflow');
-        currentUrl.searchParams.delete('pc_similarity');
+    // returnToOriginalWindow() {
 
-        const originalUrl = currentUrl.toString();
+    //     // Create a clean URL without scan parameters for the original window
+    //     const currentUrl = new URL(window.location.href);
+    //     currentUrl.searchParams.delete('pc_scan_start');
+    //     currentUrl.searchParams.delete('pc_full_workflow');
+    //     currentUrl.searchParams.delete('pc_similarity');
 
-        // Try to open the original window
-        const originalWindow = window.open(originalUrl, '_blank');
+    //     const originalUrl = currentUrl.toString();
 
-        if (originalWindow) {
-      //      //console.log('✅ Original window opened, closing scanning window...');
-            // Close current scanning window after a brief delay
-            setTimeout(() => {
-                window.close();
-            }, 1000);
-        } else {
-        //    console.error('❌ Failed to open original window (popup blocked?)');
-            alert('Failed to open original window. Please manually navigate to DupeYak Duplicate Remover in another tab to purchase.');
-        }
-    }
+    //     // Try to open the original window
+    //     const originalWindow = window.open(originalUrl, '_blank');
 
-    async openExtensionPageAndClose() {
-        // Open extension page and close current scanning window
+    //     if (originalWindow) {
+    //   //      //console.log('✅ Original window opened, closing scanning window...');
+    //         // Close current scanning window after a brief delay
+    //         setTimeout(() => {
+    //             window.close();
+    //         }, 1000);
+    //     } else {
+    //     //    console.error('❌ Failed to open original window (popup blocked?)');
+    //         alert('Failed to open original window. Please manually navigate to DupeYak Duplicate Remover in another tab to purchase.');
+    //     }
+    // }
 
-        try {
-            // Send message to background script to open extension page
-            const response = await chrome.runtime.sendMessage({
-                action: 'openExtensionPage'
-            });
+    // async openExtensionPageAndClose() {
+    //     // Open extension page and close current scanning window
 
-            if (response && response.success) {
-                // Close current scanning window after a brief delay to ensure extension page loads
-                setTimeout(() => {
-                    window.close();
-                }, 1000);
-            } else {
-              //  console.error('❌ Failed to open extension page:', response?.error);
-                alert('Failed to open extension page. Please manually open the extension from your browser toolbar to purchase.');
-            }
-        } catch (error) {
-        //    console.error('❌ Error opening extension page:', error);
-            alert('Failed to open extension page. Please manually open the extension from your browser toolbar to purchase.');
-        }
-    }
+    //     try {
+    //         // Send message to background script to open extension page
+    //         const response = await chrome.runtime.sendMessage({
+    //             action: 'openExtensionPage'
+    //         });
+
+    //         if (response && response.success) {
+    //             // Close current scanning window after a brief delay to ensure extension page loads
+    //             setTimeout(() => {
+    //                 window.close();
+    //             }, 1000);
+    //         } else {
+    //           //  console.error('❌ Failed to open extension page:', response?.error);
+    //             alert('Failed to open extension page. Please manually open the extension from your browser toolbar to purchase.');
+    //         }
+    //     } catch (error) {
+    //     //    console.error('❌ Error opening extension page:', error);
+    //         alert('Failed to open extension page. Please manually open the extension from your browser toolbar to purchase.');
+    //     }
+    // }
 
     async openExtensionPage() {
         // Open extension page without closing current window
@@ -2335,7 +1847,6 @@ The extension page will open in a new tab and this scanning window will close.
             });
 
             if (response && response.success) {
-             //   //console.log('✅ Extension page opened successfully');
             } else {
               //  console.error('❌ Failed to open extension page:', response?.error);
                 alert('Failed to open extension page. Please manually open the extension from your browser toolbar to purchase.');
@@ -2347,145 +1858,134 @@ The extension page will open in a new tab and this scanning window will close.
     }
 
     // Temporary method for testing - remove in production
-    async testPurchase() {
-      //  //console.log('🧪 Testing purchase flow...');
-        await this.setPaidStatus(true);
-        // //console.log('✅ Test purchase completed');
-    }
+    // async testPurchase() {
+    //   //  //console.log('🧪 Testing purchase flow...');
+    //     // await this.setPaidStatus(true);
+    //     // //console.log('✅ Test purchase completed');
+    // }
 
     // Debug method to clear pro status
-    async clearProStatus() {
-        // //console.log('🧹 Clearing pro status for debugging...');
-        await this.setPaidStatus(false);
-        // //console.log('✅ Pro status cleared - now showing FREE version');
-    }
+    // async clearProStatus() {
+    //     // //console.log('🧹 Clearing pro status for debugging...');
+    //     // await this.setPaidStatus(false);
+    //     // //console.log('✅ Pro status cleared - now showing FREE version');
+    // }
 
     // Debug method to show current status
-    showDebugStatus() {
+    // showDebugStatus() {
 
-    }
+    // }
 
-    async resetDailyLimits() {
-    //    //console.log('🔄 Resetting daily limits for debugging...');
-        try {
-            this.todaySimilarGroupsShown = 0;
-            this.todayReAnalysisCount = 0;
-            await chrome.storage.local.remove(['dailySimilarGroupsShown', 'dailyReAnalysisCount', 'lastActivityDate']);
-            this.updateDailyLimitsDisplay();
-        //    //console.log('✅ Daily limits reset - Groups:', this.dailySimilarGroupsLimit, ', Re-analysis:', this.dailyReAnalysisLimit);
-        } catch (error) {
-          //  console.error('❌ Failed to reset daily limits:', error);
-        }
-    }
+    // async resetDailyLimits() {
+    // //    //console.log('🔄 Resetting daily limits for debugging...');
+    //     try {
+    //         this.todaySimilarGroupsShown = 0;
+    //         this.todayReAnalysisCount = 0;
+    //         await chrome.storage.local.remove(['dailySimilarGroupsShown', 'dailyReAnalysisCount', 'lastActivityDate']);
+    //         // this.updateDailyLimitsDisplay();
+    //     //    //console.log('✅ Daily limits reset - Groups:', this.dailySimilarGroupsLimit, ', Re-analysis:', this.dailyReAnalysisLimit);
+    //     } catch (error) {
+    //       //  console.error('❌ Failed to reset daily limits:', error);
+    //     }
+    // }
 
-    async setGroupCount(count) {
-        console.log(`🔧 Setting daily group count to ${count} for debugging...`);
-        try {
-            const today = new Date().toDateString();
-            this.todaySimilarGroupsShown = count;
-            await chrome.storage.local.set({
-                dailySimilarGroupsShown: count,
-                lastActivityDate: today
-            });
-            this.updateDailyLimitsDisplay();
-        } catch (error) {
-           // console.error('❌ Failed to set group count:', error);
-        }
-    }
+    // async setGroupCount(count) {
+    //     console.log(`🔧 Setting daily group count to ${count} for debugging...`);
+    //     try {
+    //         const today = new Date().toDateString();
+    //         this.todaySimilarGroupsShown = count;
+    //         await chrome.storage.local.set({
+    //             dailySimilarGroupsShown: count,
+    //             lastActivityDate: today
+    //         });
+    //         // this.updateDailyLimitsDisplay();
+    //     } catch (error) {
+    //        // console.error('❌ Failed to set group count:', error);
+    //     }
+    // }
 
-    async setReAnalysisCount(count) {
-        console.log(`🔧 Setting daily re-analysis count to ${count} for debugging...`);
-        try {
-            const today = new Date().toDateString();
-            this.todayReAnalysisCount = count;
-            await chrome.storage.local.set({
-                dailyReAnalysisCount: count,
-                lastActivityDate: today
-            });
-            this.updateDailyLimitsDisplay();
-        } catch (error) {
-            // console.error('❌ Failed to set re-analysis count:', error);
-        }
-    }
+    // async setReAnalysisCount(count) {
+    //     console.log(`🔧 Setting daily re-analysis count to ${count} for debugging...`);
+    //     try {
+    //         const today = new Date().toDateString();
+    //         this.todayReAnalysisCount = count;
+    //         await chrome.storage.local.set({
+    //             dailyReAnalysisCount: count,
+    //             lastActivityDate: today
+    //         });
+    //         // this.updateDailyLimitsDisplay();
+    //     } catch (error) {
+    //         // console.error('❌ Failed to set re-analysis count:', error);
+    //     }
+    // }
 
-    setupStorageListener() {
-        // Listen for changes to daily limits and paid status across all windows
-        chrome.storage.onChanged.addListener((changes, namespace) => {
-            if (namespace === 'local') {
-                let shouldUpdateUI = false;
+    // setupStorageListener() {
+    //     // Listen for changes to daily limits and paid status across all windows
+    //     chrome.storage.onChanged.addListener((changes, namespace) => {
+    //         if (namespace === 'local') {
+    //             let shouldUpdateUI = false;
 
-                // Handle daily similar groups count changes
-                if (changes.dailySimilarGroupsShown) {
-                    const newCount = changes.dailySimilarGroupsShown.newValue;
-                    if (newCount !== undefined && newCount !== this.todaySimilarGroupsShown) {
-                     //   //console.log('🔄 Daily similar groups count updated from another window:', this.todaySimilarGroupsShown, '→', newCount);
-                        this.todaySimilarGroupsShown = newCount;
-                        shouldUpdateUI = true;
-                    }
-                }
+    //             // Handle daily similar groups count changes
+    //             if (changes.dailySimilarGroupsShown) {
+    //                 const newCount = changes.dailySimilarGroupsShown.newValue;
+    //                 if (newCount !== undefined && newCount !== this.todaySimilarGroupsShown) {
+    //                  //   //console.log('🔄 Daily similar groups count updated from another window:', this.todaySimilarGroupsShown, '→', newCount);
+    //                     this.todaySimilarGroupsShown = newCount;
+    //                     shouldUpdateUI = true;
+    //                 }
+    //             }
 
-                // Handle daily re-analysis count changes
-                if (changes.dailyReAnalysisCount) {
-                    const newCount = changes.dailyReAnalysisCount.newValue;
-                    if (newCount !== undefined && newCount !== this.todayReAnalysisCount) {
-                     //   //console.log('🔄 Daily re-analysis count updated from another window:', this.todayReAnalysisCount, '→', newCount);
-                        this.todayReAnalysisCount = newCount;
-                        shouldUpdateUI = true;
-                    }
-                }
+    //             // Handle daily re-analysis count changes
+    //             if (changes.dailyReAnalysisCount) {
+    //                 const newCount = changes.dailyReAnalysisCount.newValue;
+    //                 if (newCount !== undefined && newCount !== this.todayReAnalysisCount) {
+    //                  //   //console.log('🔄 Daily re-analysis count updated from another window:', this.todayReAnalysisCount, '→', newCount);
+    //                     this.todayReAnalysisCount = newCount;
+    //                     shouldUpdateUI = true;
+    //                 }
+    //             }
 
-                // Handle paid status changes
-                if (changes.isPaidVersion) {
-                    const newPaidStatus = changes.isPaidVersion.newValue;
-                    if (newPaidStatus !== undefined && newPaidStatus !== this.isPaidVersion) {
-                   //     //console.log('💰 Paid status updated from another window:', this.isPaidVersion, '→', newPaidStatus);
-                        this.isPaidVersion = newPaidStatus;
+    //             // Handle paid status changes
+    //             if (changes.isPaidVersion) {
+    //                 const newPaidStatus = changes.isPaidVersion.newValue;
+    //                 if (newPaidStatus !== undefined && newPaidStatus !== this.isPaidVersion) {
+    //                //     //console.log('💰 Paid status updated from another window:', this.isPaidVersion, '→', newPaidStatus);
+    //                     this.isPaidVersion = newPaidStatus;
 
-                        // If upgraded to paid, reset daily limits
-                        if (newPaidStatus) {
-                            this.todaySimilarGroupsShown = 0;
-                            this.todayReAnalysisCount = 0;
-                        }
-                        shouldUpdateUI = true;
-                    }
-                }
+    //                     // If upgraded to paid, reset daily limits
+    //                     if (newPaidStatus) {
+    //                         this.todaySimilarGroupsShown = 0;
+    //                         this.todayReAnalysisCount = 0;
+    //                     }
+    //                     shouldUpdateUI = true;
+    //                 }
+    //             }
 
-                // Update UI if any relevant changes occurred
-                if (shouldUpdateUI) {
-                 //   //console.log('🔄 Updating UI due to storage changes from another window');
-                    this.updateUIForCurrentStatus();
-                }
-            }
-        });
-    }
-
-
-
-
+    //             // Update UI if any relevant changes occurred
+    //             if (shouldUpdateUI) {
+    //              //   //console.log('🔄 Updating UI due to storage changes from another window');
+    //                 // this.updateUIForCurrentStatus();
+    //             }
+    //         }
+    //     });
+    // }
 
     async initializeFaceDetection() {
         try {
-
             // Wait for face-api.js to be available
             if (typeof faceapi === 'undefined') {
-                // //console.log('⏳ Waiting for face-api.js to load...');
                 await this.waitForFaceApi();
             }
 
             // Load models
             const modelPath = chrome.runtime.getURL('models');
-            // //console.log('📁 Loading models from:', modelPath);
-
             await Promise.all([
                 faceapi.nets.tinyFaceDetector.loadFromUri(modelPath),
                 faceapi.nets.faceExpressionNet.loadFromUri(modelPath)
             ]);
 
             this.modelsLoaded = true;
-            // //console.log('✅ Face detection models loaded successfully');
-
         } catch (error) {
-            // console.warn('⚠️ Failed to load face detection models:', error);
             this.modelsLoaded = false;
         }
     }
@@ -2504,21 +2004,16 @@ The extension page will open in a new tab and this scanning window will close.
         });
     }
 
-
-//convert to jquery
     initializeFullPanel() {
-        // Don't initialize if already exists
          if ($('#photo-cleaner-panel').length) {
             return;
         }
 
-        // Remove the minimal button
         const triggerButton =$('#photo-cleaner-trigger');
         if (triggerButton.length) {
             triggerButton.remove();
         }
 
-        // Check viewport size first
         const viewportCheck = this.checkViewportSize();
         if (!viewportCheck.adequate) {
             this.showViewportResizeMessage(viewportCheck);
@@ -2584,18 +2079,10 @@ The extension page will open in a new tab and this scanning window will close.
 `);
 
 
-            const versionHtml = this.isPaidVersion
-                ? `
-                    <a href="#" class="flex items-center gap-2 dark-color font-semibold">
-                    <span class="w-[30px] pl-2 premium-icon">
-                        <img alt="">
-                    </span> 💎 PRO
-                    </a>
-                `
-                : `
+            const versionHtml = `
                     <div class="flex items-center justify-between gap-4">
                     <a href="#" class="flex items-center gap-1 text-white font-semibold">
-                        <span class="w-[30px] pl-2 premium-icon">
+                        <span class="w-[30px] pl-2 premium-icon ">
                         <img alt="">
                         </span> 
                     </a>
@@ -2607,9 +2094,9 @@ The extension page will open in a new tab and this scanning window will close.
                 `;
 
             panel.find('#pc-version-wrap').html(versionHtml);
-            // panel.find('.premium-img').attr('src', premiumIconUrl);
             panel.find('.play-img').attr('src', playIconUrl);
             panel.find('.paush-img').attr('src', paushIconUrl);
+
         // Create screenshot area separately and append to body (not inside panel)
         const screenshotArea = $('<div>', {
         id: 'pc-screenshot-area',
@@ -2631,15 +2118,13 @@ The extension page will open in a new tab and this scanning window will close.
     });
     }
 
-        // Add event listeners
     $('#pc-close').on('click', () => {
             this.closePanel();
             $('body').removeClass('pc-overlay-active');
         });
 
-    // $('#pc-scan').on('click', () => {
   $(document)
-  .off('click', '#pc-scan') // Purana event remove
+  .off('click', '#pc-scan') 
   .on('click', '#pc-scan', async () => {
 
     const userData = await getUserData();
@@ -2676,9 +2161,9 @@ The extension page will open in a new tab and this scanning window will close.
 
 
         // Add buy button listener
-         $('#pc-buy').on('click', () => {
-        this.openPurchasePopup();
-    });
+    //      $('#pc-buy').on('click', () => {
+    //     // this.openPurchasePopup();
+    // });
 
 
     
@@ -2695,28 +2180,24 @@ The extension page will open in a new tab and this scanning window will close.
             const similarityThreshold = urlParams.get('pc_similarity') || 85;
 
             // Set similarity threshold in UI
-           const similarityInput  = $('#pc-similarity');  //Already change
+           const similarityInput  = $('#pc-similarity'); 
         if (similarityInput .length) {
             similarityInput .text(similarityThreshold);
-            // //console.log('✅ Set similarity threshold in UI:', similarityThreshold);
         } else {
-            // //console.log('⚠️ Could not find similarity input element');
         }
 
             if (isFullWorkflow) {
                 // This is after a page reload for full workflow - continue with full workflow
                 setTimeout(() => {
                     this.startFullWorkflow();
-                }, 1000); // Give page a moment to fully load
+                }, 1000);
             } else {
                 // This is after a page reload for scanning only - start scanning
-                // //console.log('🔄 Page reloaded with scan parameter, auto-restarting scan...');
                 setTimeout(() => {
                     this.startScanning();
-                }, 1000); // Give page a moment to fully load
+                }, 1000);
             }
         } else {
-           // //console.log('ℹ️ No auto-start parameters found, waiting for manual trigger');
         }
 
     }
@@ -2733,7 +2214,6 @@ The extension page will open in a new tab and this scanning window will close.
     }
     }
 
-    //convert to jquery
     closePanel() {
         const panel = $('#photo-cleaner-panel');
         if (panel.length) {
@@ -2759,7 +2239,6 @@ The extension page will open in a new tab and this scanning window will close.
     }
 
   closeInitialPopup() {
-        // const PopUp = $('#Intial_PopUp,#Intial_PopUp_button');
           const PopUp = $('.popup-wrapper');
         if (PopUp.length) {
             PopUp.remove();
@@ -2767,18 +2246,15 @@ The extension page will open in a new tab and this scanning window will close.
     }
      
     setupObserver() {
-        // Setup observer to detect new photos being loaded during scanning
         if (this.observer) {
             this.observer.disconnect();
         }
 
         this.observer = new MutationObserver((mutations) => {
-            // Only run during active scanning to detect new photos
             if (!this.isInitialized || !this.isScanning) return;
 
             mutations.forEach((mutation) => {
                 if (mutation.addedNodes.length > 0) {
-                    // Throttle updates to avoid performance issues
                     clearTimeout(this.updateTimeout);
                     this.updateTimeout = setTimeout(() => {
                         this.updatePhotoCount();
@@ -2807,20 +2283,13 @@ The extension page will open in a new tab and this scanning window will close.
         }
     }
 
-    //convert to jquery
     async startScanning() {
         if (this.isProcessing && !this.resumeFromPause) return;
-
-        // Check if this is an auto-restart after page reload (GET parameter-based)
         const urlParams = new URLSearchParams(window.location.search);
         const isAutoRestart = urlParams.has('pc_scan_start');
 
         if (!this.resumeFromPause) {
         if (!isAutoRestart) {
-            // This is a manual scan start - open new window to ensure clean DOM state for scanning
-            // //console.log('🔄 Opening new window to ensure clean DOM state for scanning...');
-
-            // Show user what's happening
             const scanBtn = $('#pc-scan');
             const photoCountElement = $('#pc-photo-count');
 
@@ -2831,17 +2300,14 @@ The extension page will open in a new tab and this scanning window will close.
                 photoCountElement.html('Opening new window for clean scan...');
             }
 
-            // Add GET parameter to trigger auto-restart in new window
             const currentUrl = new URL(window.location.href);
             currentUrl.searchParams.set('pc_scan_start', '1');
 
-            // If this is part of a full workflow, add that info too
             if (this.isFullWorkflow) {
                 currentUrl.searchParams.set('pc_full_workflow', '1');
                 currentUrl.searchParams.set('pc_similarity', this.similarityThreshold || 85);
             }
 
-            // Open new window with GET parameter and window features to force actual window with max dimensions
             const screenWidth = window.screen.availWidth;
             const screenHeight = window.screen.availHeight;
             const newWindow = window.open(
@@ -2851,15 +2317,12 @@ The extension page will open in a new tab and this scanning window will close.
             );
 
             if (newWindow) {
-             //   //console.log('✅ New window opened successfully');
 
-                // Reset button state in current window
                 setTimeout(() => {
                     if (scanBtn.length) {
                         scanBtn.text('🔍 Scan for Duplicates').prop('disabled', false);
                     }
                     if (photoCountElement.length) {
-                        // photoCountElement.html('Click scan to start');
                     }
                 }, 1000);
                 
@@ -2867,7 +2330,6 @@ The extension page will open in a new tab and this scanning window will close.
                 console.error('❌ Failed to open new window (popup blocked?)');
                 alert('Failed to open new window. Please allow popups for this site and try again.');
 
-                // Reset button state
                 if (scanBtn.length) {
                     scanBtn.text('🔍 Scan for Duplicates').prop('disabled', false);
                 }
@@ -2876,29 +2338,25 @@ The extension page will open in a new tab and this scanning window will close.
                 }
             }
 
-            return 'NEW_WINDOW_OPENED'; // Exit here, scanning will start in new window
+            return 'NEW_WINDOW_OPENED'; 
         }
 
         }
         this.isProcessing = true;
         this.isScanning = true;
         this.resumeFromPause = false;
-        // Clear the auto-restart GET parameter from URL
-        this.cleanUrlAfterRestart();
+        // this.cleanUrlAfterRestart();
 
         this.isProcessing = true;
-        this.isScanning = true; // Set scanning flag
-        this.showWindowWarning(true); // Show window warning during scanning
-        this.scanComplete = false; // Reset scan complete flag when starting new scan
+        this.isScanning = true; 
+        this.showWindowWarning(true); 
+        this.scanComplete = false; 
         this.scrollAttempts = 0;
 
-        // Clear previous photos and results when starting a new scan
         this.clearPreviousResults();
 
-        // Track initial photo count to calculate new photos in this scan session
         this.initialPhotoCount = this.photos.length;
 
-        // Setup observer to detect new photos during scanning
         this.setupObserver();
 
         const scanBtn = $('#pc-scan');
@@ -2909,54 +2367,38 @@ The extension page will open in a new tab and this scanning window will close.
 
         await this.scanWithScroll();
 
-        // Disconnect observer since scanning is complete
         this.disconnectObserver();
 
-        // Only reset button states if this was a standalone scan (not part of full workflow)
-        // Full workflow will handle button states after analysis completes
         if (!this.isFullWorkflow) {
             scanBtn.find('.btn-label').text('🔍 Scan for Duplicates').parent().prop('disabled', false);
             this.isProcessing = false;
-            this.isScanning = false; // Clear scanning flag
-            this.showWindowWarning(false); // Hide window warning when scanning ends
+            this.isScanning = false; 
+            this.showWindowWarning(false); 
         } else {
-            // For full workflow, just clear scanning flag but keep processing state
             this.isScanning = false;
-            this.showWindowWarning(false); // Hide window warning when scanning ends
+            this.showWindowWarning(false); 
         }
 
-   //     console.log(`Scanning complete. Found ${this.photos.length} photos.`);
     }
 
-    cleanUrlAfterRestart() {
-        // URL parameters are kept intentionally for the new window
-        // No cleanup needed as parameters help identify the scanning context
-      //  //console.log('ℹ️ Keeping URL parameters in new window for context');
-    }
+    // cleanUrlAfterRestart() {
+    // }
 
-    //convert to jquery
+
     clearPreviousResults() {
-        // Clear photos array
         this.photos = [];
-
-        // Clear videos array and reset video count
         this.videos = [];
         this.videosFound = 0;
 
-        // Reset scan complete flag to allow normal updates
         this.scanComplete = false;
 
-        // NEW: Clear scroll position data to start fresh
         this.photoScrollPositions.clear();
-      //  //console.log('📍 Cleared scroll position data for fresh scan');
 
-        // Clear any existing results overlay
         const existingOverlay = $('#pc-results-overlay');
         if (existingOverlay.length) {
             existingOverlay.remove();
         }
 
-        // Clear storage
         chrome.storage.local.remove(['analysisResults', 'photos', 'timestamp']);
 
         // Reset photo count display only if not actively scanning
@@ -2964,7 +2406,6 @@ The extension page will open in a new tab and this scanning window will close.
             this.updatePhotoCount();
         }
 
-        // Clear progress display only if not actively scanning
         if (!this.isScanning) {
             this.showProgress(false);
         }
@@ -2980,16 +2421,11 @@ The extension page will open in a new tab and this scanning window will close.
                 }
             }, 500);
         }
-
-    //    //console.log('🗑️ Cleared previous photos and results - starting fresh scan');
     }
 
     async scanWithScroll() {
-        // //console.log('⏳ Waiting 2 seconds for page to fully load before starting scroll...');
         await this.delay(2000);
-        // //console.log('✅ Initial wait complete, starting photo collection...');
 
-        // Initialize scroll tracking
         const scrollInfo = this.initializeScrollTracking();
         let totalScrolls = 0;
         let consecutiveCyclesWithoutProgress = 0;
@@ -2997,132 +2433,96 @@ The extension page will open in a new tab and this scanning window will close.
 
         while (true) {
         if (this.isPaused) {
-        // //console.log('⏸ Scanning paused...');
         await new Promise(resolve => {
             const checkInterval = setInterval(() => {
                 if (!this.isPaused) {
                     clearInterval(checkInterval);
-                    // //console.log('▶️ Resuming scan...');
                     resolve();
                 }
-            }, 100); // Har 0.5 sec check kare
+            }, 100); 
         });
         }
             totalScrolls++;
-            console.log(`\n🔄 === Scroll Cycle ${totalScrolls} ===`);
 
             // Step 1: Get photos
             const beforeCount = this.photos.length;
-            console.log(`📊 Step 1: Getting photos - Current count: ${beforeCount}`);
             this.extractPhotos();
             const afterExtraction = this.photos.length;
             const newPhotosThisCycle = afterExtraction - beforeCount;
-            console.log(`📊 Found ${newPhotosThisCycle} new photos. Total: ${afterExtraction}`);
 
 
 
             // Step 2: Check if we need to scroll back for incomplete backgrounds
             const needsBacktrack = await this.checkAndHandleIncompleteBackgrounds();
             if (needsBacktrack) {
-                // //console.log('⏪ Backtracking was necessary - rechecking photos after backtrack...');
-                this.extractPhotos(); // Re-extract after backtracking
+                this.extractPhotos(); 
             }
 
             // Step 3: Scroll 1 viewport forward
-            // console.log(`📊 Step 3: Scrolling 1 viewport forward...`);
             const scrollResult = await this.performScroll();
 
             // Handle both object and boolean return values
             const scrolled = scrollResult && (scrollResult === true || scrollResult.scrolled === true);
             const scrollDelta = scrollResult && typeof scrollResult === 'object' ? scrollResult.scrollDelta : undefined;
 
-            // console.log(`📊 Scroll result: ${scrolled ? 'SUCCESS' : 'FAILED'}`);
             if (scrollDelta !== undefined) {
-                console.log(`📊 Scroll delta: ${scrollDelta}px`);
             }
 
-            // Track progress to detect endless loops
             if (newPhotosThisCycle === 0) {
                 consecutiveCyclesWithoutProgress++;
-                console.log(`⚠️ No new photos found in cycle ${totalScrolls} (${consecutiveCyclesWithoutProgress}/${MAX_CYCLES_WITHOUT_PROGRESS} consecutive cycles without progress)`);
-
-                // If we've had several cycles without finding new photos, check if we're just making minimal scroll progress
                 if (consecutiveCyclesWithoutProgress >= MAX_CYCLES_WITHOUT_PROGRESS) {
-                    // //console.log('🔍 Detecting potential endless loop - checking scroll progress...');
-
-                    // If scroll result indicates minimal progress (very small delta), treat as end of content
-                    if (scrollDelta !== undefined && scrollDelta < 2) { // Less than 2px scroll delta
-                        console.log(`🛑 Minimal scroll progress detected (${scrollDelta}px) with no new photos. Treating as end of content.`);
+                    if (scrollDelta !== undefined && scrollDelta < 2) { 
                         break;
                     }
-
-              //      //console.log('⏳ Multiple cycles without progress - waiting 3 seconds to confirm end of content...');
                     await this.delay(3000);
 
                     // Try one more scroll to confirm
                     const retryScrollResult = await this.performScroll();
                     const retryScrolled = retryScrollResult && (retryScrollResult === true || retryScrollResult.scrolled === true);
                     if (!retryScrolled) {
-                //        //console.log('🛑 Confirmed: No more scrolling available after retry. Ending scan.');
                         break;
                     } else {
-                  //      //console.log('✅ Scroll succeeded after wait - resetting progress counter...');
-                        consecutiveCyclesWithoutProgress = 0; // Reset counter
+                        consecutiveCyclesWithoutProgress = 0; 
                     }
                 }
             } else {
-                // Reset counter when we find new photos
                 consecutiveCyclesWithoutProgress = 0;
             }
 
-            // Exit condition: No more scrolling available
             if (!scrolled) {
-         //       //console.log('⏳ Cannot scroll - waiting 3 seconds to confirm end of content...');
                 await this.delay(3000);
 
-                // Try one more time after waiting
                 const retryScrollResult = await this.performScroll();
                 const retryScrolled = retryScrollResult && (retryScrollResult === true || retryScrollResult.scrolled === true);
                 if (!retryScrolled) {
-             //       //console.log('🛑 Confirmed: No more scrolling available. Ending scan.');
                     break;
                 } else {
-               //     //console.log('✅ Scroll succeeded after wait - continuing...');
-                    // If scroll succeeded, wait for photos to load
-                //    //console.log('⏳ Waiting for photos to load after successful retry scroll...');
                     await this.waitForPhotosToLoad();
                 }
             } else {
-                // Step 4: Wait for photos to load after successful scroll
-              //  console.log(`📊 Step 4: Waiting for photos to load...`);
                 await this.waitForPhotosToLoad();
             }
 
-            // Update progress display
             this.updateScanProgress(scrollInfo);
-
-        //    console.log(`📊 End of cycle ${totalScrolls}: ${this.photos.length} total photos`);
         }
 
-        // Show cleanup progress in UI
         const scanBtn = $('#pc-scan')
         const countElement = document.getElementById('pc-photo-count');
 
         if (scanBtn) {
-            scanBtn.textContent = '🧹 Cleaning up...';
+            scanBtn.textContent = 'Cleaning up...';
         }
 
         if (countElement) {
-            countElement.innerHTML = '🧹 Performing final cleanup...';
+            countElement.innerHTML = 'Performing final cleanup...';
             countElement.style.color = '#FF9800';
             countElement.style.fontStyle = 'italic';
         }
 
         await this.performFinalCleanup();
 
-        // Restore button text
         if (scanBtn) {
-            scanBtn.textContent = '🔍 Scan for Photos';
+            scanBtn.textContent = 'Scan for Photos';
         }
     }
 
@@ -3131,25 +2531,15 @@ The extension page will open in a new tab and this scanning window will close.
     async performFinalCleanup() {
         const beforeCleanup = this.photos.length;
 
-        // Step 1: Final extraction pass to catch any missed photos
-     //   //console.log('🔍 Final extraction pass to catch missed photos...');
-        this.updateCleanupProgress('🔍 Finding missed photos...');
-
-        // Wait a bit for any remaining photos to load
+        this.updateCleanupProgress('Finding missed photos...');
         await this.delay(2000);
-
-        // Final extraction with thorough mode
         this.extractPhotos(true);
 
         const afterExtraction = this.photos.length;
         const newPhotosFound = afterExtraction - beforeCleanup;
 
         if (newPhotosFound > 0) {
-            console.log(`✓ Found ${newPhotosFound} additional photos in final pass`);
         }
-
-        // Step 2: Remove duplicates based on multiple criteria
-       //console.log('🔄 Removing duplicates...');
         this.updateCleanupProgress('🔄 Removing duplicates...');
 
         const beforeDedup = this.photos.length;
@@ -3158,11 +2548,7 @@ The extension page will open in a new tab and this scanning window will close.
         const duplicatesRemoved = beforeDedup - afterDedup;
 
         if (duplicatesRemoved > 0) {
-            console.log(`✓ Removed ${duplicatesRemoved} duplicate photos`);
         }
-
-        // Step 3: Final validation - remove duplicate photos
-       //console.log('🧽 Removing duplicate photos...');
         this.updateCleanupProgress('🧽 Removing duplicates...');
 
         const beforeFinalDedup = this.photos.length;
@@ -3171,21 +2557,13 @@ The extension page will open in a new tab and this scanning window will close.
         const finalDuplicatesRemoved = beforeFinalDedup - afterFinalDedup;
 
         if (finalDuplicatesRemoved > 0) {
-        // console.log(`✓ Final cleanup: Removed ${finalDuplicatesRemoved} additional duplicate photos`);
         }
 
-
-
-        // Final update - restore normal photo count display
-        this.scanComplete = true; // Mark scan as complete to prevent overwriting results
+        this.scanComplete = true; 
         this.restorePhotoCountDisplay();
-
-        // console.log(`🎯 Cleanup complete: ${beforeCleanup} → ${this.photos.length} photos (${newPhotosFound} added, ${duplicatesRemoved + finalDuplicatesRemoved} total duplicates removed)`);
-
-        // Show cleanup summary if there were significant changes
+        
         const totalChanges = newPhotosFound + duplicatesRemoved + finalDuplicatesRemoved;
         if (totalChanges > 0) {
-    //        console.log(`✨ Cleanup summary: Found ${newPhotosFound} additional photos, removed ${duplicatesRemoved + finalDuplicatesRemoved} total duplicates`);
         }
     }
 
@@ -3194,14 +2572,12 @@ The extension page will open in a new tab and this scanning window will close.
         const uniquePhotos = [];
 
         for (const photo of this.photos) {
-            // Create a composite key for uniqueness detection
             const uniqueKey = this.generateUniqueKey(photo);
 
             if (!seen.has(uniqueKey)) {
                 seen.add(uniqueKey);
                 uniquePhotos.push(photo);
             } else {
-         //       console.log(`🗑️ Removing duplicate photo: ${photo.ariaLabel} (${uniqueKey})`);
             }
         }
 
@@ -3209,32 +2585,21 @@ The extension page will open in a new tab and this scanning window will close.
     }
 
     generateUniqueKey(photo) {
-        // Generate a unique key based on multiple criteria to catch different types of duplicates
         const components = [];
-
-        // 1. Photo ID from URL (most reliable)
         if (photo.id && !photo.id.startsWith('photo_')) {
             components.push(`id:${photo.id}`);
         }
-
-        // 2. Normalized URL (remove size parameters)
         if (photo.url) {
             const normalizedUrl = this.normalizeImageUrl(photo.url);
             components.push(`url:${normalizedUrl}`);
         }
-
-        // 3. Href path (photo link)
         if (photo.href) {
-            // Extract just the photo ID part from href
             const hrefMatch = photo.href.match(/photo\/([^\/\?]+)/);
             if (hrefMatch) {
                 components.push(`href:${hrefMatch[1]}`);
             }
         }
-
-        // 4. Aria label as fallback (less reliable but helps with edge cases)
         if (photo.ariaLabel && photo.ariaLabel !== 'Unknown') {
-            // Normalize the aria label (remove timestamps, common variations)
             const normalizedLabel = photo.ariaLabel
                 .replace(/\s+/g, ' ')
                 .replace(/\s*\d{1,2}:\d{2}(:\d{2})?\s*(AM|PM)?\s*/gi, '')
@@ -3250,21 +2615,16 @@ The extension page will open in a new tab and this scanning window will close.
     normalizeImageUrl(url) {
         try {
             const urlObj = new URL(url);
-
-            // Remove DupeYak Duplicate Remover size parameters that might vary
             const paramsToRemove = ['w', 'h', 's', 'c', 'rw', 'rh', 'rs', 'k', 'mo'];
             paramsToRemove.forEach(param => {
                 urlObj.searchParams.delete(param);
             });
-
-            // Remove common size suffixes from path
             let pathname = urlObj.pathname;
             pathname = pathname.replace(/=w\d+-h\d+(-[a-z]+)?$/, '');
             pathname = pathname.replace(/=s\d+(-[a-z]+)?$/, '');
 
             return urlObj.origin + pathname + urlObj.search;
         } catch (e) {
-            // If URL parsing fails, return the original URL
             return url;
         }
     }
@@ -3272,7 +2632,6 @@ The extension page will open in a new tab and this scanning window will close.
 
 
     initializeScrollTracking() {
-        // Find the scrollable container and get initial scroll info
         const scrollableContainer = this.findScrollableContainer();
 
         if (scrollableContainer) {
@@ -3283,7 +2642,6 @@ The extension page will open in a new tab and this scanning window will close.
                 initialScroll: scrollableContainer.scrollTop
             };
         } else {
-            // Fallback to document scrolling
             const documentHeight = Math.max(
                 document.body.scrollHeight,
                 document.documentElement.scrollHeight
@@ -3312,30 +2670,21 @@ The extension page will open in a new tab and this scanning window will close.
             const scrolledAmount = Math.max(0, currentScroll - scrollInfo.initialScroll);
             scrollPercentage = Math.min(100, Math.round((scrolledAmount / scrollInfo.totalScrollable) * 100));
         } else {
-            // If no scrollable content, base percentage on scroll attempts
             scrollPercentage = Math.min(100, Math.round((this.scrollAttempts / this.maxScrollAttempts) * 100));
         }
-
-        // Update the display with current photo and video count - this is the authoritative update during scanning
         const countElement = document.getElementById('pc-photo-count');
         if (countElement) {
             if (this.photos.length === 0 && this.videos.length === 0) {
-           //     console.log(`🔄 updateScanProgress: Updating display to "Scanning" (no photos/videos found yet)`);
                 countElement.innerHTML = 'Scanning';
             } else {
             }
-            countElement.className = ''; // Remove examining styling
+            countElement.className = '';
             countElement.style.color = '';
             countElement.style.fontStyle = '';
         }
-
-     //   console.log(`Found ${this.photos.length} photos so far (scroll progress: ${scrollPercentage}%)`);
     }
 
     async performScroll() {
-    //    //console.log('🔍 performScroll: Analyzing DOM for scrollable containers...');
-
-        // First, analyze the DOM structure to find the real scrollable container
         const scrollableContainer = this.findScrollableContainer();
 
         if (scrollableContainer) {
@@ -3346,17 +2695,10 @@ The extension page will open in a new tab and this scanning window will close.
     }
 
     findScrollableContainer() {
-    //    //console.log('🔍 Finding scrollable container using photo-based approach...');
-
-        // Strategy 1: Find first photo and traverse up to find scrollable parent
         const photoContainer = this.findScrollableContainerFromPhoto();
         if (photoContainer) {
             return photoContainer;
         }
-
-    //    //console.log('⚠️ Photo-based approach failed, trying generic selectors...');
-
-        // Strategy 2: Fallback to generic selectors (original approach)
         const candidates = [
             // DupeYak Duplicate Remover specific selectors
             '[data-ved]',
@@ -3375,15 +2717,12 @@ The extension page will open in a new tab and this scanning window will close.
             const elements = document.querySelectorAll(selector);
 
             for (const element of elements) {
-                // Check if this element is actually scrollable
                 if (this.isScrollable(element)) {
                     return element;
                 }
             }
         }
 
-        // Strategy 3: Last resort - scan all elements
-    //    //console.log('⚠️ Generic selectors failed, scanning all elements...');
         const allElements = document.querySelectorAll('*');
         let bestCandidate = null;
         let maxScrollableHeight = 0;
@@ -3406,9 +2745,6 @@ The extension page will open in a new tab and this scanning window will close.
     }
 
     findScrollableContainerFromPhoto() {
-        // //console.log('🔍 Looking for scrollable container by finding first photo...');
-
-        // Find any photo element using the same selectors as extractPhotos
         const photoSelectors = [
             '*[style*="background-image"]',
             '*[data-latest-bg]',
@@ -3420,24 +2756,19 @@ The extension page will open in a new tab and this scanning window will close.
 
         for (const selector of photoSelectors) {
             const elements = document.querySelectorAll(selector);
-       // console.log(`   Testing selector "${selector}": ${elements.length} elements`);
 
             for (const element of elements) {
-                // For background image elements, look for photo links
                 if (selector.includes('background-image') || selector.includes('data-latest-bg')) {
                     const linkElement = element.closest('a[href*="/photo/"]');
                     if (linkElement) {
                         const ariaLabel = linkElement.getAttribute('aria-label');
                         if (ariaLabel && ariaLabel.includes('Photo')) {
                             firstPhotoElement = element;
-                          //console.log('✅ Found first photo element (background):', element.tagName, element.className);
                             break;
                         }
                     }
                 } else {
-                    // Direct img element
                     firstPhotoElement = element;
-                 //console.log('✅ Found first photo element (img):', element.tagName, element.src);
                     break;
                 }
             }
@@ -3446,38 +2777,23 @@ The extension page will open in a new tab and this scanning window will close.
         }
 
         if (!firstPhotoElement) {
-            //console.log('❌ No photo elements found');
             return null;
         }
 
-        // Traverse up the DOM tree to find scrollable parent
         let currentElement = firstPhotoElement;
         let traversalDepth = 0;
-        const maxTraversalDepth = 20; // Prevent infinite loops
-
-      //console.log('🔍 Traversing up DOM tree to find scrollable parent...');
+        const maxTraversalDepth = 20; 
 
         while (currentElement && currentElement !== document.body && traversalDepth < maxTraversalDepth) {
             traversalDepth++;
             currentElement = currentElement.parentElement;
 
             if (currentElement) {
-                console.log(`   Level ${traversalDepth}: ${currentElement.tagName} ${currentElement.className || '(no class)'}`);
-
                 if (this.isScrollable(currentElement)) {
-                    console.log(`✅ Found scrollable parent at level ${traversalDepth}:`, {
-                        tagName: currentElement.tagName,
-                        className: currentElement.className,
-                        scrollHeight: currentElement.scrollHeight,
-                        clientHeight: currentElement.clientHeight,
-                        canScroll: currentElement.scrollHeight > currentElement.clientHeight
-                    });
                     return currentElement;
                 }
             }
         }
-
-   //     //console.log('❌ No scrollable parent found after traversing', traversalDepth, 'levels');
         return null;
     }
 
@@ -3487,39 +2803,16 @@ The extension page will open in a new tab and this scanning window will close.
         }
 
         const style = window.getComputedStyle(element);
-
-        // Check for explicit overflow settings
         const hasExplicitOverflow = style.overflow === 'auto' || style.overflow === 'scroll' ||
             style.overflowY === 'auto' || style.overflowY === 'scroll';
-
-        // Check for scrollable content
-        const hasScrollableContent = element.scrollHeight > element.clientHeight + 5; // 5px tolerance
-
-        // DupeYak Duplicate Remover often uses hidden overflow with scrollable content
-        // Also check for elements that might be scrollable even with overflow:hidden
+        const hasScrollableContent = element.scrollHeight > element.clientHeight + 5; 
         const hasHiddenOverflow = style.overflow === 'hidden' || style.overflowY === 'hidden';
-
-        // For DupeYak Duplicate Remover, elements with large height differences might be scrollable
-        // even if they don't have explicit overflow settings
         const hasSignificantHeight = element.scrollHeight > element.clientHeight + 100;
 
         const isScrollable = (hasExplicitOverflow && hasScrollableContent) ||
             (hasHiddenOverflow && hasSignificantHeight);
 
         if (isScrollable) {
-            console.log(`   📊 Element is scrollable:`, {
-                tagName: element.tagName,
-                className: element.className.substring(0, 50) + (element.className.length > 50 ? '...' : ''),
-                overflow: style.overflow,
-                overflowY: style.overflowY,
-                scrollHeight: element.scrollHeight,
-                clientHeight: element.clientHeight,
-                scrollTop: element.scrollTop,
-                hasExplicitOverflow,
-                hasScrollableContent,
-                hasHiddenOverflow,
-                hasSignificantHeight
-            });
         }
 
         return isScrollable;
@@ -3527,37 +2820,26 @@ The extension page will open in a new tab and this scanning window will close.
 
     async scrollContainer(container) {
         const startScrollTop = container.scrollTop;
-        const scrollStep = Math.min(container.clientHeight * 0.5, 400); // Scroll by 50% of container height or 400px max
-
-        // Count photos before scrolling
+        const scrollStep = Math.min(container.clientHeight * 0.5, 400); 
         const photosBeforeScroll = this.photos.length;
-
-        // Check if we're already at the bottom
         const maxScrollTop = container.scrollHeight - container.clientHeight;
-        const isAtBottom = startScrollTop >= (maxScrollTop - 10); // 10px tolerance
+        const isAtBottom = startScrollTop >= (maxScrollTop - 10); 
 
         if (isAtBottom) {
-       //     //console.log('📊 Already at bottom of container - cannot scroll further');
             return false;
         }
 
-        // Try scrolling methods for DupeYak Duplicate Remover
         let scrolled = false;
         let newScrollTop = startScrollTop;
 
-        // Method 1: Direct scroll assignment
-  //      //console.log('📜 Trying direct scroll assignment...');
         const targetScroll = Math.min(startScrollTop + scrollStep, maxScrollTop);
         container.scrollTop = targetScroll;
 
         await this.delay(50);
         newScrollTop = container.scrollTop;
-        scrolled = newScrollTop > startScrollTop; // Must actually move forward
-        console.log(`📊 Direct scroll result: ${scrolled ? 'SUCCESS' : 'FAILED'} (${startScrollTop} → ${newScrollTop})`);
+        scrolled = newScrollTop > startScrollTop; 
 
-        // Method 2: Try scrollBy if direct assignment failed
         if (!scrolled) {
-       //     //console.log('📜 Trying scrollBy...');
             container.scrollBy({
                 top: scrollStep,
                 behavior: 'auto'
@@ -3565,32 +2847,22 @@ The extension page will open in a new tab and this scanning window will close.
 
             await this.delay(50);
             newScrollTop = container.scrollTop;
-            scrolled = newScrollTop > startScrollTop; // Must actually move forward
-            // console.log(`📊 ScrollBy result: ${scrolled ? 'SUCCESS' : 'FAILED'} (${startScrollTop} → ${newScrollTop})`);
+            scrolled = newScrollTop > startScrollTop; 
         }
-
-        // Method 3: Try scrollIntoView on a lower element
         if (!scrolled) {
-        //    //console.log('📜 Trying scrollIntoView method...');
             const childElements = container.querySelectorAll('*');
             if (childElements.length > 10) {
-                const targetElement = childElements[Math.floor(childElements.length * 0.7)]; // Scroll to 70% down
+                const targetElement = childElements[Math.floor(childElements.length * 0.7)]; 
                 try {
                     targetElement.scrollIntoView({ behavior: 'auto', block: 'start' });
                     await this.delay(50);
                     newScrollTop = container.scrollTop;
-                    scrolled = newScrollTop > startScrollTop; // Must actually move forward
-                    console.log(`📊 ScrollIntoView result: ${scrolled ? 'SUCCESS' : 'FAILED'} (${startScrollTop} → ${newScrollTop})`);
+                    scrolled = newScrollTop > startScrollTop; 
                 } catch (error) {
-           //         //console.log('⚠️ ScrollIntoView failed:', error.message);
                 }
             }
         }
-
-        // Wait for photos to load their backgrounds
-     //   //console.log('⏳ Waiting for photos to load after scroll...');
         const photosLoaded = await this.waitForPhotosToLoad();
-        console.log(`📊 Photos loaded after scroll: ${photosLoaded}`);
 
         const photosAfterScroll = this.photos.length;
         const newPhotosFound = photosAfterScroll - photosBeforeScroll;
@@ -3605,32 +2877,20 @@ The extension page will open in a new tab and this scanning window will close.
             newPhotosFound
         };
 
-      //  console.log(`📊 Final container scroll result:`, scrollResult);
-
         return scrollResult;
     }
 
     async scrollDocument() {
-        // Fallback: try document scrolling (like screenshot extensions)
         const startScrollY = window.scrollY || window.pageYOffset || document.documentElement.scrollTop || 0;
-        const scrollStep = window.innerHeight * 0.5; // Scroll by half viewport height
-
-    //    console.log(`Document scroll - Current: ${startScrollY}, Step: ${scrollStep}`);
-    //   console.log(`Document height: ${Math.max(document.body.scrollHeight, document.documentElement.scrollHeight)}`);
-
-        // Check if we're already at the bottom
+        const scrollStep = window.innerHeight * 0.5; 
         const maxScroll = Math.max(document.body.scrollHeight, document.documentElement.scrollHeight) - window.innerHeight;
-        const isAtBottom = startScrollY >= (maxScroll - 10); // 10px tolerance
+        const isAtBottom = startScrollY >= (maxScroll - 10);
 
         if (isAtBottom) {
-          //console.log('📊 Already at bottom of document - cannot scroll further');
             return false;
         }
 
-        // Count photos before scrolling
         const photosBeforeScroll = this.photos.length;
-
-        // Try scrollBy first
         window.scrollBy({
             top: scrollStep,
             left: 0,
@@ -3639,24 +2899,15 @@ The extension page will open in a new tab and this scanning window will close.
 
         await this.delay(50);
 
-        // Wait for photos to load their backgrounds
         const photosLoaded = await this.waitForPhotosToLoad();
-    //    console.log(`Photos loaded after document scroll: ${photosLoaded}`);
-
         const newScrollY = window.scrollY || window.pageYOffset || document.documentElement.scrollTop || 0;
-        const scrolled = newScrollY > startScrollY; // Must actually move forward
+        const scrolled = newScrollY > startScrollY;
         const photosAfterScroll = this.photos.length;
         const newPhotosFound = photosAfterScroll - photosBeforeScroll;
-
-     //   console.log(`Document scroll result - New: ${newScrollY}, Scrolled: ${scrolled}, New photos: ${newPhotosFound}`);
-
         if (!scrolled) {
-            // Fallback: direct assignment
             const targetScroll = startScrollY + scrollStep;
             const maxScroll = Math.max(document.body.scrollHeight, document.documentElement.scrollHeight) - window.innerHeight;
             const scrollTo = Math.min(targetScroll, maxScroll);
-
-     //       console.log(`Document fallback scroll to: ${scrollTo}`);
 
             window.scrollTo({
                 top: scrollTo,
@@ -3665,12 +2916,10 @@ The extension page will open in a new tab and this scanning window will close.
             });
 
             await this.delay(50);
-
-            // Wait for photos to load after fallback scroll
             await this.waitForPhotosToLoad();
 
             const finalScrollY = window.scrollY || window.pageYOffset || document.documentElement.scrollTop || 0;
-            const finalScrolled = finalScrollY > startScrollY; // Must actually move forward
+            const finalScrolled = finalScrollY > startScrollY; 
             const finalPhotosAfterScroll = this.photos.length;
             const finalNewPhotosFound = finalPhotosAfterScroll - photosBeforeScroll;
 
@@ -3684,7 +2933,6 @@ The extension page will open in a new tab and this scanning window will close.
                 newPhotosFound: finalNewPhotosFound
             };
 
-    //        console.log(`Document final scroll result:`, fallbackResult);
             return fallbackResult;
         }
 
@@ -3700,48 +2948,35 @@ The extension page will open in a new tab and this scanning window will close.
 
         return scrollResult;
     }
-
-
-
     async waitForPhotosToLoad(maxWaitTime = 4000) {
-        // Wait for photos to load their background images after scrolling
         const startTime = Date.now();
         let lastPhotoCount = this.photos.length;
         let lastBackgroundLoadedCount = 0;
         let stableChecks = 0;
         let backgroundStableChecks = 0;
-        const maxStableChecks = 4; // Number of consecutive checks with no new photos
-        const maxBackgroundStableChecks = 3; // Number of checks with stable background loading
-        const checkInterval = 500; // Check every 500ms (less frequent)
-
-        console.log(`⏳ Waiting for photos to load after scroll. Current count: ${lastPhotoCount}`);
+        const maxStableChecks = 4; 
+        const maxBackgroundStableChecks = 3; 
+        const checkInterval = 500; 
 
         while (Date.now() - startTime < maxWaitTime) {
             await this.delay(checkInterval);
 
-            // Extract photos to see if any new ones have appeared
-            this.extractPhotos(false, true); // non-thorough, silent
+            this.extractPhotos(false, true); 
             const currentPhotoCount = this.photos.length;
             const newPhotosFound = currentPhotoCount - lastPhotoCount;
 
             if (newPhotosFound > 0) {
-                console.log(`📈 Found ${newPhotosFound} new photos (total: ${currentPhotoCount})`);
                 lastPhotoCount = currentPhotoCount;
-                stableChecks = 0; // Reset stable count when we find new photos
-                backgroundStableChecks = 0; // Reset background stability too
+                stableChecks = 0; 
+                backgroundStableChecks = 0; 
             } else {
                 stableChecks++;
-                console.log(`⏳ No new photos in check ${stableChecks}/${maxStableChecks}`);
             }
 
-            // Check if background images are actually loaded and rendered
             const photosWithBackgrounds = await this.checkPhotosHaveBackgrounds();
             const backgroundLoadRatio = photosWithBackgrounds.checked > 0 ?
                 photosWithBackgrounds.loaded / photosWithBackgrounds.checked : 1;
 
-            console.log(`📊 Background load status: ${photosWithBackgrounds.loaded}/${photosWithBackgrounds.checked} (${(backgroundLoadRatio * 100).toFixed(1)}%)`);
-
-            // Track background loading stability
             if (photosWithBackgrounds.loaded === lastBackgroundLoadedCount) {
                 backgroundStableChecks++;
             } else {
@@ -3749,32 +2984,22 @@ The extension page will open in a new tab and this scanning window will close.
                 lastBackgroundLoadedCount = photosWithBackgrounds.loaded;
             }
 
-            // Relaxed exit conditions to prevent infinite loops:
-            // 1. No new photos for several checks AND decent background loading
             if (stableChecks >= maxStableChecks && backgroundLoadRatio >= 0.75) {
-                console.log(`✅ Photos stable with acceptable background loading (${(backgroundLoadRatio * 100).toFixed(1)}%). Ending wait after ${Date.now() - startTime}ms`);
                 break;
             }
 
-            // 2. Recent photos found and backgrounds are well-loaded
             if (stableChecks <= 1 && backgroundLoadRatio >= 0.9) {
-                console.log(`✅ Recent photos found and well-loaded. Ending wait early after ${Date.now() - startTime}ms`);
                 break;
             }
 
-            // 3. Minimum wait time has passed and we have some background loading
             if (Date.now() - startTime >= 1500 &&
                 stableChecks >= 2 &&
                 backgroundLoadRatio >= 0.7) {
-                console.log(`✅ Minimum wait completed with reasonable loading (${(backgroundLoadRatio * 100).toFixed(1)}%). Ending wait after ${Date.now() - startTime}ms`);
                 break;
             }
-
-            // 4. Extended wait with very stable photos but lower background ratio (prevent infinite loops)
             if (stableChecks >= maxStableChecks + 2 &&
                 backgroundStableChecks >= maxBackgroundStableChecks + 1 &&
                 backgroundLoadRatio >= 0.6) {
-                console.log(`⚠️ Extended stability reached with ${(backgroundLoadRatio * 100).toFixed(1)}% backgrounds. Proceeding to prevent loop.`);
                 break;
             }
         }
@@ -3783,91 +3008,52 @@ The extension page will open in a new tab and this scanning window will close.
         const totalNewPhotos = this.photos.length - lastPhotoCount;
 
         if (totalWaitTime >= maxWaitTime) {
-            console.log(`⏰ Wait timeout reached (${totalWaitTime}ms). Final count: ${this.photos.length}`);
         }
-
-        console.log(`📊 Wait complete: ${totalNewPhotos} new photos found, total: ${this.photos.length}`);
         return this.photos.length;
     }
 
     async checkAndHandleIncompleteBackgrounds() {
-        // Check if there are photos without loaded backgrounds and scroll back if needed
-     //console.log('🔍 Checking for photos with incomplete backgrounds...');
-
         const photosWithBackgrounds = await this.checkPhotosHaveBackgrounds();
         const backgroundLoadRatio = photosWithBackgrounds.checked > 0 ?
             photosWithBackgrounds.loaded / photosWithBackgrounds.checked : 1;
 
-        console.log(`📊 Current background status: ${photosWithBackgrounds.loaded}/${photosWithBackgrounds.checked} (${(backgroundLoadRatio * 100).toFixed(1)}%)`);
-
-        // If less than 80% of photos have backgrounds loaded, we need to backtrack
         if (backgroundLoadRatio < 0.8 && photosWithBackgrounds.checked > 0) {
-         //console.log('⚠️ Too many photos missing backgrounds - initiating backtrack...');
-
             const currentScrollContainer = this.findScrollableContainer();
             const currentScrollPosition = currentScrollContainer ?
-                currentScrollContainer.scrollTop : window.pageYOffset;
-
-    //        console.log(`📍 Current scroll position: ${currentScrollPosition}`);
-
-            // Scroll back by 1-2 viewports to give photos more time to load
+            currentScrollContainer.scrollTop : window.pageYOffset;
             const backtrackAmount = currentScrollContainer ?
                 Math.min(currentScrollContainer.clientHeight * 1.5, 800) :
                 Math.min(window.innerHeight * 1.5, 800);
 
-            //  console.log(`⏪ Scrolling back ${backtrackAmount}px to allow background loading...`);
-
             if (currentScrollContainer) {
                 const targetPosition = Math.max(0, currentScrollPosition - backtrackAmount);
                 currentScrollContainer.scrollTop = targetPosition;
-                console.log(`📍 Scrolled back to position: ${targetPosition}`);
             } else {
                 const targetPosition = Math.max(0, currentScrollPosition - backtrackAmount);
                 window.scrollTo(0, targetPosition);
-                console.log(`📍 Scrolled document back to position: ${targetPosition}`);
             }
-
-            // Wait for backgrounds to load at the backtracked position
-         //console.log('⏳ Waiting for backgrounds to load at backtracked position...');
-            await this.waitForPhotosToLoad(8000); // Longer wait for backtrack
-
-            // Check if backtracking helped
+            await this.waitForPhotosToLoad(8000); 
             const afterBacktrackStatus = await this.checkPhotosHaveBackgrounds();
             const afterBacktrackRatio = afterBacktrackStatus.checked > 0 ?
                 afterBacktrackStatus.loaded / afterBacktrackStatus.checked : 1;
-
-            // console.log(`📊 After backtrack: ${afterBacktrackStatus.loaded}/${afterBacktrackStatus.checked} (${(afterBacktrackRatio * 100).toFixed(1)}%)`);
-
-            // Scroll back to where we were (or close to it)
-          //console.log('⏩ Returning to forward scroll position...');
             if (currentScrollContainer) {
                 currentScrollContainer.scrollTop = currentScrollPosition;
             } else {
                 window.scrollTo(0, currentScrollPosition);
             }
-
-            // Small delay to let DOM settle after scrolling back
             await this.delay(500);
 
-    //        console.log(`✅ Backtrack complete. Improvement: ${((afterBacktrackRatio - backgroundLoadRatio) * 100).toFixed(1)}%`);
-
-            return true; // Indicate that backtracking occurred
+            return true; 
         } else {
-   //         //console.log('✅ Background loading is sufficient - no backtrack needed');
-            return false; // No backtracking needed
+            return false; 
         }
     }
 
     async checkPhotosHaveBackgrounds() {
-        // Check how many photos have their background images loaded
         let photosWithBackgrounds = 0;
-
-        // Check more photos, but prioritize recent ones
-        const photosToCheck = Math.min(this.photos.length, 30); // Check up to 30 photos
+        const photosToCheck = Math.min(this.photos.length, 30); 
         const startIndex = Math.max(0, this.photos.length - photosToCheck);
         const photosToCheckArray = this.photos.slice(startIndex);
-
-    //    console.log(`Checking backgrounds for ${photosToCheckArray.length} photos (from index ${startIndex})...`);
 
         for (let i = 0; i < photosToCheckArray.length; i++) {
             const photo = photosToCheckArray[i];
@@ -3876,25 +3062,16 @@ The extension page will open in a new tab and this scanning window will close.
                 if (hasBackground) {
                     photosWithBackgrounds++;
                 } else {
-                    // Debug: log first few photos that don't have backgrounds
                     if (i < 2) {
-         //               console.log(`Photo ${startIndex + i} (${photo.ariaLabel}) - No background detected`);
                         const bgElements = photo.element.querySelectorAll('*[style*="background-image"], *[data-latest-bg]');
-                        console.log(`  Found ${bgElements.length} potential background elements`);
                         bgElements.forEach((el, idx) => {
-                            if (idx < 1) { // Only log first element to reduce spam
-                                console.log(`    Element ${idx}:`, {
-                                    style: el.getAttribute('style')?.substring(0, 80) + '...',
-                                    dataLatestBg: el.getAttribute('data-latest-bg')?.substring(0, 40) + '...'
-                                });
+                            if (idx < 1) {
                             }
                         });
                     }
                 }
             }
         }
-
-   //     console.log(`Background check result: ${photosWithBackgrounds}/${photosToCheckArray.length} photos have backgrounds`);
         return {
             loaded: photosWithBackgrounds,
             checked: photosToCheckArray.length,
@@ -3903,30 +3080,20 @@ The extension page will open in a new tab and this scanning window will close.
     }
 
     elementHasLoadedBackground(element) {
-        // Check if this photo element has a loaded background image
-        // Use the same logic as extractPhotos() to ensure consistency
-
-        // Look for background elements within this photo link
         const bgElements = element.querySelectorAll('*[style*="background-image"], *[data-latest-bg]');
 
         for (const bgElement of bgElements) {
             const style = bgElement.getAttribute('style');
             const dataLatestBg = bgElement.getAttribute('data-latest-bg');
-
-            // Check data-latest-bg first (most reliable for DupeYak Duplicate Remover)
             if (dataLatestBg && dataLatestBg.trim() !== '') {
-                // If data-latest-bg exists and is not empty, consider it loaded
-                // DupeYak Duplicate Remover uses this attribute when images are ready
                 return true;
             }
-
-            // Check background-image in style attribute
             if (style) {
                 const patterns = [
-                    /background-image:\s*url\(&quot;([^&"]+)&quot;\)/,  // &quot; encoded quotes
-                    /background-image:\s*url\("([^"]+)"\)/,           // Regular quotes
-                    /background-image:\s*url\('([^']+)'\)/,           // Single quotes
-                    /background-image:\s*url\(([^)]+)\)/              // No quotes
+                    /background-image:\s*url\(&quot;([^&"]+)&quot;\)/,  
+                    /background-image:\s*url\("([^"]+)"\)/,          
+                    /background-image:\s*url\('([^']+)'\)/,          
+                    /background-image:\s*url\(([^)]+)\)/          
                 ];
 
                 for (const pattern of patterns) {
@@ -3934,19 +3101,13 @@ The extension page will open in a new tab and this scanning window will close.
                     if (urlMatch && urlMatch[1] && urlMatch[1].trim() !== '') {
                         const imageUrl = urlMatch[1].trim();
                         if (imageUrl !== 'none' && imageUrl.length > 10) {
-                            // Basic checks: URL exists and looks like a real image URL
                             if (imageUrl.includes('googleusercontent.com') ||
                                 imageUrl.includes('ggpht.com') ||
                                 imageUrl.includes('photos.google.com')) {
-
-                                // For DupeYak Duplicate Remover URLs, also check if element has some dimensions
                                 const rect = bgElement.getBoundingClientRect();
                                 if (rect.width > 0 && rect.height > 0) {
                                     return true;
                                 }
-
-                                // Fallback: if it's a DupeYak Duplicate Remover URL with style, consider it loaded
-                                // even if dimensions are 0 (might be a CSS/layout issue)
                                 return true;
                             }
                         }
@@ -3963,44 +3124,29 @@ The extension page will open in a new tab and this scanning window will close.
 
         if (!silent) {
         }
-
-        // Find all elements with background images (back to original approach)
         let allElements;
 
         if (thorough) {
-            // More comprehensive search in thorough mode
             allElements = document.querySelectorAll([
                 '*[style*="background-image"]',
                 '*[data-latest-bg]',
-                '*[style*="background"]',  // Catch background shorthand
-                'img[src*="googleusercontent"]',  // Direct img elements
+                '*[style*="background"]',  
+                'img[src*="googleusercontent"]',  
                 'img[src*="photos.google"]'
             ].join(', '));
-    //        console.log(`🔍 Thorough mode: Found ${allElements.length} potential photo elements`);
         } else {
             allElements = document.querySelectorAll('*[style*="background-image"], *[data-latest-bg]');
-    //        console.log(`📊 Standard mode: Found ${allElements.length} elements with background images`);
-
-            // Debug: Test individual selectors
             const bgImageElements = document.querySelectorAll('*[style*="background-image"]');
             const dataLatestBgElements = document.querySelectorAll('*[data-latest-bg]');
-            console.log(`   - background-image elements: ${bgImageElements.length}`);
-            console.log(`   - data-latest-bg elements: ${dataLatestBgElements.length}`);
         }
-
-        // Use for...of loop instead of forEach to allow proper breaking
         for (let index = 0; index < allElements.length; index++) {
             const element = allElements[index];
             let linkElement, imageUrl, ariaLabel;
-
-            // Handle different types of elements
             if (element.tagName === 'IMG') {
-                // Direct img element
                 linkElement = element.closest('a[href*="/photo/"]');
                 imageUrl = element.src;
                 ariaLabel = element.alt || element.getAttribute('aria-label');
             } else {
-                // Background image element
                 linkElement = element.closest('a[href*="/photo/"]');
                 if (!linkElement) continue;
 
@@ -4008,20 +3154,15 @@ The extension page will open in a new tab and this scanning window will close.
 
                 const style = element.getAttribute('style');
                 const dataLatestBg = element.getAttribute('data-latest-bg');
-
-                // Extract background image URL
                 if (dataLatestBg) {
                     imageUrl = dataLatestBg;
                 } else if (style) {
-                    // Handle multiple background-image URL formats
                     let urlMatch = null;
-
-                    // Try different patterns for background-image URLs
                     const patterns = [
-                        /background-image:\s*url\(&quot;([^&"]+)&quot;\)/,  // &quot; encoded quotes
-                        /background-image:\s*url\("([^"]+)"\)/,           // Regular quotes
-                        /background-image:\s*url\('([^']+)'\)/,           // Single quotes
-                        /background-image:\s*url\(([^)]+)\)/              // No quotes
+                        /background-image:\s*url\(&quot;([^&"]+)&quot;\)/,  
+                        /background-image:\s*url\("([^"]+)"\)/,           
+                        /background-image:\s*url\('([^']+)'\)/,           
+                        /background-image:\s*url\(([^)]+)\)/          
                     ];
 
                     for (const pattern of patterns) {
@@ -4033,31 +3174,19 @@ The extension page will open in a new tab and this scanning window will close.
                     }
                 }
             }
-
-            // Skip if no link element found (for non-img elements)
             if (element.tagName !== 'IMG' && !linkElement) continue;
-
-            // Detect videos using structural detection (language-independent)
             let isVideo = false;
             if (linkElement) {
-                // Check for video-specific structural elements
                 const parentElement = linkElement.parentElement;
                 isVideo = parentElement && (
-                    // Video has additional "e37Orb" class on main container
                     parentElement.classList.contains('e37Orb') ||
-                    // Video has duration display element
                     parentElement.querySelector('.KhS5De') ||
-                    // Video has progress bar controller
                     parentElement.querySelector('[jscontroller="qUYJve"]') ||
-                    // Video has play button SVG (triangle path)
                     parentElement.querySelector('svg path[d*="M10 16.5l6-4.5-6-4.5z"]')
                 );
             }
-
-            // Process both photos and videos (videos analyzed via thumbnails)
             if (imageUrl) {
                 if (isVideo) {
-                    // Check if we already have this video (prevent duplicate counting)
                     const existingVideo = this.videos.find(v =>
                         v.element === linkElement ||
                         (imageUrl && v.url === imageUrl)
@@ -4077,22 +3206,14 @@ The extension page will open in a new tab and this scanning window will close.
                             scrollPosition: currentScrollPosition
                         });
                         this.videosFound++;
-
-                        // Also store in scroll position map
                         this.photoScrollPositions.set(videoId, currentScrollPosition);
 
                         if (!silent) {
-                     //       console.log(`📹 Found video: ${ariaLabel || 'Unknown'} (total videos: ${this.videosFound})`);
                         }
                     }
-                    continue; // Continue to next element after processing video
+                    continue; 
                 }
             }
-
-            // If we have a linkElement, it means href contains "/photo/" which is what we want
-            // This works for both photos and videos, but videos are filtered out above
-
-            // Skip if we already have this photo (check both URL and element)
             if (imageUrl) {
                 const existingPhoto = this.photos.find(p =>
                     p.url === imageUrl ||
@@ -4101,17 +3222,12 @@ The extension page will open in a new tab and this scanning window will close.
 
                 if (!existingPhoto) {
                     const photoId = this.generatePhotoId(linkElement || element, index);
-
-                    // NEW: Get current scroll position where this photo was found
                     const currentScrollPosition = this.getCurrentScrollPosition();
 
                     if (!silent) {
                         if (thorough) {
-               //             console.log(`🔍 Thorough: Found photo: ${ariaLabel || 'Unknown'} -> ${imageUrl}`);
                         } else {
-                 //           console.log(`Found photo: ${ariaLabel} -> ${imageUrl}`);
                         }
-                //        console.log(`📍 Photo found at scroll position: ${currentScrollPosition}`);
                     }
 
                     this.photos.push({
@@ -4121,10 +3237,8 @@ The extension page will open in a new tab and this scanning window will close.
                         ariaLabel: ariaLabel || 'Unknown',
                         href: linkElement ? linkElement.getAttribute('href') || '' : '',
                         processed: false,
-                        scrollPosition: currentScrollPosition // NEW: Store scroll position
+                        scrollPosition: currentScrollPosition 
                     });
-
-                    // NEW: Also store in our scroll position map for quick lookup
                     this.photoScrollPositions.set(photoId, currentScrollPosition);
 
 
@@ -4135,12 +3249,8 @@ The extension page will open in a new tab and this scanning window will close.
         const afterCount = this.photos.length;
         const newPhotosFound = afterCount - beforeCount;
 
-        if (!silent) {
-  //          console.log(`📊 extractPhotos completed: ${afterCount} total photos (${newPhotosFound} new)`);
-        }
-
-        // Only update photo count if we're not actively scanning and not in silent mode
-        // During scanning, progress is handled by updateScanProgress()
+        // if (!silent) {
+        // }
         if (!this.isScanning && !silent) {
             this.updatePhotoCount();
         }
@@ -4151,8 +3261,6 @@ The extension page will open in a new tab and this scanning window will close.
         const match = href.match(/photo\/([^\/]+)/);
         return match ? match[1] : `photo_${index}_${Date.now()}`;
     }
-
-    // NEW: Get current scroll position (works with both container and document scrolling)
     getCurrentScrollPosition() {
         const scrollContainer = this.findScrollableContainer();
         if (scrollContainer) {
@@ -4163,30 +3271,20 @@ The extension page will open in a new tab and this scanning window will close.
     }
 
     updatePhotoCount() {
-        // Don't update if scan is complete - preserve the "ready for analysis" message
         if (this.scanComplete) {
-            console.log(`📊 updatePhotoCount: Skipping - scan complete`);
             return;
         }
-
-        // Don't update if actively scanning - updateScanProgress handles this
         if (this.isScanning) {
-            console.log(`📊 updatePhotoCount: Skipping - actively scanning (isScanning=${this.isScanning})`);
             return;
         }
 
         const countElement = document.getElementById('pc-photo-count');
         if (countElement) {
-            // If no photos or videos found and we're in idle state, preserve "Idle" text
             if (this.photos.length === 0 && this.videos.length === 0 && !this.isProcessing) {
-                console.log(`📊 updatePhotoCount: Preserving idle state (no photos/videos, not processing)`);
                 countElement.innerHTML = 'Idle';
             } else {
-                console.log(`📊 updatePhotoCount: Updating display to ${this.photos.length} photos and ${this.videos.length} videos found`);
-          //      countElement.innerHTML = `${this.photos.length} photos found<br/>${this.videos.length} videos found`;
             }
 
-            // Reset styling in case it was changed during scanning
             countElement.className = '';
             countElement.style.color = '';
             countElement.style.fontStyle = '';
@@ -4215,55 +3313,34 @@ The extension page will open in a new tab and this scanning window will close.
             countElement.style.fontStyle = 'italic';
         }
     }
-//convert to jquery
+
     async analyzePhotos() {
         if (this.photos.length < 2 && this.videos.length < 2) {
             alert('Need at least 2 photos or videos to analyze');
             return;
         }
 
-
-        // Reset group counting flag for new analysis
         this.groupsAlreadyCounted = false;
 
         this.showProgress(true);
         this.updateProgress(0, 'Creating frontend analysis session...');
 
         try {
-            // Step 1: Create frontend session
             const sessionId = this.frontendSessionManager.createSession();
-        //    //console.log('📊 Created frontend analysis session:', sessionId);
 
             this.updateProgress(5, 'Processing photos and videos with frontend hash computation...');
-
-            // Step 2: Upload photos and videos to frontend session (with hash computation)
             await this.uploadPhotosToFrontendSession(sessionId);
-            // await this.uploadVideosToFrontendSession(sessionId);
 
             this.updateProgress(85, 'Running frontend similarity analysis...');
-
-            // Step 3: Set up progress callback for detailed analysis progress
             this.frontendSessionManager.progressCallback = (percent, message) => {
-                // Map the analysis progress (10-100%) to our overall progress (85-95%)
-                const mappedPercent = 85 + (percent - 10) * 0.1; // 85% + 10% range
+                const mappedPercent = 85 + (percent - 10) * 0.1; 
                 this.updateProgress(mappedPercent, message);
             };
-
-            // Step 4: Perform frontend analysis
             const similarityThreshold = this.similarityThreshold || $('#pc-similarity').val() || 75;
-            console.log(`🎯 Using similarity threshold: ${similarityThreshold}%`);
             const results = await this.frontendSessionManager.analyzeSession(sessionId, parseInt(similarityThreshold));
-
-            // Clear progress callback
             this.frontendSessionManager.progressCallback = null;
-
-            // Step 4: Transform results to match expected format (separate photos and videos)
             const transformedResults = this.transformFrontendResults(results, sessionId);
-
-            // Store the processed count from the frontend results
             this.processedPhotosCount = transformedResults.total_images || this.photos.length;
-
-            // this.updateProgress(100, 'Frontend analysis complete!');
 
             await this.delay(500);
             this.showProgress(false);
@@ -4274,22 +3351,15 @@ The extension page will open in a new tab and this scanning window will close.
         } catch (error) {
             console.error('Error analyzing photos with frontend:', error);
             this.showProgress(false);
-            // alert('Error analyzing photos: ' + error.message);
         }
     }
 
     async uploadPhotosToFrontendSession(sessionId) {
-        console.log(`Processing ${this.photos.length} photos in frontend session using optimized batch screenshot method`);
 
-        // Calculate optimal batch layout
         const layout = this.calculateOptimalBatchLayout();
         const batchSize = layout.batchSize;
 
-        console.log(`📸 Processing up to ${batchSize} images simultaneously - estimated time: ~${Math.ceil(this.photos.length / batchSize * 0.8)} seconds`);
-
         let uploaded = 0;
-
-        // Show screenshot area with dynamic layout
         this.showScreenshotArea(layout);
 
         for (let i = 0; i < this.photos.length; i += batchSize) {
@@ -4304,9 +3374,7 @@ The extension page will open in a new tab and this scanning window will close.
             try {
                 const batchResults = await this.processBatchScreenshotsForFrontend(sessionId, batch, i, layout);
                 uploaded += batchResults;
-                console.log(`✅ Frontend batch ${Math.floor(i / batchSize) + 1} complete: ${batchResults}/${batch.length} images processed`);
 
-                // Brief pause between batches to avoid overwhelming the system
                 if (i + batchSize < this.photos.length) {
                     await this.delay(400);
                 }
@@ -4315,14 +3383,10 @@ The extension page will open in a new tab and this scanning window will close.
             }
         }
 
-        // Hide screenshot area
         this.hideScreenshotArea();
-
-        console.log(`Successfully processed ${uploaded}/${this.photos.length} photo screenshots in frontend`);
         return uploaded;
     }
     transformFrontendResults(frontendResults, sessionId) {
-        // Transform frontend results to match the expected server format
         const session = this.frontendSessionManager.getSessionStatus(sessionId);
 
         return {
@@ -4363,7 +3427,6 @@ The extension page will open in a new tab and this scanning window will close.
         // Start loading all images simultaneously - handle failures gracefully
         const loadPromises = screenshotSlots.map(slot =>
             this.loadImageInSlot(slot).catch(error => {
-                console.log(`⚠️ Skipping image ${slot.photo.id}: ${error.message}`);
                 slot.loadFailed = true;
                 return null;
             })
@@ -4373,41 +3436,30 @@ The extension page will open in a new tab and this scanning window will close.
         // Wait for all images to be fully rendered
         await this.delay(800);
 
-        // Respect rate limiting before screenshot
         await this.respectScreenshotRateLimit();
 
-        // Capture screenshot of the entire batch area
         const batchScreenshot = await this.captureBatchScreenshot();
 
-        // Process each image from the batch screenshot and compute hashes in frontend
         let uploaded = 0;
         for (let i = 0; i < screenshotSlots.length; i++) {
             const slot = screenshotSlots[i];
             const photo = photoBatch[i];
 
-            // Skip images that failed to load
             if (slot.loadFailed) {
-                console.log(`⏭️ Skipping failed image ${startIndex + i + 1}: ${photo.id}`);
                 continue;
             }
 
             try {
-                // Crop individual image from batch screenshot
                 const croppedImage = await this.cropImageFromBatch(batchScreenshot, slot.bounds);
 
                 if (croppedImage) {
-                    console.log(`🖼️ Frontend processing image ${startIndex + i + 1}: ${photo.id}`);
 
-                    // Store captured image data for AI selection
                     photo.capturedImageData = croppedImage;
-                    console.log(`💾 Stored captured image data for photo ${photo.id} (for AI selection)`);
 
-                    // Add to frontend session (compute hashes)
                     const result = await this.frontendSessionManager.addImage(sessionId, photo.id, croppedImage,photo.url);
 
                     if (result.success) {
                         uploaded++;
-                        console.log(`✅ Frontend processed image ${startIndex + i + 1}: ${photo.ariaLabel}`);
                     } else {
                         console.warn(`❌ Frontend failed to process image ${startIndex + i + 1}: ${result.error}`);
                     }
@@ -4422,247 +3474,231 @@ The extension page will open in a new tab and this scanning window will close.
         return uploaded;
     }
 
-    renderGroupsSection(groups, mediaType) {
-        const groupsToShow = groups;
-        const maxSelectableGroups = this.isPaidVersion ? groupsToShow.length : 2;
-        const nonSelectableGroups = groupsToShow.length - maxSelectableGroups;
-        const mediaArray = mediaType === 'video' ? this.videos : this.photos;
-        const mediaEmoji = mediaType === 'video' ? '📹' : '📸';
+    // renderGroupsSection(groups, mediaType) {
+    //     const groupsToShow = groups;
+    //     const maxSelectableGroups = this.isPaidVersion ? groupsToShow.length : 2;
+    //     const nonSelectableGroups = groupsToShow.length - maxSelectableGroups;
+    //     const mediaArray = mediaType === 'video' ? this.videos : this.photos;
+    //     const mediaEmoji = mediaType === 'video' ? '📹' : '📸';
 
-        let groupsHtml = groupsToShow.map((group, index) => {
-            const isSelectable = this.isPaidVersion || index < maxSelectableGroups;
-            const groupHeaderClass = isSelectable ? '' : 'pc-group-non-selectable';
-            const selectionDisabled = !isSelectable;
+    //     let groupsHtml = groupsToShow.map((group, index) => {
+    //         const isSelectable = this.isPaidVersion || index < maxSelectableGroups;
+    //         const groupHeaderClass = isSelectable ? '' : 'pc-group-non-selectable';
+    //         const selectionDisabled = !isSelectable;
 
-            return `
-                <div class="pc-group ${groupHeaderClass}" data-group-index="${group.originalIndex}" data-media-type="${mediaType}" ${selectionDisabled ? 'data-non-selectable="true"' : ''}>
-                    <div class="pc-group-header">
-                        <h4>${mediaEmoji} Group ${index + 1} (${Math.round(group.similarity_score * 100)}% similar)${!isSelectable ? ' 🔒' : ''}</h4>
-                        <div class="pc-group-controls-row">
-                            <button class="pc-group-toggle pc-btn pc-btn-secondary" data-group-index="${group.originalIndex}" data-media-type="${mediaType}" ${selectionDisabled ? 'disabled title="Upgrade to Pro to select items in this group"' : `title="Select or unselect all ${mediaType}s in this group for deletion"`}>
-                                ☐ Select All${selectionDisabled ? ' (Pro)' : ''}
-                            </button>
+    //         return `
+    //             <div class="pc-group ${groupHeaderClass}" data-group-index="${group.originalIndex}" data-media-type="${mediaType}" ${selectionDisabled ? 'data-non-selectable="true"' : ''}>
+    //                 <div class="pc-group-header">
+    //                     <h4>${mediaEmoji} Group ${index + 1} (${Math.round(group.similarity_score * 100)}% similar)${!isSelectable ? ' 🔒' : ''}</h4>
+    //                     <div class="pc-group-controls-row">
+    //                         <button class="pc-group-toggle pc-btn pc-btn-secondary" data-group-index="${group.originalIndex}" data-media-type="${mediaType}" ${selectionDisabled ? 'disabled title="Upgrade to Pro to select items in this group"' : `title="Select or unselect all ${mediaType}s in this group for deletion"`}>
+    //                             ☐ Select All${selectionDisabled ? ' (Pro)' : ''}
+    //                         </button>
                             
-                            <button class="pc-btn pc-btn-group-ai" data-group-index="${group.originalIndex}" data-media-type="${mediaType}" ${!isSelectable ? 'disabled title="Upgrade to Pro to select items in this group"' : (!this.isPaidVersion ? 'disabled title="Upgrade to Pro for AI-powered smart selection"' : 'title="Use AI face detection to keep happier expressions in this group"')}>
-                                🧠${!this.isPaidVersion ? ' (Pro)' : ''}
-                            </button>
+    //                         <button class="pc-btn pc-btn-group-ai" data-group-index="${group.originalIndex}" data-media-type="${mediaType}" ${!isSelectable ? 'disabled title="Upgrade to Pro to select items in this group"' : (!this.isPaidVersion ? 'disabled title="Upgrade to Pro for AI-powered smart selection"' : 'title="Use AI face detection to keep happier expressions in this group"')}>
+    //                             🧠${!this.isPaidVersion ? ' (Pro)' : ''}
+    //                         </button>
                             
-                            <button class="pc-btn pc-btn-group-metadata" data-group-index="${group.originalIndex}" data-criteria="size" data-preference="larger" data-media-type="${mediaType}" ${!isSelectable ? 'disabled title="Upgrade to Pro to select items in this group"' : (!this.isPaidVersion ? 'disabled title="Upgrade to Pro for metadata-based selection"' : 'title="Keep larger file size in this group"')}>
-                                💾➕
-                            </button>
-                            <button class="pc-btn pc-btn-group-metadata" data-group-index="${group.originalIndex}" data-criteria="size" data-preference="smaller" data-media-type="${mediaType}" ${!isSelectable ? 'disabled title="Upgrade to Pro to select items in this group"' : (!this.isPaidVersion ? 'disabled title="Upgrade to Pro for metadata-based selection"' : 'title="Keep smaller file size in this group"')}>
-                                💾➖
-                            </button>
-                            <button class="pc-btn pc-btn-group-metadata" data-group-index="${group.originalIndex}" data-criteria="storageSize" data-preference="larger" data-media-type="${mediaType}" ${!isSelectable ? 'disabled title="Upgrade to Pro to select items in this group"' : (!this.isPaidVersion ? 'disabled title="Upgrade to Pro for metadata-based selection"' : `title="Keep ${mediaType} that takes more Google account space in this group"`)}>
-                                💳➕
-                            </button>
-                            <button class="pc-btn pc-btn-group-metadata" data-group-index="${group.originalIndex}" data-criteria="storageSize" data-preference="smaller" data-media-type="${mediaType}" ${!isSelectable ? 'disabled title="Upgrade to Pro to select items in this group"' : (!this.isPaidVersion ? 'disabled title="Upgrade to Pro for metadata-based selection"' : `title="Keep ${mediaType} that takes less Google account space in this group"`)}>
-                                💳➖
-                            </button>
-                            <button class="pc-btn pc-btn-group-metadata" data-group-index="${group.originalIndex}" data-criteria="resolution" data-preference="larger" data-media-type="${mediaType}" ${!isSelectable ? 'disabled title="Upgrade to Pro to select items in this group"' : (!this.isPaidVersion ? 'disabled title="Upgrade to Pro for metadata-based selection"' : 'title="Keep higher resolution in this group"')}>
-                                🖼️➕
-                            </button>
-                            <button class="pc-btn pc-btn-group-metadata" data-group-index="${group.originalIndex}" data-criteria="resolution" data-preference="smaller" data-media-type="${mediaType}" ${!isSelectable ? 'disabled title="Upgrade to Pro to select items in this group"' : (!this.isPaidVersion ? 'disabled title="Upgrade to Pro for metadata-based selection"' : 'title="Keep lower resolution in this group"')}>
-                                🖼️➖
-                            </button>
-                            <button class="pc-btn pc-btn-group-metadata" data-group-index="${group.originalIndex}" data-criteria="taken_date" data-preference="newer" data-media-type="${mediaType}" ${!isSelectable ? 'disabled title="Upgrade to Pro to select items in this group"' : (!this.isPaidVersion ? 'disabled title="Upgrade to Pro for metadata-based selection"' : `title="Keep newer ${mediaType} (taken date) in this group"`)}>
-                                📅➕
-                            </button>
-                            <button class="pc-btn pc-btn-group-metadata" data-group-index="${group.originalIndex}" data-criteria="taken_date" data-preference="older" data-media-type="${mediaType}" ${!isSelectable ? 'disabled title="Upgrade to Pro to select items in this group"' : (!this.isPaidVersion ? 'disabled title="Upgrade to Pro for metadata-based selection"' : `title="Keep older ${mediaType} (taken date) in this group"`)}>
-                                📅➖
-                            </button>
-                            <button class="pc-btn pc-btn-group-metadata" data-group-index="${group.originalIndex}" data-criteria="upload_date" data-preference="newer" data-media-type="${mediaType}" ${!isSelectable ? 'disabled title="Upgrade to Pro to select items in this group"' : (!this.isPaidVersion ? 'disabled title="Upgrade to Pro for metadata-based selection"' : 'title="Keep newer upload in this group"')}>
-                                ⬆️➕
-                            </button>
-                            <button class="pc-btn pc-btn-group-metadata" data-group-index="${group.originalIndex}" data-criteria="upload_date" data-preference="older" data-media-type="${mediaType}" ${!isSelectable ? 'disabled title="Upgrade to Pro to select items in this group"' : (!this.isPaidVersion ? 'disabled title="Upgrade to Pro for metadata-based selection"' : 'title="Keep older upload in this group"')}>
-                                ⬆️➖
-                            </button>
-                        </div>
-                    </div>
-                    <div class="pc-group-images">
-                        ${group.image_ids.map(id => {
-                const mediaItem = mediaArray.find(item => item.id === id);
-                if (!mediaItem) return '';
-                // Convert thumbnail URL to full-size for display
-                const fullSizeUrl = this.convertToFullResolution(mediaItem.url);
+    //                         <button class="pc-btn pc-btn-group-metadata" data-group-index="${group.originalIndex}" data-criteria="size" data-preference="larger" data-media-type="${mediaType}" ${!isSelectable ? 'disabled title="Upgrade to Pro to select items in this group"' : (!this.isPaidVersion ? 'disabled title="Upgrade to Pro for metadata-based selection"' : 'title="Keep larger file size in this group"')}>
+    //                             💾➕
+    //                         </button>
+    //                         <button class="pc-btn pc-btn-group-metadata" data-group-index="${group.originalIndex}" data-criteria="size" data-preference="smaller" data-media-type="${mediaType}" ${!isSelectable ? 'disabled title="Upgrade to Pro to select items in this group"' : (!this.isPaidVersion ? 'disabled title="Upgrade to Pro for metadata-based selection"' : 'title="Keep smaller file size in this group"')}>
+    //                             💾➖
+    //                         </button>
+    //                         <button class="pc-btn pc-btn-group-metadata" data-group-index="${group.originalIndex}" data-criteria="storageSize" data-preference="larger" data-media-type="${mediaType}" ${!isSelectable ? 'disabled title="Upgrade to Pro to select items in this group"' : (!this.isPaidVersion ? 'disabled title="Upgrade to Pro for metadata-based selection"' : `title="Keep ${mediaType} that takes more Google account space in this group"`)}>
+    //                             💳➕
+    //                         </button>
+    //                         <button class="pc-btn pc-btn-group-metadata" data-group-index="${group.originalIndex}" data-criteria="storageSize" data-preference="smaller" data-media-type="${mediaType}" ${!isSelectable ? 'disabled title="Upgrade to Pro to select items in this group"' : (!this.isPaidVersion ? 'disabled title="Upgrade to Pro for metadata-based selection"' : `title="Keep ${mediaType} that takes less Google account space in this group"`)}>
+    //                             💳➖
+    //                         </button>
+    //                         <button class="pc-btn pc-btn-group-metadata" data-group-index="${group.originalIndex}" data-criteria="resolution" data-preference="larger" data-media-type="${mediaType}" ${!isSelectable ? 'disabled title="Upgrade to Pro to select items in this group"' : (!this.isPaidVersion ? 'disabled title="Upgrade to Pro for metadata-based selection"' : 'title="Keep higher resolution in this group"')}>
+    //                             🖼️➕
+    //                         </button>
+    //                         <button class="pc-btn pc-btn-group-metadata" data-group-index="${group.originalIndex}" data-criteria="resolution" data-preference="smaller" data-media-type="${mediaType}" ${!isSelectable ? 'disabled title="Upgrade to Pro to select items in this group"' : (!this.isPaidVersion ? 'disabled title="Upgrade to Pro for metadata-based selection"' : 'title="Keep lower resolution in this group"')}>
+    //                             🖼️➖
+    //                         </button>
+    //                         <button class="pc-btn pc-btn-group-metadata" data-group-index="${group.originalIndex}" data-criteria="taken_date" data-preference="newer" data-media-type="${mediaType}" ${!isSelectable ? 'disabled title="Upgrade to Pro to select items in this group"' : (!this.isPaidVersion ? 'disabled title="Upgrade to Pro for metadata-based selection"' : `title="Keep newer ${mediaType} (taken date) in this group"`)}>
+    //                             📅➕
+    //                         </button>
+    //                         <button class="pc-btn pc-btn-group-metadata" data-group-index="${group.originalIndex}" data-criteria="taken_date" data-preference="older" data-media-type="${mediaType}" ${!isSelectable ? 'disabled title="Upgrade to Pro to select items in this group"' : (!this.isPaidVersion ? 'disabled title="Upgrade to Pro for metadata-based selection"' : `title="Keep older ${mediaType} (taken date) in this group"`)}>
+    //                             📅➖
+    //                         </button>
+    //                         <button class="pc-btn pc-btn-group-metadata" data-group-index="${group.originalIndex}" data-criteria="upload_date" data-preference="newer" data-media-type="${mediaType}" ${!isSelectable ? 'disabled title="Upgrade to Pro to select items in this group"' : (!this.isPaidVersion ? 'disabled title="Upgrade to Pro for metadata-based selection"' : 'title="Keep newer upload in this group"')}>
+    //                             ⬆️➕
+    //                         </button>
+    //                         <button class="pc-btn pc-btn-group-metadata" data-group-index="${group.originalIndex}" data-criteria="upload_date" data-preference="older" data-media-type="${mediaType}" ${!isSelectable ? 'disabled title="Upgrade to Pro to select items in this group"' : (!this.isPaidVersion ? 'disabled title="Upgrade to Pro for metadata-based selection"' : 'title="Keep older upload in this group"')}>
+    //                             ⬆️➖
+    //                         </button>
+    //                     </div>
+    //                 </div>
+    //                 <div class="pc-group-images">
+    //                     ${group.image_ids.map(id => {
+    //             const mediaItem = mediaArray.find(item => item.id === id);
+    //             if (!mediaItem) return '';
+    //             // Convert thumbnail URL to full-size for display
+    //             const fullSizeUrl = this.convertToFullResolution(mediaItem.url);
 
-                return `
-                                <div class="pc-image-item ${!isSelectable ? 'pc-image-non-selectable' : ''}" data-photo-id="${mediaItem.id}" data-photo-url="${mediaItem.url}" data-media-type="${mediaType}">
-                                    <div class="pc-image-container">
-                                        <img src="${fullSizeUrl}" alt="${mediaItem.ariaLabel}">
-                                        <div class="pc-image-overlay ${!isSelectable ? 'pc-overlay-disabled' : ''}">
-                                            <div class="pc-checkbox-indicator" data-selected="false">
-                                                <svg width="24" height="24" viewBox="0 0 24 24" class="pc-checkbox-icon">
-                                                    <circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="2"/>
-                                                    <path d="M7 13l3 3 7-7" stroke="currentColor" stroke-width="2" fill="none" style="display: none;"/>
-                                                </svg>
-                                            </div>
-                                            <span class="pc-toggle-text">${!isSelectable ? `Upgrade to Pro to select ${mediaType}s in this group` : `Click to mark or unmark ${mediaType} for deletion`}</span>
-                                        </div>
-                                    </div>
-                                    <p>${mediaType === 'video' ? '📹 ' : '📸 '}${mediaItem.ariaLabel}</p>
-                                    <div class="pc-image-size" data-photo-id="${mediaItem.id}"></div>
-                                </div>
-                            `;
-            }).join('')}
-                    </div>
-                </div>
-            `;
-        }).join('');
+    //             return `
+    //                             <div class="pc-image-item ${!isSelectable ? 'pc-image-non-selectable' : ''}" data-photo-id="${mediaItem.id}" data-photo-url="${mediaItem.url}" data-media-type="${mediaType}">
+    //                                 <div class="pc-image-container">
+    //                                     <img src="${fullSizeUrl}" alt="${mediaItem.ariaLabel}">
+    //                                     <div class="pc-image-overlay ${!isSelectable ? 'pc-overlay-disabled' : ''}">
+    //                                         <div class="pc-checkbox-indicator" data-selected="false">
+    //                                             <svg width="24" height="24" viewBox="0 0 24 24" class="pc-checkbox-icon">
+    //                                                 <circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="2"/>
+    //                                                 <path d="M7 13l3 3 7-7" stroke="currentColor" stroke-width="2" fill="none" style="display: none;"/>
+    //                                             </svg>
+    //                                         </div>
+    //                                         <span class="pc-toggle-text">${!isSelectable ? `Upgrade to Pro to select ${mediaType}s in this group` : `Click to mark or unmark ${mediaType} for deletion`}</span>
+    //                                     </div>
+    //                                 </div>
+    //                                 <p>${mediaType === 'video' ? '📹 ' : '📸 '}${mediaItem.ariaLabel}</p>
+    //                                 <div class="pc-image-size" data-photo-id="${mediaItem.id}"></div>
+    //                             </div>
+    //                         `;
+    //         }).join('')}
+    //                 </div>
+    //             </div>
+    //         `;
+    //     }).join('');
 
-        // Add upgrade message if there are non-selectable groups for free users
-        if (!this.isPaidVersion && nonSelectableGroups > 0) {
-            groupsHtml += `
-                <div class="pc-upgrade-message" style="background: #fff3cd; border: 1px solid #ffeaa7; border-radius: 8px; padding: 20px; margin: 16px 0; text-align: center;">
-                    <p style="margin: 0 0 12px 0; color: #856404; font-weight: 500; font-size: 16px;">
-                        📊 <strong>${nonSelectableGroups} additional ${mediaType} groups found!</strong> Free version allows ${mediaType} selection in the first 2 groups only. Upgrade to PRO to unlock ${mediaType} selection in all groups.
-                    </p>
-                    <button id="pc-upgrade-pro-btn-${mediaType}" class="pc-btn pc-btn-buy" style="
-                        margin: 0 auto;
-                        padding: 10px 20px;
-                        background: #007bff;
-                        color: white;
-                        border: none;
-                        border-radius: 6px;
-                        font-weight: 600;
-                        font-size: 14px;
-                        cursor: pointer;
-                        transition: all 0.2s ease;
-                        display: inline-block;
-                    ">
-                        🔥 Upgrade to PRO
-                    </button>
-                </div>
-            `;
-        }
+    //     // Add upgrade message if there are non-selectable groups for free users
+    //     if (!this.isPaidVersion && nonSelectableGroups > 0) {
+    //         groupsHtml += `
+    //             <div class="pc-upgrade-message" style="background: #fff3cd; border: 1px solid #ffeaa7; border-radius: 8px; padding: 20px; margin: 16px 0; text-align: center;">
+    //                 <p style="margin: 0 0 12px 0; color: #856404; font-weight: 500; font-size: 16px;">
+    //                     📊 <strong>${nonSelectableGroups} additional ${mediaType} groups found!</strong> Free version allows ${mediaType} selection in the first 2 groups only. Upgrade to PRO to unlock ${mediaType} selection in all groups.
+    //                 </p>
+    //                 <button id="pc-upgrade-pro-btn-${mediaType}" class="pc-btn pc-btn-buy" style="
+    //                     margin: 0 auto;
+    //                     padding: 10px 20px;
+    //                     background: #007bff;
+    //                     color: white;
+    //                     border: none;
+    //                     border-radius: 6px;
+    //                     font-weight: 600;
+    //                     font-size: 14px;
+    //                     cursor: pointer;
+    //                     transition: all 0.2s ease;
+    //                     display: inline-block;
+    //                 ">
+    //                     🔥 Upgrade to PRO
+    //                 </button>
+    //             </div>
+    //         `;
+    //     }
 
-        return groupsHtml;
-    }
+    //     return groupsHtml;
+    // }
 
-    async processBatchScreenshotsForFrontendVideos(sessionId, videoBatch, startIndex, layout) {
-        const container = document.getElementById('pc-screenshot-container');
-        if (!container) {
-            throw new Error('Screenshot container not found');
-        }
+    // async processBatchScreenshotsForFrontendVideos(sessionId, videoBatch, startIndex, layout) {
+    //     const container = document.getElementById('pc-screenshot-container');
+    //     if (!container) {
+    //         throw new Error('Screenshot container not found');
+    //     }
 
-        // Clear previous screenshots
-        container.innerHTML = '';
+    //     // Clear previous screenshots
+    //     container.innerHTML = '';
 
-        // Create screenshot slots for this batch of videos
-        const screenshotSlots = [];
-        for (let i = 0; i < videoBatch.length; i++) {
-            const video = videoBatch[i];
-            const slot = this.createScreenshotSlot(video, startIndex + i, layout);
-            container.appendChild(slot.element);
-            screenshotSlots.push(slot);
-        }
+    //     // Create screenshot slots for this batch of videos
+    //     const screenshotSlots = [];
+    //     for (let i = 0; i < videoBatch.length; i++) {
+    //         const video = videoBatch[i];
+    //         const slot = this.createScreenshotSlot(video, startIndex + i, layout);
+    //         container.appendChild(slot.element);
+    //         screenshotSlots.push(slot);
+    //     }
 
-        // Start loading all video thumbnails simultaneously - handle failures gracefully
-        const loadPromises = screenshotSlots.map(slot =>
-            this.loadImageInSlot(slot).catch(error => {
-                console.log(`⚠️ Skipping video thumbnail ${slot.photo.id}: ${error.message}`);
-                slot.loadFailed = true;
-                return null;
-            })
-        );
-        await Promise.all(loadPromises);
+    //     // Start loading all video thumbnails simultaneously - handle failures gracefully
+    //     const loadPromises = screenshotSlots.map(slot =>
+    //         this.loadImageInSlot(slot).catch(error => {
+    //             console.log(`⚠️ Skipping video thumbnail ${slot.photo.id}: ${error.message}`);
+    //             slot.loadFailed = true;
+    //             return null;
+    //         })
+    //     );
+    //     await Promise.all(loadPromises);
 
-        // Wait for all images to be fully rendered
-        await this.delay(800);
+    //     // Wait for all images to be fully rendered
+    //     await this.delay(800);
 
-        // Respect rate limiting before screenshot
-        await this.respectScreenshotRateLimit();
+    //     // Respect rate limiting before screenshot
+    //     await this.respectScreenshotRateLimit();
 
-        // Capture screenshot of the entire batch area
-        const batchScreenshot = await this.captureBatchScreenshot();
+    //     // Capture screenshot of the entire batch area
+    //     const batchScreenshot = await this.captureBatchScreenshot();
 
-        // Process each video thumbnail from the batch screenshot and compute hashes in frontend
-        let uploaded = 0;
-        for (let i = 0; i < screenshotSlots.length; i++) {
-            const slot = screenshotSlots[i];
-            const video = videoBatch[i];
+    //     // Process each video thumbnail from the batch screenshot and compute hashes in frontend
+    //     let uploaded = 0;
+    //     for (let i = 0; i < screenshotSlots.length; i++) {
+    //         const slot = screenshotSlots[i];
+    //         const video = videoBatch[i];
 
-            // Skip video thumbnails that failed to load
-            if (slot.loadFailed) {
-                console.log(`⏭️ Skipping failed video thumbnail ${startIndex + i + 1}: ${video.id}`);
-                continue;
-            }
+    //         // Skip video thumbnails that failed to load
+    //         if (slot.loadFailed) {
+    //             console.log(`⏭️ Skipping failed video thumbnail ${startIndex + i + 1}: ${video.id}`);
+    //             continue;
+    //         }
 
-            try {
-                // Crop individual video thumbnail from batch screenshot
-                const croppedImage = await this.cropImageFromBatch(batchScreenshot, slot.bounds);
+    //         try {
+    //             // Crop individual video thumbnail from batch screenshot
+    //             const croppedImage = await this.cropImageFromBatch(batchScreenshot, slot.bounds);
 
-                if (croppedImage) {
-                    console.log(`🎬 Frontend processing video thumbnail ${startIndex + i + 1}: ${video.id}`);
+    //             if (croppedImage) {
+    //                 console.log(`🎬 Frontend processing video thumbnail ${startIndex + i + 1}: ${video.id}`);
 
-                    // Store captured image data for AI selection
-                    video.capturedImageData = croppedImage;
-                    console.log(`💾 Stored captured video thumbnail data for video ${video.id} (for AI selection)`);
+    //                 // Store captured image data for AI selection
+    //                 video.capturedImageData = croppedImage;
+    //                 console.log(`💾 Stored captured video thumbnail data for video ${video.id} (for AI selection)`);
 
-                    // Add to frontend session (compute hashes) - treating video thumbnail as image
-                    const result = await this.frontendSessionManager.addImage(sessionId, video.id, croppedImage,photo.url);
+    //                 // Add to frontend session (compute hashes) - treating video thumbnail as image
+    //                 const result = await this.frontendSessionManager.addImage(sessionId, video.id, croppedImage,photo.url);
 
-                    if (result.success) {
-                        uploaded++;
-                        console.log(`✅ Frontend processed video thumbnail ${startIndex + i + 1}: ${video.ariaLabel}`);
-                    } else {
-                        console.warn(`❌ Frontend failed to process video thumbnail ${startIndex + i + 1}: ${result.error}`);
-                    }
-                } else {
-                    console.warn(`❌ Failed to crop video thumbnail ${startIndex + i + 1}: ${video.id}`);
-                }
-            } catch (error) {
-                console.warn(`❌ Failed to process video thumbnail ${startIndex + i + 1}: ${video.id}`, error);
-            }
-        }
+    //                 if (result.success) {
+    //                     uploaded++;
+    //                     console.log(`✅ Frontend processed video thumbnail ${startIndex + i + 1}: ${video.ariaLabel}`);
+    //                 } else {
+    //                     console.warn(`❌ Frontend failed to process video thumbnail ${startIndex + i + 1}: ${result.error}`);
+    //                 }
+    //             } else {
+    //                 console.warn(`❌ Failed to crop video thumbnail ${startIndex + i + 1}: ${video.id}`);
+    //             }
+    //         } catch (error) {
+    //             console.warn(`❌ Failed to process video thumbnail ${startIndex + i + 1}: ${video.id}`, error);
+    //         }
+    //     }
 
-        return uploaded;
-    }
+    //     return uploaded;
+    // }
 
     calculateOptimalBatchLayout() {
         const devicePixelRatio = window.devicePixelRatio || 1;
         const viewportWidth = window.innerWidth;
         const viewportHeight = window.innerHeight;
 
-        // Target size for final images (always 400x400)
         const targetImageSize = 400;
 
-        // Actual slot size considering device pixel ratio
-        // If devicePixelRatio is 2, we can capture at 200x200 but get 400x400 quality
         const slotSize = Math.round(targetImageSize / devicePixelRatio);
         const slotSpacing = 20;
-        const marginX = 50; // Left margin
-        const marginY = 100; // Minimum top margin (you requested min 100px)
+        const marginX = 50; 
+        const marginY = 100; 
 
-        // Calculate how many images can fit horizontally
         const availableWidth = viewportWidth - (marginX * 2);
         const maxImagesPerRow = Math.floor((availableWidth + slotSpacing) / (slotSize + slotSpacing));
 
-        // Calculate how many rows can fit vertically
-        const availableHeight = viewportHeight - marginY - 50; // 50px bottom margin
+        // how many rows can fit vertically
+        const availableHeight = viewportHeight - marginY - 50; 
         const maxRows = Math.floor((availableHeight + slotSpacing) / (slotSize + slotSpacing));
 
         // Total images per batch
         const maxImagesPerBatch = Math.max(1, maxImagesPerRow * maxRows);
 
-        // Calculate actual screenshot area dimensions
+        // actual screenshot area dimensions
         const actualImagesPerRow = Math.min(maxImagesPerRow, maxImagesPerBatch);
         const actualRows = Math.ceil(maxImagesPerBatch / actualImagesPerRow);
 
         const screenshotWidth = (actualImagesPerRow * slotSize) + ((actualImagesPerRow - 1) * slotSpacing) + (marginX * 2);
         const screenshotHeight = (actualRows * slotSize) + ((actualRows - 1) * slotSpacing) + marginY + 50;
-
-        console.log(`📐 Optimal batch layout calculation:`, {
-            devicePixelRatio: devicePixelRatio,
-            viewportSize: `${viewportWidth}x${viewportHeight}`,
-            targetImageSize: targetImageSize,
-            slotSize: slotSize,
-            maxImagesPerRow: maxImagesPerRow,
-            maxRows: maxRows,
-            maxImagesPerBatch: maxImagesPerBatch,
-            screenshotDimensions: `${screenshotWidth}x${screenshotHeight}`,
-            note: `Using ${slotSize}x${slotSize} slots to capture ${targetImageSize}x${targetImageSize} final images`
-        });
 
         return {
             batchSize: maxImagesPerBatch,
@@ -4679,28 +3715,15 @@ The extension page will open in a new tab and this scanning window will close.
         };
     }
 
-    // Legacy server upload method - replaced by uploadPhotosToFrontendSession
-    /*
-    async uploadPhotosToSession(sessionId) {
-        console.log(`Uploading ${this.photos.length} photos to session using optimized batch screenshot method`);
-        // ... legacy server upload code ...
-    }
-    */
-
     showScreenshotArea(layout) {
-        // Show window warning during screenshot phase
-        // this.showWindowWarning(true);
-    //  this.closePanel()
         this.closeInitialPopup()
         const screenshotArea = document.getElementById('pc-screenshot-area');
         if (screenshotArea) {
-            // Use dynamic layout instead of fixed dimensions
             const SCREENSHOT_X = layout.marginX;
             const SCREENSHOT_Y = layout.marginY;
             const SCREENSHOT_WIDTH = layout.screenshotWidth;
             const SCREENSHOT_HEIGHT = layout.screenshotHeight;
 
-            // Force clear any existing positioning that might interfere
             screenshotArea.style.right = '';
             screenshotArea.style.transform = '';
             screenshotArea.style.margin = '';
@@ -4712,20 +3735,17 @@ The extension page will open in a new tab and this scanning window will close.
             screenshotArea.style.left = `${SCREENSHOT_X}px`;
             screenshotArea.style.top = `${SCREENSHOT_Y}px`;
 
-            // Force left positioning with !important by setting via cssText
             const leftStyle = `left: ${SCREENSHOT_X}px `;
             const existingStyle = screenshotArea.style.cssText;
             screenshotArea.style.cssText = existingStyle + '; ' + leftStyle;
             screenshotArea.style.width = `${SCREENSHOT_WIDTH}px`;
             screenshotArea.style.height = `${SCREENSHOT_HEIGHT}px`;
-            screenshotArea.style.zIndex = '10005'; // Higher than all other elements to ensure it's on top
+            screenshotArea.style.zIndex = '10005'; 
             screenshotArea.style.background = 'rgba(255, 255, 255, 0.95)';
-            // Removed border to eliminate offset calculation issues
             screenshotArea.style.border = 'none';
             screenshotArea.style.borderRadius = '0px';
             screenshotArea.style.boxShadow = '0 4px 20px rgba(0,0,0,0.2)';
 
-            // Store fixed coordinates for cropping calculations
             this.screenshotAreaBounds = {
                 x: SCREENSHOT_X,
                 y: SCREENSHOT_Y,
@@ -4733,36 +3753,13 @@ The extension page will open in a new tab and this scanning window will close.
                 height: SCREENSHOT_HEIGHT
             };
 
-            console.log(`📏 Screenshot area bounds (FIXED LEFT):`, {
-                x: SCREENSHOT_X,
-                y: SCREENSHOT_Y,
-                width: SCREENSHOT_WIDTH,
-                height: SCREENSHOT_HEIGHT,
-                calculation: `Area: LEFT ${SCREENSHOT_X}px, TOP ${SCREENSHOT_Y}px, ${SCREENSHOT_WIDTH}x${SCREENSHOT_HEIGHT}`,
-                note: "Screenshot area MUST be positioned on LEFT side at fixed coordinates"
-            });
-
-            // Double-check actual position after setting
             setTimeout(() => {
                 const actualRect = screenshotArea.getBoundingClientRect();
-                console.log(`📏 Screenshot area ACTUAL position:`, {
-                    actualX: actualRect.x,
-                    actualY: actualRect.y,
-                    actualWidth: actualRect.width,
-                    actualHeight: actualRect.height,
-                    expectedX: SCREENSHOT_X,
-                    expectedY: SCREENSHOT_Y,
-                    leftOffset: actualRect.x - SCREENSHOT_X,
-                    yOffset: actualRect.y - SCREENSHOT_Y,
-                    warning: actualRect.x !== SCREENSHOT_X ? "⚠️ X position mismatch!" : "✅ X position correct",
-                    note: "Verifying LEFT side positioning"
-                });
             }, 100);
         }
     }
 
     hideScreenshotArea() {
-        // Hide window warning when screenshot phase ends
         this.showWindowWarning(false);
 
         const screenshotArea = document.getElementById('pc-screenshot-area');
@@ -4777,10 +3774,8 @@ The extension page will open in a new tab and this scanning window will close.
             throw new Error('Screenshot container not found');
         }
 
-        // Clear previous screenshots
         container.innerHTML = '';
 
-        // Create screenshot slots for this batch
         const screenshotSlots = [];
         for (let i = 0; i < photoBatch.length; i++) {
             const photo = photoBatch[i];
@@ -4789,61 +3784,37 @@ The extension page will open in a new tab and this scanning window will close.
             screenshotSlots.push(slot);
         }
 
-        // Start loading all images simultaneously - handle failures gracefully
         const loadPromises = screenshotSlots.map(slot =>
             this.loadImageInSlot(slot).catch(error => {
-                console.log(`⚠️ Skipping image ${slot.photo.id}: ${error.message}`);
-                // Mark slot as failed but don't reject the entire batch
                 slot.loadFailed = true;
-                return null; // Return null instead of rejecting
+                return null; 
             })
         );
         await Promise.all(loadPromises);
 
-        // Wait for all images to be fully rendered
-        await this.delay(800); // Give time for rendering
+        await this.delay(800); 
 
-        // Respect rate limiting before screenshot
         await this.respectScreenshotRateLimit();
 
-        // Capture screenshot of the entire batch area
         const batchScreenshot = await this.captureBatchScreenshot();
 
-        // Process each image from the batch screenshot
         let uploaded = 0;
         for (let i = 0; i < screenshotSlots.length; i++) {
             const slot = screenshotSlots[i];
             const photo = photoBatch[i];
 
-            // Skip images that failed to load
             if (slot.loadFailed) {
-                console.log(`⏭️ Skipping failed image ${startIndex + i + 1}: ${photo.id}`);
                 continue;
             }
 
             try {
-                // Crop individual image from batch screenshot
                 const croppedImage = await this.cropImageFromBatch(batchScreenshot, slot.bounds);
 
                 if (croppedImage) {
-                    // Log image details for debugging
-                    console.log(`🖼️ Image ${startIndex + i + 1} details:`, {
-                        id: photo.id,
-                        ariaLabel: photo.ariaLabel,
-                        originalUrl: photo.src,
-                        croppedImageSize: croppedImage.length,
-                        croppedImageType: croppedImage.substring(5, 15) // "data:image/jpeg" part
-                    });
-
-                    // DEBUG: Add option to save image locally for inspection
-
                     this.debugSaveImage(croppedImage, `debug_image_${startIndex + i + 1}_${photo.id}`);
 
-
-                    // Upload to session
                     await this.uploadImageToSession(sessionId, photo.id, croppedImage);
                     uploaded++;
-                    console.log(`✅ Uploaded image ${startIndex + i + 1}: ${photo.ariaLabel}`);
                 } else {
                     console.warn(`❌ Failed to crop image ${startIndex + i + 1}: ${photo.id}`);
                 }
@@ -4860,16 +3831,13 @@ The extension page will open in a new tab and this scanning window will close.
         const slot = document.createElement('div');
         slot.id = slotId;
         slot.className = 'pc-screenshot-slot';
-
-        // Use dynamic layout dimensions
-        const slotSize = layout.slotSize; // Scaled based on device pixel ratio
-        const targetImageSize = layout.targetImageSize; // Always 400x400 for final output
+        const slotSize = layout.slotSize; 
+        const targetImageSize = layout.targetImageSize; 
         // const spacing = layout.spacing;
         const spacing = 5;
-        const startX = 10; // Fixed margin from left edge of screenshot area
-        const startY = 10; // Fixed margin from top edge of screenshot area
+        const startX = 10; 
+        const startY = 10; 
 
-        // Calculate position in grid
         const positionInBatch = index % layout.batchSize;
         const row = Math.floor(positionInBatch / layout.imagesPerRow);
         const col = positionInBatch % layout.imagesPerRow;
@@ -4883,26 +3851,11 @@ The extension page will open in a new tab and this scanning window will close.
         slot.style.width = `${slotSize}px`;
         slot.style.height = `${slotSize}px`;
         slot.style.overflow = 'hidden';
-        // Removed all visual styling (border, borderRadius, backgroundColor, boxShadow) to prevent capturing borders
 
-        // Add minimal loading indicator (will be replaced by actual image) - no styling to avoid capture
         slot.innerHTML = `<div class="pc-loading-indicator">Loading ${index + 1}...</div>`;
 
-        // Calculate absolute screen coordinates for cropping (no border offset needed)
         const absoluteX = (this.screenshotAreaBounds?.x || layout.marginX) + left;
         const absoluteY = (this.screenshotAreaBounds?.y || layout.marginY) + top;
-
-        console.log(`📐 Slot ${index + 1} positioning (borderless):`, {
-            positionInBatch: positionInBatch,
-            gridPosition: `row ${row}, col ${col}`,
-            relativePosition: `${left}x${top}`,
-            absolutePosition: `${absoluteX}x${absoluteY}`,
-            slotSize: `${slotSize}x${slotSize}`,
-            targetSize: `${targetImageSize}x${targetImageSize}`,
-            devicePixelRatio: layout.devicePixelRatio,
-            note: `Borderless: ${slotSize}x${slotSize} slot → ${targetImageSize}x${targetImageSize} final image`
-        });
-
 
         setTimeout(() => {
                 const container = document.getElementById('pc-screenshot-container');
@@ -4914,15 +3867,15 @@ The extension page will open in a new tab and this scanning window will close.
             element: slot,
             photo: photo,
             bounds: {
-                x: left,        // Relative to screenshot area
-                y: top,         // Relative to screenshot area
-                absoluteX: absoluteX,  // Absolute screen coordinates
-                absoluteY: absoluteY,  // Absolute screen coordinates
-                width: slotSize,       // CSS slot size (scaled by device pixel ratio)
+                x: left,        
+                y: top,         
+                absoluteX: absoluteX,  
+                absoluteY: absoluteY,  
+                width: slotSize,       
                 height: slotSize,
-                cropWidth: targetImageSize,   // Final crop size (always 400x400)
+                cropWidth: targetImageSize,   
                 cropHeight: targetImageSize,
-                borderOffset: 0,  // No border offset needed since we removed borders
+                borderOffset: 0,  
                 devicePixelRatio: layout.devicePixelRatio
             },
             slotId: slotId
@@ -4932,15 +3885,11 @@ The extension page will open in a new tab and this scanning window will close.
     async loadImageInSlot(slot) {
         return new Promise((resolve, reject) => {
             try {
-                // Extract URL for this photo
                 const fullResUrl = this.getFullResolutionUrl(slot.photo.element);
                 if (!fullResUrl) {
-                    // Just fail silently - no visual placeholder
                     reject(new Error(`Could not extract URL for ${slot.photo.id}`));
                     return;
                 }
-
-                // Create image element
                 const img = document.createElement('img');
                 img.style.width = '100%';
                 img.style.height = '100%';
@@ -4948,22 +3897,17 @@ The extension page will open in a new tab and this scanning window will close.
                 img.style.display = 'block';
 
                 img.onload = () => {
-                    // Replace loading indicator with actual image
                     slot.element.innerHTML = '';
                     slot.element.appendChild(img);
                     resolve();
                 };
 
                 img.onerror = () => {
-                    // Just fail silently - no visual placeholder
                     reject(new Error(`Failed to load image for ${slot.photo.id}`));
                 };
-
-                // Start loading
                 img.src = fullResUrl;
 
             } catch (error) {
-                // Just fail silently - no visual placeholder
                 reject(error);
             }
         });
@@ -4991,73 +3935,36 @@ The extension page will open in a new tab and this scanning window will close.
 
     async cropImageFromBatch(batchScreenshotDataUrl, bounds) {
         try {
-            // Create canvas for cropping - always output 400x400 regardless of input size
             const canvas = document.createElement('canvas');
             const ctx = canvas.getContext('2d');
-
-            // Set canvas size to target size (always 400x400)
             canvas.width = bounds.cropWidth || 400;
             canvas.height = bounds.cropHeight || 400;
-
-            // Load the batch screenshot
             const img = new Image();
 
             return new Promise((resolve, reject) => {
                 img.onload = () => {
                     try {
-                        // Calculate scaling factor between screenshot and viewport
                         const viewportWidth = window.innerWidth;
                         const viewportHeight = window.innerHeight;
                         const scaleX = img.width / viewportWidth;
                         const scaleY = img.height / viewportHeight;
-
-                        // Use the larger scale factor to ensure we don't crop outside the image
                         const scaleFactor = Math.max(scaleX, scaleY);
-
-                        // Calculate base coordinates (no border offset needed since we removed all styling)
                         const baseCropX = bounds.absoluteX || ((this.screenshotAreaBounds?.x || 50) + bounds.x);
                         const baseCropY = bounds.absoluteY || ((this.screenshotAreaBounds?.y || 100) + bounds.y);
 
-                        // Apply scaling factor to coordinates
                         const scaledCropX = Math.round(baseCropX * scaleFactor);
                         const scaledCropY = Math.round(baseCropY * scaleFactor);
 
-                        // Use the actual slot size (no border offset needed)
                         const sourceSlotSize = bounds.width;
                         const scaledSourceWidth = Math.round(sourceSlotSize * scaleFactor);
                         const scaledSourceHeight = Math.round(sourceSlotSize * scaleFactor);
 
-                        console.log(`📐 Clean scaling calculation:`, {
-                            viewportSize: `${viewportWidth}x${viewportHeight}`,
-                            screenshotSize: `${img.width}x${img.height}`,
-                            devicePixelRatio: bounds.devicePixelRatio || 1,
-                            scaleX: scaleX,
-                            scaleY: scaleY,
-                            scaleFactor: scaleFactor,
-                            slotSize: `${bounds.width}x${bounds.height}`,
-                            sourceSlotSize: sourceSlotSize,
-                            targetSize: `${bounds.cropWidth}x${bounds.cropHeight}`,
-                            baseCoords: `(${baseCropX}, ${baseCropY})`,
-                            scaledCoords: `(${scaledCropX}, ${scaledCropY})`,
-                            scaledSourceDimensions: `${scaledSourceWidth}x${scaledSourceHeight}`,
-                            note: `Clean capture: ${sourceSlotSize}x${sourceSlotSize} slot → ${bounds.cropWidth}x${bounds.cropHeight} final image`
-                        });
-
-                        console.log(`✂️ CLEAN Crop at (${scaledCropX}, ${scaledCropY}) size ${scaledSourceWidth}x${scaledSourceHeight} from ${img.width}x${img.height} source`);
-
-                        // Crop from batch screenshot using scaled coordinates
-                        // The magic happens here: we crop the smaller slot but output to 400x400 canvas
-                        // This gives us the quality benefit of device pixel ratio
                         ctx.drawImage(
                             img,
-                            scaledCropX, scaledCropY, scaledSourceWidth, scaledSourceHeight,  // Source coordinates (scaled slot size)
-                            0, 0, bounds.cropWidth || 400, bounds.cropHeight || 400  // Destination coordinates (always 400x400)
+                            scaledCropX, scaledCropY, scaledSourceWidth, scaledSourceHeight,  
+                            0, 0, bounds.cropWidth || 400, bounds.cropHeight || 400  
                         );
-
-                        // Convert to data URL
                         const croppedDataUrl = canvas.toDataURL('image/jpeg', 0.85);
-
-                        console.log(`✅ Clean cropped image: ${sourceSlotSize}x${sourceSlotSize} slot → ${bounds.cropWidth}x${bounds.cropHeight} final (${croppedDataUrl.length} chars)`);
                         resolve(croppedDataUrl);
                     } catch (error) {
                         console.error('❌ Error during clean cropping:', error);
@@ -5080,7 +3987,6 @@ The extension page will open in a new tab and this scanning window will close.
     }
 
     async uploadImageToSession(sessionId, imageId, base64Data) {
-        // Store the captured image data in the appropriate array for face detection
         let mediaItem = this.photos.find(p => p.id === imageId);
         let mediaType = 'photo';
 
@@ -5091,21 +3997,10 @@ The extension page will open in a new tab and this scanning window will close.
 
         if (mediaItem) {
             mediaItem.capturedImageData = base64Data;
-            console.log(`💾 Stored captured image data for ${mediaType} ${imageId} (${base64Data.length} chars)`);
         }
 
-        // Convert base64 to blob for file upload
         const blob = await this.base64ToBlob(base64Data, 'image/jpeg');
 
-        // Log upload details for debugging
-        console.log(`📤 Uploading image ${imageId}:`, {
-            blobSize: blob.size,
-            blobType: blob.type,
-            sessionId: sessionId,
-            base64Length: base64Data.length
-        });
-
-        // Create FormData for file upload
         const formData = new FormData();
         formData.append('image', blob, `${imageId}.jpg`);
         formData.append('image_id', imageId);
@@ -5124,16 +4019,12 @@ The extension page will open in a new tab and this scanning window will close.
             console.error(`❌ Upload failed for ${imageId}:`, result.error);
             throw new Error(result.error || `Failed to upload image ${imageId}`);
         }
-
-        console.log(`✅ Upload successful for ${imageId}:`, result.message);
         return result;
     }
 
     async base64ToBlob(base64Data, mimeType) {
-        // Remove data URL prefix if present
         const base64 = base64Data.includes(',') ? base64Data.split(',')[1] : base64Data;
 
-        // Convert base64 to binary
         const binaryString = atob(base64);
         const bytes = new Uint8Array(binaryString.length);
 
@@ -5146,8 +4037,6 @@ The extension page will open in a new tab and this scanning window will close.
 
     async finalizeSession(sessionId) {
         this.updateProgress(85, 'Finalizing session and starting analysis...');
-
-        console.log(`📊 Finalizing session with ${this.similarityThreshold || 85}% similarity threshold`);
 
         const response = await fetch(`${this.serverUrl}/session/${sessionId}/finalize`, {
             method: 'POST',
@@ -5167,8 +4056,6 @@ The extension page will open in a new tab and this scanning window will close.
         if (!result.success) {
             throw new Error(result.error || 'Failed to finalize session');
         }
-
-        console.log(`✅ Session finalized with ${result.similarity_threshold || this.similarityThreshold || 85}% similarity threshold`);
         return result;
     }
 
@@ -5190,22 +4077,19 @@ The extension page will open in a new tab and this scanning window will close.
             }
 
             const status = result.status;
-            ////console.log('Session status:', status.analysis_status, `${status.analysis_progress || 0}%`);
 
             if (status.analysis_status === 'pending') {
                 this.updateProgress(87, 'Starting similarity analysis...');
             } else if (status.analysis_status === 'analyzing') {
-                // Update progress based on server progress
                 if (status.analysis_progress) {
                     this.updateProgress(
-                        87 + (status.analysis_progress * 0.13), // 87% to 100%
+                        87 + (status.analysis_progress * 0.13), 
                         `Analyzing similarities: ${status.analysis_progress.toFixed(4)}% (${status.processed_images}/${status.total_images} comparisons)`
                     );
                 } else {
                     this.updateProgress(87, 'Analyzing photo similarities...');
                 }
             } else if (status.analysis_status === 'completed') {
-                // Return results in the expected format
                 return {
                     success: true,
                     total_images: status.total_images,
@@ -5217,7 +4101,6 @@ The extension page will open in a new tab and this scanning window will close.
                 throw new Error(status.error || 'Analysis failed on server');
             }
 
-            // Wait before next poll
             await this.delay(pollInterval);
         }
 
@@ -5226,9 +4109,6 @@ The extension page will open in a new tab and this scanning window will close.
 
     async captureImageWithTempElement(imageUrl, photoId) {
         return new Promise((resolve, reject) => {
-            console.log(`Creating temporary image element for: ${photoId}`);
-
-            // Create temporary container div
             const container = document.createElement('div');
             container.id = `temp-photo-${photoId}`;
             container.style.position = 'fixed';
@@ -5259,7 +4139,6 @@ The extension page will open in a new tab and this scanning window will close.
                 }
             };
 
-            // Set timeout to prevent hanging
             timeoutId = setTimeout(() => {
                 console.error(`Timeout loading image: ${photoId}`);
                 cleanup();
@@ -5268,16 +4147,10 @@ The extension page will open in a new tab and this scanning window will close.
 
             img.onload = async () => {
                 try {
-                    console.log(`Image loaded, ensuring full render: ${photoId}`);
-
-                    // Wait for image to be fully rendered and painted
-                    // High-resolution images need more time than the onload event provides
                     await this.waitForImageFullRender(img, container);
 
-                    // Respect rate limiting before screenshot
                     await this.respectScreenshotRateLimit();
 
-                    // Send message to background script to capture screenshot
                     chrome.runtime.sendMessage({
                         action: 'capturePhoto',
                         elementId: container.id,
@@ -5292,7 +4165,6 @@ The extension page will open in a new tab and this scanning window will close.
                         }
 
                         if (response && response.success && response.imageData) {
-                            console.log(`Successfully captured temp image: ${response.width}x${response.height}px`);
                             resolve(response.imageData);
                         } else {
                             console.error('Screenshot response error:', response?.error || 'Unknown error');
@@ -5312,26 +4184,20 @@ The extension page will open in a new tab and this scanning window will close.
                 reject(new Error('Image load failed'));
             };
 
-            // Add elements to DOM
             container.appendChild(img);
             document.body.appendChild(container);
 
-            // Start loading image
             img.src = imageUrl;
         });
     }
 
     async waitForImageFullRender(img, container) {
-        // Multiple strategies to ensure full rendering of high-resolution images
 
-        console.log(`Waiting for full render of image: ${img.naturalWidth}x${img.naturalHeight}px`);
-
-        // Strategy 1: Wait for paint events using requestAnimationFrame
         await new Promise(resolve => {
             let frameCount = 0;
             const waitForFrames = () => {
                 frameCount++;
-                if (frameCount >= 3) { // Wait for 3 animation frames
+                if (frameCount >= 3) { 
                     resolve();
                 } else {
                     requestAnimationFrame(waitForFrames);
@@ -5340,47 +4206,33 @@ The extension page will open in a new tab and this scanning window will close.
             requestAnimationFrame(waitForFrames);
         });
 
-        // Strategy 2: Additional time based on image size
-        // Larger images need more processing time
         const imageSize = img.naturalWidth * img.naturalHeight;
-        const sizeBasedDelay = Math.min(Math.max(imageSize / 1000000 * 200, 300), 1500); // 300ms to 1.5s
+        const sizeBasedDelay = Math.min(Math.max(imageSize / 1000000 * 200, 300), 1500); 
 
-        console.log(`Size-based delay: ${sizeBasedDelay}ms for ${imageSize} pixels`);
         await this.delay(sizeBasedDelay);
 
-        // Strategy 3: Check if image is actually visible and rendered
         await this.waitForImageVisible(img, container);
-
-        console.log(`✅ Image fully rendered and ready for screenshot`);
     }
 
     async waitForImageVisible(img, container) {
-        // Ensure the image is actually visible and rendered in the viewport
         let attempts = 0;
         const maxAttempts = 10;
 
         while (attempts < maxAttempts) {
             const containerRect = container.getBoundingClientRect();
             const imgRect = img.getBoundingClientRect();
-
-            // Check if image has proper dimensions and is visible
             if (imgRect.width > 100 && imgRect.height > 100 &&
                 containerRect.width > 100 && containerRect.height > 100) {
-
-                // Check if image is actually loaded by examining computed style
                 const computedStyle = window.getComputedStyle(img);
                 if (computedStyle.opacity !== '0' && computedStyle.visibility !== 'hidden') {
-                    console.log(`✅ Image is visible: ${imgRect.width}x${imgRect.height}px`);
                     return;
                 }
             }
-
-            console.log(`⏳ Waiting for image visibility, attempt ${attempts + 1}/${maxAttempts}`);
             await this.delay(100);
             attempts++;
         }
 
-        console.warn(`⚠️  Image visibility check timed out after ${maxAttempts} attempts`);
+        console.warn(`Image visibility check timed out after ${maxAttempts} attempts`);
     }
 
     async respectScreenshotRateLimit() {
@@ -5390,7 +4242,6 @@ The extension page will open in a new tab and this scanning window will close.
 
         if (timeSinceLastScreenshot < minInterval) {
             const waitTime = minInterval - timeSinceLastScreenshot;
-            console.log(`⏳ Rate limiting: waiting ${waitTime}ms before screenshot...`);
             await this.delay(waitTime);
         }
 
@@ -5400,31 +4251,20 @@ The extension page will open in a new tab and this scanning window will close.
     getFullResolutionUrl(bgElement) {
         try {
             if (!bgElement) {
-                console.warn('🔍 getFullResolutionUrl: bgElement is null/undefined');
                 return null;
             }
-
-            //console.log('🔍 getFullResolutionUrl: Starting URL extraction for element:', bgElement.tagName);
-
-            // Find the element with the background image
             const bgElements = bgElement.querySelectorAll('*[style*="background-image"], *[data-latest-bg]');
-            console.log(`🔍 Found ${bgElements.length} potential background image elements`);
 
             for (let i = 0; i < bgElements.length; i++) {
                 const element = bgElements[i];
-                console.log(`🔍 Checking element ${i + 1}/${bgElements.length}:`, element.tagName);
 
-                // Try data-latest-bg first
                 const dataLatestBg = element.getAttribute('data-latest-bg');
                 if (dataLatestBg && dataLatestBg.trim() !== '') {
-                    //console.log('✓ Found data-latest-bg URL:', dataLatestBg.substring(0, 100) + '...');
                     return this.convertToFullResolution(dataLatestBg);
                 }
 
-                // Try background-image from style
                 const style = element.getAttribute('style');
                 if (style) {
-                    //console.log('🔍 Checking style attribute:', style.substring(0, 150) + '...');
 
                     const patterns = [
                         /background-image:\s*url\(&quot;([^&"]+)&quot;\)/,
@@ -5438,29 +4278,20 @@ The extension page will open in a new tab and this scanning window will close.
                         const urlMatch = style.match(pattern);
                         if (urlMatch && urlMatch[1] && urlMatch[1].trim() !== '') {
                             const imageUrl = urlMatch[1].trim();
-                            console.log(`✓ Pattern ${j + 1} matched, found URL:`, imageUrl.substring(0, 100) + '...');
 
                             if (imageUrl !== 'none' && imageUrl.length > 5) {
-                                // Get the first (highest resolution) URL if multiple URLs
                                 const firstUrl = imageUrl.split(',')[0].trim();
-                                //console.log('✓ Using first URL from list:', firstUrl.substring(0, 100) + '...');
                                 return this.convertToFullResolution(firstUrl);
                             } else {
-                                //console.log('❌ URL too short or is "none":', imageUrl);
                             }
                         }
                     }
-                    //console.log('❌ No background-image URL patterns matched in style');
                 } else {
-                    //console.log('❌ Element has no style attribute');
                 }
             }
 
-            // Also check the element itself for background image
             const elementStyle = bgElement.getAttribute('style');
             if (elementStyle && elementStyle.includes('background-image')) {
-                //console.log('🔍 Checking main element style:', elementStyle.substring(0, 150) + '...');
-                // Apply same pattern matching to main element
                 const patterns = [
                     /background-image:\s*url\(&quot;([^&"]+)&quot;\)/,
                     /background-image:\s*url\("([^"]+)"\)/,
@@ -5473,7 +4304,6 @@ The extension page will open in a new tab and this scanning window will close.
                     const urlMatch = elementStyle.match(pattern);
                     if (urlMatch && urlMatch[1] && urlMatch[1].trim() !== '') {
                         const imageUrl = urlMatch[1].trim();
-                        console.log(`✓ Main element pattern ${j + 1} matched:`, imageUrl.substring(0, 100) + '...');
 
                         if (imageUrl !== 'none' && imageUrl.length > 5) {
                             const firstUrl = imageUrl.split(',')[0].trim();
@@ -5483,7 +4313,6 @@ The extension page will open in a new tab and this scanning window will close.
                 }
             }
 
-            //console.log('❌ No background image URL found in any element');
             return null;
 
         } catch (error) {
@@ -5494,25 +4323,15 @@ The extension page will open in a new tab and this scanning window will close.
 
     convertToFullResolution(thumbnailUrl) {
         try {
-            // Convert thumbnail URL to full resolution
-            // From: https://photos.fife.usercontent.google.com/pw/...=w256-h192-no?authuser=0
-            // To:   https://photos.fife.usercontent.google.com/pw/...=w1200-h1200-no?authuser=0
-
-            // Extract base URL (everything before the =w part)
             const baseUrlMatch = thumbnailUrl.match(/^(.+)=w\d+-h\d+(-[^?]+)?(\?.*)?$/);
             if (baseUrlMatch) {
                 const baseUrl = baseUrlMatch[1];
-                const suffix = baseUrlMatch[2] || '-no'; // Keep the suffix (like -no, -k-rw-no)
+                const suffix = baseUrlMatch[2] || '-no'; 
                 const queryParams = baseUrlMatch[3] || '';
-
-                // Use a good resolution for comparison (not too large to avoid memory issues)
                 const fullResUrl = `${baseUrl}=w1200-h1200${suffix}${queryParams}`;
-
-                console.log(`Converted thumbnail to full-res: ${thumbnailUrl.substring(0, 80)}... -> ${fullResUrl.substring(0, 80)}...`);
                 return fullResUrl;
             }
 
-            // If pattern doesn't match, return original URL
             console.warn('Could not convert URL to full resolution, using original:', thumbnailUrl.substring(0, 100));
             return thumbnailUrl;
 
@@ -5524,16 +4343,10 @@ The extension page will open in a new tab and this scanning window will close.
 
     async captureElementBackgroundToCanvas(element) {
         try {
-            // Get element's dimensions and computed style
             const rect = element.getBoundingClientRect();
-
-            // Skip if element is too small or not visible
             if (rect.width < 10 || rect.height < 10) {
                 return null;
             }
-
-            // Try using OffscreenCanvas or html2canvas approach
-            // This captures the already-rendered element without additional network requests
             return await this.captureRenderedElement(element, rect);
 
         } catch (error) {
@@ -5544,19 +4357,13 @@ The extension page will open in a new tab and this scanning window will close.
 
     async captureRenderedElement(element, rect) {
         try {
-            // Create canvas with appropriate size
             const canvas = document.createElement('canvas');
             const ctx = canvas.getContext('2d');
-
-            // Set reasonable canvas size (limit for performance)
             const maxSize = 300;
             const scale = Math.min(maxSize / rect.width, maxSize / rect.height, 1);
             canvas.width = rect.width * scale;
             canvas.height = rect.height * scale;
-
-            // Try to use modern browser APIs to capture the element
             if ('html2canvas' in window) {
-                // If html2canvas library is available, use it
                 const canvasElement = await html2canvas(element, {
                     width: canvas.width,
                     height: canvas.height,
@@ -5566,8 +4373,6 @@ The extension page will open in a new tab and this scanning window will close.
                 });
                 return canvasElement.toDataURL('image/jpeg', 0.8);
             }
-
-            // Fallback: try to clone and render the element
             return await this.fallbackElementCapture(element, canvas, ctx, scale);
 
         } catch (error) {
@@ -5578,26 +4383,18 @@ The extension page will open in a new tab and this scanning window will close.
 
     async fallbackElementCapture(element, canvas, ctx, scale) {
         try {
-            // Create a unique identifier based on the element's properties instead of actual image
-            // This allows duplicate detection without network requests
-            //console.log('Creating photo fingerprint without network requests');
-
-            // Get element properties for unique identification
             const rect = element.getBoundingClientRect();
             const style = window.getComputedStyle(element);
             const backgroundImage = style.backgroundImage;
 
-            // Extract URL hash if available
             let urlHash = '';
             if (backgroundImage && backgroundImage !== 'none') {
                 const urlMatch = backgroundImage.match(/url\(["']?([^"')]+)["']?\)/);
                 if (urlMatch) {
-                    // Create a simple hash from the URL
                     urlHash = this.simpleHash(urlMatch[1]);
                 }
             }
 
-            // Create visual fingerprint based on element properties
             const fingerprint = {
                 width: Math.round(rect.width),
                 height: Math.round(rect.height),
@@ -5606,11 +4403,9 @@ The extension page will open in a new tab and this scanning window will close.
                 backgroundPosition: style.backgroundPosition
             };
 
-            // Create a visual representation of the fingerprint
             ctx.fillStyle = `hsl(${urlHash % 360}, 70%, 80%)`;
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-            // Add pattern based on fingerprint
             ctx.fillStyle = `hsl(${urlHash % 360}, 90%, 60%)`;
             const patternSize = 20;
             for (let x = 0; x < canvas.width; x += patternSize) {
@@ -5621,7 +4416,6 @@ The extension page will open in a new tab and this scanning window will close.
                 }
             }
 
-            // Add text identifier
             ctx.fillStyle = '#333';
             ctx.font = '12px Arial';
             ctx.textAlign = 'center';
@@ -5641,15 +4435,13 @@ The extension page will open in a new tab and this scanning window will close.
         for (let i = 0; i < str.length; i++) {
             const char = str.charCodeAt(i);
             hash = ((hash << 5) - hash) + char;
-            hash = hash & hash; // Convert to 32-bit integer
+            hash = hash & hash; 
         }
         return Math.abs(hash);
     }
 
-    // Old screenshot methods removed - now using temporary image element approach
 
     getTempElementInfo(elementId) {
-        // Find the temporary element by ID and return its position
         const element = document.getElementById(elementId);
         if (element) {
             const rect = element.getBoundingClientRect();
@@ -5671,24 +4463,17 @@ The extension page will open in a new tab and this scanning window will close.
             alert('Analysis failed: ' + (results.error || 'Unknown error'));
             return;
         }
-
-        // Update the photo count display with the processed count from analysis
         this.processedPhotosCount = results.total_images || this.photos.length;
         this.restorePhotoCountDisplay();
-
-        // Store results in extension storage for popup to access
         chrome.storage.local.set({
             analysisResults: results,
             photos: this.photos,
             timestamp: Date.now()
         });
-
-        // Show results in a new tab or overlay
         this.createResultsOverlay(results);
     }
 
     createResultsOverlay(results) {
-        // Remove existing overlay
         const existingOverlay =  $('#pc-results-overlay');
         if (existingOverlay.length) {
             this.cleanupViewportObserver();
@@ -5767,7 +4552,6 @@ The extension page will open in a new tab and this scanning window will close.
                                 ${(() => {
                             const photoGroups = [];
                             const videoGroups = [];
-                            console.log('results>>>>',results)
                             results.similar_groups.forEach((group, index) => {
                                 const firstItemId = group.image_ids[0];
                                 const isVideoGroup = this.videos.some(v => v.id === firstItemId);
@@ -5781,7 +4565,6 @@ The extension page will open in a new tab and this scanning window will close.
 
                             
     const generateArticles = (groups, mediaType) => {
-        console.log("generateArticlesGROPUS", groups);
         const mediaArray = mediaType === "video" ? this.videos : this.photos;
 
         return groups.map((group, gIndex) => {
@@ -5796,7 +4579,7 @@ The extension page will open in a new tab and this scanning window will close.
         const sortedIds = [...group.image_ids].sort((a, b) => {
         const qa = results.quality_array.find(q => q.name.startsWith(a));
         const qb = results.quality_array.find(q => q.name.startsWith(b));
-        return (qb?.overallScore || 0) - (qa?.overallScore || 0); // high to low
+        return (qb?.overallScore || 0) - (qa?.overallScore || 0); 
         });
 
     // Group wrapper
@@ -5853,26 +4636,21 @@ The extension page will open in a new tab and this scanning window will close.
           <div class="grid grid-cols-3 gap-5">
                 ${sortedIds.map((id, idx) => {
               const mediaItem = mediaArray.find((item) => item.id === id);
-              console.log('mediaItem>>>',mediaItem);
               if (!mediaItem) return "";
 
                 const totalImages = sortedIds.length;
                let tempRank;
-
-                // Agar images 10 ya usse kam hain
                 if (totalImages <= 10) {
-                    tempRank = 10 - idx; // 10, 9, 8, ...
+                    tempRank = 10 - idx; 
                 } else {
-                    // Agar images > 10, decimal step use kar sakte ho, lekin integer me round karo
                     const step = 9 / (totalImages - 1);
-                    tempRank = (10 - idx * step).toFixed(1); // round kar ke integer banao
+                    tempRank = (10 - idx * step).toFixed(1); 
                 }
 
               const fullSizeUrl = this.convertToFullResolution(mediaItem.url);
               const quality = results.quality_array.find((q) =>
                 q.name.startsWith(id)
               );
-              console.log("quality>>>",quality);
             const isBest = bestImage && bestImage.id === id;
               const qualityHTML = quality
                 ? `
@@ -6064,35 +4842,11 @@ function updateAnalysisResults() {
         $processBtn.show();
     }
 }
-//     overlay.on('click', '#process-selected-groups', function () {
-//     selectedGroups.forEach(idx => {
-//         const $group = overlay.find('.analysisresults-group').eq(idx);
-
-//         // Go through each photo inside this group
-//         $group.find('article').each(function () {
-//             const $article = $(this);
-
-//             // If NOT "Keeping this file", delete it
-//             const isKeeping = $article.find('span:contains("Keeping this file")').length > 0;
-//             if (!isKeeping) {
-//                 $article.remove();
-//             }
-//         });
-//     });
-
-//     // After processing, you may want to reset selection
-//     selectedGroups.clear();
-//     overlay.find('.select-group-btn').text('Select Group');
-//     overlay.find('input[type=checkbox]').prop('checked', false);
-//     overlay.find('#select-all-btn').text('Select All');
-//     updateAnalysisResults();
-// });
 overlay.on('click', '#select-all-btn', function () {
     const $btn = $(this);
     const $processBtn = overlay.find('#process-selected-groups');
 
     if ($btn.text().trim() === "Select All") {
-        // ✅ Sabhi groups select karo
         overlay.find('.analysisresults-group').each(function (idx) {
             const $group = $(this);
             const $selectBtn = $group.find('.select-group-btn');
@@ -6102,12 +4856,10 @@ overlay.on('click', '#select-all-btn', function () {
             $group.find('input[type=checkbox]').prop('checked', true);
         });
 
-        // Button  text change
         $btn.text("Deselect All");
         $processBtn.show();
 
     } else {
-        // ❌ All groups unselect 
         overlay.find('.analysisresults-group').each(function (idx) {
             const $group = $(this);
             const $selectBtn = $group.find('.select-group-btn');
@@ -6117,7 +4869,6 @@ overlay.on('click', '#select-all-btn', function () {
             $group.find('input[type=checkbox]').prop('checked', false);
         });
 
-        // Button ka text change
         $btn.text("Select All");
         $processBtn.hide();
     }
@@ -6203,12 +4954,10 @@ overlay.on('click', '.toggle-delete-btn, .keep-btn', function(e) {
 
         $('body').on('click', '.dismiss-group-btn', function () {
         const groupIndex = $(this).data('group');
-        console.log("Dismissed Group:", groupIndex);
         $(this).closest('.analysisresults-group').remove();
         });
         
-        // $('#pc-done-selecting').on('click', async () => {
-            $('#process-selected-groups').on('click', async () => {
+        $('#process-selected-groups').on('click', async () => {
             await this.finalizeSelectionAndSync(overlay);
         });
 
@@ -6230,8 +4979,6 @@ overlay.on('click', '.toggle-delete-btn, .keep-btn', function(e) {
         });
         $(document).on("click", ".view-btn", function () {
         const $article = $(this).closest("article.pc-image-item");
-
-        console.log('resultsForView',results)
         
         const imageUrl = $article.data("photo-url");
         const fileName = $article.find("h4.truncate").text().trim() || "Image";
@@ -6310,7 +5057,6 @@ overlay.on('click', '.toggle-delete-btn, .keep-btn', function(e) {
         const $img = modal.find(".modal-image");
         const $zoomValue = modal.find(".zoom-value"); 
 
-        // Event handlers
         modal.on("click", ".zoom-in", function() {
         zoom = Math.min(zoom + 0.25, 3);
         $img.css("transform", `scale(${zoom}) rotate(${rotation}deg)`);
@@ -6347,39 +5093,9 @@ overlay.on('click', '.toggle-delete-btn, .keep-btn', function(e) {
             a.click();
         });
 
-        // modal.on("click", ".download-btn", function () {
-        //     chrome.runtime.sendMessage({
-        // action: "downloadImage",
-        // url: imageUrl,
-        // filename: fileName + ".jpg"
-        //     });
-        // });
-
-
-
-        // modal.on("click", ".download-btn", function () {
-        // fetch(imageUrl)
-        // .then(response => response.blob())
-        // .then(blob => {
-        //     const url = URL.createObjectURL(blob);
-        //     const a = document.createElement("a");
-        //     a.href = url;
-        //     a.download = fileName.endsWith(".jpg") ? fileName : fileName + ".jpg";
-        //     document.body.appendChild(a);
-        //     a.click();
-        //     document.body.removeChild(a);
-        //     URL.revokeObjectURL(url);
-        // })
-        // .catch(err => console.error("Download failed", err));
-        // });
-
-
         $("body").append(modal);
         });
 
-
-
-        // Add scroll navigation functionality
         const scrollUpBtn =$('#pc-scroll-up');
         const scrollDownBtn = $('#pc-scroll-down');
         const resultsContainer = $(overlay).find('.pc-results-container');
@@ -6396,56 +5112,51 @@ overlay.on('click', '.toggle-delete-btn, .keep-btn', function(e) {
             });
         }
 
-        // Add auto-select functionality
-        const autoSelectBtn = $('#pc-auto-select');
-        if (autoSelectBtn.length) {
-            autoSelectBtn.on('click', () => {
-                if (!this.isPaidVersion) {
-                    // Show upgrade message for free users
-                    const shouldUpgrade = confirm(
-                        '🔥 Upgrade to Pro Version!\n\n' +
-                        'AI-powered smart photo selection is available in the Pro version.\n\n' +
-                        '✨ Features included:\n' +
-                        '• Unlimited photo scanning\n' +
-                        '• AI face detection for smart selection\n' +
-                        '• Priority support\n\n' +
-                        'Price: €9.99 (one-time payment)\n\n' +
-                        'Click OK to upgrade, or Cancel to continue with basic selection.'
-                    );
+        // const autoSelectBtn = $('#pc-auto-select');
+        // if (autoSelectBtn.length) {
+        //     autoSelectBtn.on('click', () => {
+        //         if (!this.isPaidVersion) {
+        //             // Show upgrade message for free users
+        //             const shouldUpgrade = confirm(
+        //                 '🔥 Upgrade to Pro Version!\n\n' +
+        //                 'AI-powered smart photo selection is available in the Pro version.\n\n' +
+        //                 '✨ Features included:\n' +
+        //                 '• Unlimited photo scanning\n' +
+        //                 '• AI face detection for smart selection\n' +
+        //                 '• Priority support\n\n' +
+        //                 'Price: €9.99 (one-time payment)\n\n' +
+        //                 'Click OK to upgrade, or Cancel to continue with basic selection.'
+        //             );
 
-                    if (shouldUpgrade) {
-                        this.openPurchasePopup();
-                    }
-                } else {
-                    this.autoSelectPhotos(overlay);
-                }
-            });
-        }
+        //             if (shouldUpgrade) {
+        //                 // this.openPurchasePopup();
+        //             }
+        //         } else {
+        //             this.autoSelectPhotos(overlay);
+        //         }
+        //     });
+        // }
 
         // Add dumb-select functionality
-        const dumbSelectBtn = $('#pc-dumb-select');
-        if (dumbSelectBtn.length) {
-            dumbSelectBtn.on('click', () => {
-                this.dumbSelectPhotos(overlay);
-            });
-        }
+        // const dumbSelectBtn = $('#pc-dumb-select');
+        // if (dumbSelectBtn.length) {
+        //     dumbSelectBtn.on('click', () => {
+        //         this.dumbSelectPhotos(overlay);
+        //     });
+        // }
 
         // Add metadata-based selection functionality
-        this.setupMetadataSelectionHandlers(overlay);
+        // this.setupMetadataSelectionHandlers(overlay);
 
         // Add upgrade pro button functionality
-        const upgradeProBtn = $('#pc-upgrade-pro-btn');
-        if (upgradeProBtn.length) {
-            upgradeProBtn.on('click', () => {
-                this.openPurchasePopup();
-            });
-        }
+        // const upgradeProBtn = $('#pc-upgrade-pro-btn');
+        // if (upgradeProBtn.length) {
+        //     upgradeProBtn.on('click', () => {
+        //         // this.openPurchasePopup();
+        //     });
+        // }
 
         // Add similarity threshold control functionality
-        // const thresholdSlider = $('#pc-similarity-threshold');
-        // const thresholdValue = $('#pc-threshold-value');
-        // const reanalyzeBtn =$('#pc-reanalyze');
-
     const $thresholdSlider = $('#pc-similarity-threshold');
     const $thresholdValue = $('#pc-threshold-value');
     const $reanalyzeBtn = $('#pc-reanalyze');
@@ -6461,36 +5172,7 @@ overlay.on('click', '.toggle-delete-btn, .keep-btn', function(e) {
     // Re-analyze button click
     if ($reanalyzeBtn.length) {
         $reanalyzeBtn.on('click', async () => {
-            console.log("Button clicked ✅");
-
-            if (!this.isPaidVersion && !this.canPerformReAnalysis()) {
-                alert('You have reached limit of re-analysis today. Upgrade to PRO to unlock this or try again tomorrow.');
-
-                const shouldUpgrade = confirm(
-                    '🔥 Upgrade to Pro Version!\n\n' +
-                    'Unlimited re-analysis is available in the Pro version.\n\n' +
-                    '✨ Features included:\n' +
-                    '• Unlimited similar groups detection\n' +
-                    '• Unlimited re-analysis\n' +
-                    '• AI face detection for smart selection\n' +
-                    '• Advanced metadata-based selection\n' +
-                    '• Priority support\n\n' +
-                    'Price: €9.99 (one-time payment)\n\n' +
-                    'Click OK to upgrade, or Cancel to continue.'
-                );
-
-                if (shouldUpgrade) {
-                    this.openPurchasePopup();
-                }
-                return;
-            }
-
             const newThreshold = Math.round(parseFloat($thresholdSlider.val()) * 100);
-            console.log(`🔄 Re-analyzing with similarity threshold: ${newThreshold}%`);
-
-            if (!this.isPaidVersion) {
-                await this.updateDailyReAnalysisCount();
-            }
 
             $reanalyzeBtn.prop('disabled', true).text('Re-analyzing...');
             this.showProgress(true);
@@ -6516,7 +5198,7 @@ overlay.on('click', '.toggle-delete-btn, .keep-btn', function(e) {
                     await new Promise(resolve => setTimeout(resolve, 500));
 
                     this.showProgress(false);
-                    $('#overlay').remove(); // agar overlay jQuery se lena ho
+                    $('#overlay').remove(); 
                     this.createResultsOverlay(updatedResults);
                 }
             } catch (error) {
@@ -6538,506 +5220,463 @@ overlay.on('click', '.toggle-delete-btn, .keep-btn', function(e) {
         });
     }
 
-
-   
-
-         //comment: Add photo click handlers for checkbox toggling
-        // this.setupPhotoToggleHandlers(overlay);
-
-        // // //comment: Add group toggle functionality
-        // this.setupGroupToggleHandlers(overlay);
-
-        // // //comment: Initialize checkbox states based on current DupeYak Duplicate Remover state
-        // this.initializeCheckboxStates(overlay);
-
         // Load image sizes asynchronously
         this.loadImageSizes(overlay);
 
         // Add scroll button handlers for photos and videos
-        this.setupScrollHandlers(overlay);
+        // this.setupScrollHandlers(overlay);
     }
 
     //convert to jquery
-    setupScrollHandlers(overlay) {
-        // Photo scroll buttons
-        const scrollDownPhotosBtn = $('#pc-scroll-down-photos');
-        const scrollUpPhotosBtn = $('#pc-scroll-up-photos');
+    // setupScrollHandlers(overlay) {
+    //     // Photo scroll buttons
+    //     const scrollDownPhotosBtn = $('#pc-scroll-down-photos');
+    //     const scrollUpPhotosBtn = $('#pc-scroll-up-photos');
 
-        if (scrollDownPhotosBtn.length) {
-            scrollDownPhotosBtn.on('click', function () {
-                const photoGroupsSection =  $(overlay).find('.pc-photo-groups');
-                if (photoGroupsSection.length) {
-                    photoGroupsSection[0].scrollIntoView({ behavior: 'smooth', block: 'end' });
-                }
-            });
-        }
+    //     if (scrollDownPhotosBtn.length) {
+    //         scrollDownPhotosBtn.on('click', function () {
+    //             const photoGroupsSection =  $(overlay).find('.pc-photo-groups');
+    //             if (photoGroupsSection.length) {
+    //                 photoGroupsSection[0].scrollIntoView({ behavior: 'smooth', block: 'end' });
+    //             }
+    //         });
+    //     }
 
-        if (scrollUpPhotosBtn) {
-            scrollUpPhotosBtn.on('click', function () {
-                const photoGroupsSection =  $(overlay).find('.pc-photo-groups');
-                if (photoGroupsSection.length) {
-                    photoGroupsSection[0].scrollIntoView({ behavior: 'smooth', block: 'start' });
-                }
-            });
-        }
+    //     if (scrollUpPhotosBtn) {
+    //         scrollUpPhotosBtn.on('click', function () {
+    //             const photoGroupsSection =  $(overlay).find('.pc-photo-groups');
+    //             if (photoGroupsSection.length) {
+    //                 photoGroupsSection[0].scrollIntoView({ behavior: 'smooth', block: 'start' });
+    //             }
+    //         });
+    //     }
 
-        // Video scroll buttons
-        const scrollDownVideosBtn = $('#pc-scroll-down-videos');
-        const scrollUpVideosBtn = $('#pc-scroll-up-videos');
+    //     // Video scroll buttons
+    //     const scrollDownVideosBtn = $('#pc-scroll-down-videos');
+    //     const scrollUpVideosBtn = $('#pc-scroll-up-videos');
 
-        if (scrollDownVideosBtn.length) {
-            scrollDownVideosBtn.on('click', function () {
-                // const videoGroupsSection = overlay.querySelector('.pc-video-groups');
-                const videoGroupsSection = $(overlay).find('.pc-video-groups');
-                if (videoGroupsSection.length) {
-                    videoGroupsSection[0].scrollIntoView({ behavior: 'smooth', block: 'end' });
-                }
-            });
-        }
+    //     if (scrollDownVideosBtn.length) {
+    //         scrollDownVideosBtn.on('click', function () {
+    //             // const videoGroupsSection = overlay.querySelector('.pc-video-groups');
+    //             const videoGroupsSection = $(overlay).find('.pc-video-groups');
+    //             if (videoGroupsSection.length) {
+    //                 videoGroupsSection[0].scrollIntoView({ behavior: 'smooth', block: 'end' });
+    //             }
+    //         });
+    //     }
 
-        if (scrollUpVideosBtn.length) {
-            scrollUpVideosBtn.on('click', function () {
-                const videoGroupsSection = $(overlay).find('.pc-video-groups');
-                if (videoGroupsSection.length) {
-                  //  videoGroupsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                  videoGroupsSection[0].scrollIntoView({ behavior: 'smooth', block: 'start' });
-                }
-            });
-        }
-    }
+    //     if (scrollUpVideosBtn.length) {
+    //         scrollUpVideosBtn.on('click', function () {
+    //             const videoGroupsSection = $(overlay).find('.pc-video-groups');
+    //             if (videoGroupsSection.length) {
+    //               //  videoGroupsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    //               videoGroupsSection[0].scrollIntoView({ behavior: 'smooth', block: 'start' });
+    //             }
+    //         });
+    //     }
+    // }
 //convert to jquery
-    setupPhotoToggleHandlers(overlay) {
-       // const imageItems = $(overlay).find('.pc-image-item');
-             const imageItems =  overlay.find('.pc-image-item');
-       imageItems.each(function() {
-            const imageContainer = item.querySelector('.pc-image-container');
-            if (imageContainer.length) {
-                imageContainer.on('click', function (e) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    this.togglePhotoSelection(item);
-                });
+    // setupPhotoToggleHandlers(overlay) {
+    //    // const imageItems = $(overlay).find('.pc-image-item');
+    //          const imageItems =  overlay.find('.pc-image-item');
+    //    imageItems.each(function() {
+    //         const imageContainer = item.querySelector('.pc-image-container');
+    //         if (imageContainer.length) {
+    //             imageContainer.on('click', function (e) {
+    //                 e.preventDefault();
+    //                 e.stopPropagation();
+    //                 this.togglePhotoSelection(item);
+    //             });
 
-                // Add hover effects
-                imageContainer.on('mouseenter', function () {
-                    imageContainer.style.transform = 'scale(1.02)';
-                    const overlay = imageContainer.querySelector('.pc-image-overlay');
-                    if (overlay.length) {
-                    overlay.css('opacity', '1');
-                }
-                });
+    //             // Add hover effects
+    //             imageContainer.on('mouseenter', function () {
+    //                 imageContainer.style.transform = 'scale(1.02)';
+    //                 const overlay = imageContainer.querySelector('.pc-image-overlay');
+    //                 if (overlay.length) {
+    //                 overlay.css('opacity', '1');
+    //             }
+    //             });
 
-                imageContainer.addEventListener('mouseleave', () => {
-                    imageContainer.style.transform = 'scale(1)';
-                    const overlay = imageContainer.querySelector('.pc-image-overlay');
-                    if (overlay.length) {
-                    overlay.css('opacity', '0');
-                }
-                });
-            }
-        });
-    }
-    //convert to jquery
-    setupGroupToggleHandlers(overlay) {
-        const groupToggleButtons = $(overlay).find('.pc-group-toggle');
+    //             imageContainer.addEventListener('mouseleave', () => {
+    //                 imageContainer.style.transform = 'scale(1)';
+    //                 const overlay = imageContainer.querySelector('.pc-image-overlay');
+    //                 if (overlay.length) {
+    //                 overlay.css('opacity', '0');
+    //             }
+    //             });
+    //         }
+    //     });
+    // }
+    // //convert to jquery
+    // setupGroupToggleHandlers(overlay) {
+    //     const groupToggleButtons = $(overlay).find('.pc-group-toggle');
 
-        groupToggleButtons.each(function() { 
-            $(button).on('click', (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                this.toggleGroupSelection(button, overlay);
-            });
-        });
-    }
+    //     groupToggleButtons.each(function() { 
+    //         $(button).on('click', (e) => {
+    //             e.preventDefault();
+    //             e.stopPropagation();
+    //             this.toggleGroupSelection(button, overlay);
+    //         });
+    //     });
+    // }
 
-    toggleGroupSelection(toggleButton, overlay) {
-        const groupIndex = toggleButton.getAttribute('data-group-index');
-        const group = overlay.querySelector(`.pc-group[data-group-index="${groupIndex}"]`);
+    // toggleGroupSelection(toggleButton, overlay) {
+    //     const groupIndex = toggleButton.getAttribute('data-group-index');
+    //     const group = overlay.querySelector(`.pc-group[data-group-index="${groupIndex}"]`);
 
-        if (!group) {
-            console.error(`Group ${groupIndex} not found`);
-            return;
-        }
+    //     if (!group) {
+    //         console.error(`Group ${groupIndex} not found`);
+    //         return;
+    //     }
 
-        // Check if this group is non-selectable for free users
-        if (group.hasAttribute('data-non-selectable')) {
-            console.log(`🔒 Group ${parseInt(groupIndex) + 1} is non-selectable for free users`);
-            // Show upgrade message
-            const shouldUpgrade = confirm(
-                '🔥 Upgrade to Pro Version!\n\n' +
-                'Free version allows photo selection in the first 2 groups only.\n\n' +
-                '✨ Pro features:\n' +
-                '• Unlimited photo selection in all groups\n' +
-                '• AI-powered smart selection\n' +
-                '• Metadata-based selection\n' +
-                '• Priority support\n\n' +
-                'Price: €9.99 (one-time payment)\n\n' +
-                'Click OK to upgrade now!'
-            );
+    //     // Check if this group is non-selectable for free users
+    //     if (group.hasAttribute('data-non-selectable')) {
+    //         console.log(`🔒 Group ${parseInt(groupIndex) + 1} is non-selectable for free users`);
+    //         // Show upgrade message
+    //         const shouldUpgrade = confirm(
+    //             '🔥 Upgrade to Pro Version!\n\n' +
+    //             'Free version allows photo selection in the first 2 groups only.\n\n' +
+    //             '✨ Pro features:\n' +
+    //             '• Unlimited photo selection in all groups\n' +
+    //             '• AI-powered smart selection\n' +
+    //             '• Metadata-based selection\n' +
+    //             '• Priority support\n\n' +
+    //             'Price: €9.99 (one-time payment)\n\n' +
+    //             'Click OK to upgrade now!'
+    //         );
 
-            if (shouldUpgrade) {
-                this.openPurchasePopup();
-            }
-            return;
-        }
+    //         if (shouldUpgrade) {
+    //             // this.openPurchasePopup();
+    //         }
+    //         return;
+    //     }
 
-        const imageItems = group.querySelectorAll('.pc-image-item');
-        const checkboxIndicators = group.querySelectorAll('.pc-checkbox-indicator');
+    //     const imageItems = group.querySelectorAll('.pc-image-item');
+    //     const checkboxIndicators = group.querySelectorAll('.pc-checkbox-indicator');
 
-        // Determine current state - check if any photos are selected
-        let selectedCount = 0;
-        checkboxIndicators.forEach(indicator => {
-            if (indicator.getAttribute('data-selected') === 'true') {
-                selectedCount++;
-            }
-        });
+    //     // Determine current state - check if any photos are selected
+    //     let selectedCount = 0;
+    //     checkboxIndicators.forEach(indicator => {
+    //         if (indicator.getAttribute('data-selected') === 'true') {
+    //             selectedCount++;
+    //         }
+    //     });
 
-        // If all are selected, unselect all. Otherwise, select all
-        const shouldSelectAll = selectedCount < checkboxIndicators.length;
+    //     // If all are selected, unselect all. Otherwise, select all
+    //     const shouldSelectAll = selectedCount < checkboxIndicators.length;
 
-        console.log(`🎯 Group ${parseInt(groupIndex) + 1}: ${shouldSelectAll ? 'Selecting' : 'Unselecting'} all ${imageItems.length} photos`);
+    //     console.log(`🎯 Group ${parseInt(groupIndex) + 1}: ${shouldSelectAll ? 'Selecting' : 'Unselecting'} all ${imageItems.length} photos`);
 
-        // Update all photos in the group
-        imageItems.forEach(imageItem => {
-            const checkboxIndicator = imageItem.querySelector('.pc-checkbox-indicator');
-            if (checkboxIndicator) {
-                this.updateCheckboxIndicator(checkboxIndicator, shouldSelectAll);
-                this.showSelectionFeedback(imageItem, shouldSelectAll);
-            }
-        });
+    //     // Update all photos in the group
+    //     imageItems.forEach(imageItem => {
+    //         const checkboxIndicator = imageItem.querySelector('.pc-checkbox-indicator');
+    //         if (checkboxIndicator) {
+    //             this.updateCheckboxIndicator(checkboxIndicator, shouldSelectAll);
+    //             this.showSelectionFeedback(imageItem, shouldSelectAll);
+    //         }
+    //     });
 
-        // Update button text
-        this.updateGroupToggleButton(toggleButton, shouldSelectAll, imageItems.length);
+    //     // Update button text
+    //     this.updateGroupToggleButton(toggleButton, shouldSelectAll, imageItems.length);
 
-        console.log(`✅ Group ${parseInt(groupIndex) + 1}: ${shouldSelectAll ? 'Selected' : 'Unselected'} all photos`);
-    }
+    //     console.log(`✅ Group ${parseInt(groupIndex) + 1}: ${shouldSelectAll ? 'Selected' : 'Unselected'} all photos`);
+    // }
 
-    updateGroupToggleButton(button, allSelected, totalCount) {
-        if (allSelected) {
-            button.innerHTML = '☑ Unselect All';
-            button.classList.add('pc-group-toggle-selected');
-        } else {
-            button.innerHTML = '☐ Select All';
-            button.classList.remove('pc-group-toggle-selected');
-        }
-    }
+    // updateGroupToggleButton(button, allSelected, totalCount) {
+    //     if (allSelected) {
+    //         button.innerHTML = '☑ Unselect All';
+    //         button.classList.add('pc-group-toggle-selected');
+    //     } else {
+    //         button.innerHTML = '☐ Select All';
+    //         button.classList.remove('pc-group-toggle-selected');
+    //     }
+    // }
 
-    updateGroupToggleButtonState(imageItem) {
-        // Find the group this photo belongs to
-        const group = imageItem.closest('.pc-group');
-        if (!group) return;
+    // updateGroupToggleButtonState(imageItem) {
+    //     // Find the group this photo belongs to
+    //     const group = imageItem.closest('.pc-group');
+    //     if (!group) return;
 
-        const groupIndex = group.getAttribute('data-group-index');
-        const toggleButton = group.querySelector('.pc-group-toggle');
-        if (!toggleButton) return;
+    //     const groupIndex = group.getAttribute('data-group-index');
+    //     const toggleButton = group.querySelector('.pc-group-toggle');
+    //     if (!toggleButton) return;
 
-        // Check the selection state of all photos in this group
-        const checkboxIndicators = group.querySelectorAll('.pc-checkbox-indicator');
-        let selectedCount = 0;
+    //     // Check the selection state of all photos in this group
+    //     const checkboxIndicators = group.querySelectorAll('.pc-checkbox-indicator');
+    //     let selectedCount = 0;
 
-        checkboxIndicators.forEach(indicator => {
-            if (indicator.getAttribute('data-selected') === 'true') {
-                selectedCount++;
-            }
-        });
+    //     checkboxIndicators.forEach(indicator => {
+    //         if (indicator.getAttribute('data-selected') === 'true') {
+    //             selectedCount++;
+    //         }
+    //     });
 
-        const totalCount = checkboxIndicators.length;
-        const allSelected = selectedCount === totalCount;
+    //     const totalCount = checkboxIndicators.length;
+    //     const allSelected = selectedCount === totalCount;
 
-        // Update the button state
-        this.updateGroupToggleButton(toggleButton, allSelected, totalCount);
-    }
+    //     // Update the button state
+    //     // this.updateGroupToggleButton(toggleButton, allSelected, totalCount);
+    // }
 
-    async togglePhotoSelection(imageItem) {
-        const photoId = imageItem.getAttribute('data-photo-id');
-        const checkboxIndicator = imageItem.querySelector('.pc-checkbox-indicator');
+    // async togglePhotoSelection(imageItem) {
+    //     const photoId = imageItem.getAttribute('data-photo-id');
+    //     const checkboxIndicator = imageItem.querySelector('.pc-checkbox-indicator');
 
-        // Check if this photo is in a non-selectable group for free users
-        const group = imageItem.closest('.pc-group');
-        if (group && group.hasAttribute('data-non-selectable')) {
-            console.log(`🔒 Photo ${photoId} is in a non-selectable group for free users`);
-            this.showSelectionError(imageItem, 'Upgrade to Pro to select photos in this group');
-            // Show upgrade message
-            const shouldUpgrade = confirm(
-                '🔥 Upgrade to Pro Version!\n\n' +
-                'Free version allows photo selection in the first 2 groups only.\n\n' +
-                '✨ Pro features:\n' +
-                '• Unlimited photo selection in all groups\n' +
-                '• AI-powered smart selection\n' +
-                '• Metadata-based selection\n' +
-                '• Priority support\n\n' +
-                'Price: €9.99 (one-time payment)\n\n' +
-                'Click OK to upgrade now!'
-            );
+    //     // Check if this photo is in a non-selectable group for free users
+    //     const group = imageItem.closest('.pc-group');
+    //     if (group && group.hasAttribute('data-non-selectable')) {
+    //         console.log(`🔒 Photo ${photoId} is in a non-selectable group for free users`);
+    //         this.showSelectionError(imageItem, 'Upgrade to Pro to select photos in this group');
+    //         // Show upgrade message
+    //         const shouldUpgrade = confirm(
+    //             '🔥 Upgrade to Pro Version!\n\n' +
+    //             'Free version allows photo selection in the first 2 groups only.\n\n' +
+    //             '✨ Pro features:\n' +
+    //             '• Unlimited photo selection in all groups\n' +
+    //             '• AI-powered smart selection\n' +
+    //             '• Metadata-based selection\n' +
+    //             '• Priority support\n\n' +
+    //             'Price: €9.99 (one-time payment)\n\n' +
+    //             'Click OK to upgrade now!'
+    //         );
 
-            if (shouldUpgrade) {
-                this.openPurchasePopup();
-            }
-            return;
-        }
+    //         if (shouldUpgrade) {
+    //             // this.openPurchasePopup();
+    //         }
+    //         return;
+    //     }
 
-        console.log(`🎯 Toggling selection for photo ${photoId} (OVERLAY ONLY)`);
+    //     console.log(`🎯 Toggling selection for photo ${photoId} (OVERLAY ONLY)`);
 
-        try {
-            // Get current state in overlay
-            const currentOverlayState = checkboxIndicator.getAttribute('data-selected') === 'true';
-            const desiredState = !currentOverlayState;
+    //     try {
+    //         // Get current state in overlay
+    //         const currentOverlayState = checkboxIndicator.getAttribute('data-selected') === 'true';
+    //         const desiredState = !currentOverlayState;
 
-            // Update overlay state only - don't touch DupeYak Duplicate Remover PWA yet
-            this.updateCheckboxIndicator(checkboxIndicator, desiredState);
-            this.showSelectionFeedback(imageItem, desiredState);
-            console.log(`✅ Updated overlay for photo ${photoId} to: ${desiredState} (DupeYak Duplicate Remover PWA will be synced later)`);
+    //         // Update overlay state only - don't touch DupeYak Duplicate Remover PWA yet
+    //         this.updateCheckboxIndicator(checkboxIndicator, desiredState);
+    //         this.showSelectionFeedback(imageItem, desiredState);
+    //         console.log(`✅ Updated overlay for photo ${photoId} to: ${desiredState} (DupeYak Duplicate Remover PWA will be synced later)`);
 
-            // Update the group toggle button state
-            this.updateGroupToggleButtonState(imageItem);
+    //         // Update the group toggle button state
+    //         this.updateGroupToggleButtonState(imageItem);
 
-        } catch (error) {
-            console.error(`❌ Error toggling photo ${photoId}:`, error);
-            this.showSelectionError(imageItem, 'Toggle failed');
-        }
-    }
+    //     } catch (error) {
+    //         console.error(`❌ Error toggling photo ${photoId}:`, error);
+    //         this.showSelectionError(imageItem, 'Toggle failed');
+    //     }
+    // }
 
-    async attemptPhotoToggle(googlePhotosElement, photoId) {
-        console.log(`🔧 Attempting comprehensive toggle for photo ${photoId}`);
+    // async attemptPhotoToggle(googlePhotosElement, photoId) {
+    //     console.log(`🔧 Attempting comprehensive toggle for photo ${photoId}`);
 
-        // Get initial state
-        const checkbox = googlePhotosElement.querySelector('[role="checkbox"]');
-        const initialState = checkbox ? checkbox.getAttribute('aria-checked') === 'true' : false;
-        console.log(`   Initial state: ${initialState}`);
+    //     // Get initial state
+    //     const checkbox = googlePhotosElement.querySelector('[role="checkbox"]');
+    //     const initialState = checkbox ? checkbox.getAttribute('aria-checked') === 'true' : false;
+    //     console.log(`   Initial state: ${initialState}`);
 
-        // Strategy 1: Standard checkbox clicking with multiple methods
-        if (checkbox) {
-            console.log(`   🎯 Strategy 1: Checkbox clicking`);
+    //     // Strategy 1: Standard checkbox clicking with multiple methods
+    //     if (checkbox) {
+    //         console.log(`   🎯 Strategy 1: Checkbox clicking`);
 
-            // Method 1a: Direct click
-            try {
-                checkbox.click();
-                await this.delay(200);
-                const newState = checkbox.getAttribute('aria-checked') === 'true';
-                if (newState !== initialState) {
-                    console.log(`   ✅ Method 1a (direct click) succeeded: ${initialState} → ${newState}`);
-                    return true;
-                }
-            } catch (e) {
-                console.log(`   ❌ Method 1a failed:`, e.message);
-            }
+    //         // Method 1a: Direct click
+    //         try {
+    //             checkbox.click();
+    //             await this.delay(200);
+    //             const newState = checkbox.getAttribute('aria-checked') === 'true';
+    //             if (newState !== initialState) {
+    //                 console.log(`   ✅ Method 1a (direct click) succeeded: ${initialState} → ${newState}`);
+    //                 return true;
+    //             }
+    //         } catch (e) {
+    //             console.log(`   ❌ Method 1a failed:`, e.message);
+    //         }
 
-            // Method 1b: Mouse event dispatch
-            try {
-                const mouseEvent = new MouseEvent('click', {
-                    bubbles: true,
-                    cancelable: true,
-                    view: window,
-                    button: 0,
-                    buttons: 1,
-                    clientX: checkbox.getBoundingClientRect().left + 10,
-                    clientY: checkbox.getBoundingClientRect().top + 10
-                });
-                checkbox.dispatchEvent(mouseEvent);
-                await this.delay(200);
-                const newState = checkbox.getAttribute('aria-checked') === 'true';
-                if (newState !== initialState) {
-                    console.log(`   ✅ Method 1b (mouse event) succeeded: ${initialState} → ${newState}`);
-                    return true;
-                }
-            } catch (e) {
-                console.log(`   ❌ Method 1b failed:`, e.message);
-            }
+    //         // Method 1b: Mouse event dispatch
+    //         try {
+    //             const mouseEvent = new MouseEvent('click', {
+    //                 bubbles: true,
+    //                 cancelable: true,
+    //                 view: window,
+    //                 button: 0,
+    //                 buttons: 1,
+    //                 clientX: checkbox.getBoundingClientRect().left + 10,
+    //                 clientY: checkbox.getBoundingClientRect().top + 10
+    //             });
+    //             checkbox.dispatchEvent(mouseEvent);
+    //             await this.delay(200);
+    //             const newState = checkbox.getAttribute('aria-checked') === 'true';
+    //             if (newState !== initialState) {
+    //                 console.log(`   ✅ Method 1b (mouse event) succeeded: ${initialState} → ${newState}`);
+    //                 return true;
+    //             }
+    //         } catch (e) {
+    //             console.log(`   ❌ Method 1b failed:`, e.message);
+    //         }
 
-            // Method 1c: Focus and space key
-            try {
-                checkbox.focus();
-                await this.delay(100);
-                const spaceEvent = new KeyboardEvent('keydown', {
-                    bubbles: true,
-                    cancelable: true,
-                    key: ' ',
-                    code: 'Space',
-                    keyCode: 32
-                });
-                checkbox.dispatchEvent(spaceEvent);
-                await this.delay(200);
-                const newState = checkbox.getAttribute('aria-checked') === 'true';
-                if (newState !== initialState) {
-                    console.log(`   ✅ Method 1c (space key) succeeded: ${initialState} → ${newState}`);
-                    return true;
-                }
-            } catch (e) {
-                console.log(`   ❌ Method 1c failed:`, e.message);
-            }
-        }
+    //         // Method 1c: Focus and space key
+    //         try {
+    //             checkbox.focus();
+    //             await this.delay(100);
+    //             const spaceEvent = new KeyboardEvent('keydown', {
+    //                 bubbles: true,
+    //                 cancelable: true,
+    //                 key: ' ',
+    //                 code: 'Space',
+    //                 keyCode: 32
+    //             });
+    //             checkbox.dispatchEvent(spaceEvent);
+    //             await this.delay(200);
+    //             const newState = checkbox.getAttribute('aria-checked') === 'true';
+    //             if (newState !== initialState) {
+    //                 console.log(`   ✅ Method 1c (space key) succeeded: ${initialState} → ${newState}`);
+    //                 return true;
+    //             }
+    //         } catch (e) {
+    //             console.log(`   ❌ Method 1c failed:`, e.message);
+    //         }
+    //     }
 
-        // Strategy 2: Container clicking
-        console.log(`   🎯 Strategy 2: Container clicking`);
-        try {
-            googlePhotosElement.click();
-            await this.delay(300);
-            const newState = checkbox ? checkbox.getAttribute('aria-checked') === 'true' : false;
-            if (newState !== initialState) {
-                console.log(`   ✅ Strategy 2 (container click) succeeded: ${initialState} → ${newState}`);
-                return true;
-            }
-        } catch (e) {
-            console.log(`   ❌ Strategy 2 failed:`, e.message);
-        }
+    //     // Strategy 2: Container clicking
+    //     console.log(`   🎯 Strategy 2: Container clicking`);
+    //     try {
+    //         googlePhotosElement.click();
+    //         await this.delay(300);
+    //         const newState = checkbox ? checkbox.getAttribute('aria-checked') === 'true' : false;
+    //         if (newState !== initialState) {
+    //             console.log(`   ✅ Strategy 2 (container click) succeeded: ${initialState} → ${newState}`);
+    //             return true;
+    //         }
+    //     } catch (e) {
+    //         console.log(`   ❌ Strategy 2 failed:`, e.message);
+    //     }
 
-        // Strategy 3: Alternative clickable elements
-        console.log(`   🎯 Strategy 3: Alternative elements`);
-        const alternativeSelectors = [
-            '[data-ved]',
-            'div[role="button"]',
-            '[aria-label*="Select"]',
-            'button',
-            '[tabindex="0"]',
-            '.rtIMgb > div',
-            '[jslog]'
-        ];
+    //     // Strategy 3: Alternative clickable elements
+    //     console.log(`   🎯 Strategy 3: Alternative elements`);
+    //     const alternativeSelectors = [
+    //         '[data-ved]',
+    //         'div[role="button"]',
+    //         '[aria-label*="Select"]',
+    //         'button',
+    //         '[tabindex="0"]',
+    //         '.rtIMgb > div',
+    //         '[jslog]'
+    //     ];
 
-        for (const selector of alternativeSelectors) {
-            const elements = googlePhotosElement.querySelectorAll(selector);
-            for (const element of elements) {
-                try {
-                    console.log(`   Trying ${selector} element...`);
-                    element.click();
-                    await this.delay(200);
-                    const newState = checkbox ? checkbox.getAttribute('aria-checked') === 'true' : false;
-                    if (newState !== initialState) {
-                        console.log(`   ✅ Strategy 3 (${selector}) succeeded: ${initialState} → ${newState}`);
-                        return true;
-                    }
-                } catch (e) {
-                    // Continue to next element
-                }
-            }
-        }
+    //     for (const selector of alternativeSelectors) {
+    //         const elements = googlePhotosElement.querySelectorAll(selector);
+    //         for (const element of elements) {
+    //             try {
+    //                 console.log(`   Trying ${selector} element...`);
+    //                 element.click();
+    //                 await this.delay(200);
+    //                 const newState = checkbox ? checkbox.getAttribute('aria-checked') === 'true' : false;
+    //                 if (newState !== initialState) {
+    //                     console.log(`   ✅ Strategy 3 (${selector}) succeeded: ${initialState} → ${newState}`);
+    //                     return true;
+    //                 }
+    //             } catch (e) {
+    //                 // Continue to next element
+    //             }
+    //         }
+    //     }
 
-        // Strategy 4: Simulate touch events (for mobile-like behavior)
-        console.log(`   🎯 Strategy 4: Touch events`);
-        const targetElement = checkbox || googlePhotosElement;
-        try {
-            const rect = targetElement.getBoundingClientRect();
-            const touchStart = new TouchEvent('touchstart', {
-                bubbles: true,
-                cancelable: true,
-                touches: [{
-                    clientX: rect.left + rect.width / 2,
-                    clientY: rect.top + rect.height / 2,
-                    target: targetElement
-                }]
-            });
-            const touchEnd = new TouchEvent('touchend', {
-                bubbles: true,
-                cancelable: true,
-                changedTouches: [{
-                    clientX: rect.left + rect.width / 2,
-                    clientY: rect.top + rect.height / 2,
-                    target: targetElement
-                }]
-            });
+    //     // Strategy 4: Simulate touch events (for mobile-like behavior)
+    //     console.log(`   🎯 Strategy 4: Touch events`);
+    //     const targetElement = checkbox || googlePhotosElement;
+    //     try {
+    //         const rect = targetElement.getBoundingClientRect();
+    //         const touchStart = new TouchEvent('touchstart', {
+    //             bubbles: true,
+    //             cancelable: true,
+    //             touches: [{
+    //                 clientX: rect.left + rect.width / 2,
+    //                 clientY: rect.top + rect.height / 2,
+    //                 target: targetElement
+    //             }]
+    //         });
+    //         const touchEnd = new TouchEvent('touchend', {
+    //             bubbles: true,
+    //             cancelable: true,
+    //             changedTouches: [{
+    //                 clientX: rect.left + rect.width / 2,
+    //                 clientY: rect.top + rect.height / 2,
+    //                 target: targetElement
+    //             }]
+    //         });
 
-            targetElement.dispatchEvent(touchStart);
-            await this.delay(50);
-            targetElement.dispatchEvent(touchEnd);
-            await this.delay(200);
+    //         targetElement.dispatchEvent(touchStart);
+    //         await this.delay(50);
+    //         targetElement.dispatchEvent(touchEnd);
+    //         await this.delay(200);
 
-            const newState = checkbox ? checkbox.getAttribute('aria-checked') === 'true' : false;
-            if (newState !== initialState) {
-                console.log(`   ✅ Strategy 4 (touch events) succeeded: ${initialState} → ${newState}`);
-                return true;
-            }
-        } catch (e) {
-            console.log(`   ❌ Strategy 4 failed:`, e.message);
-        }
+    //         const newState = checkbox ? checkbox.getAttribute('aria-checked') === 'true' : false;
+    //         if (newState !== initialState) {
+    //             console.log(`   ✅ Strategy 4 (touch events) succeeded: ${initialState} → ${newState}`);
+    //             return true;
+    //         }
+    //     } catch (e) {
+    //         console.log(`   ❌ Strategy 4 failed:`, e.message);
+    //     }
 
-        // Strategy 5: Force state change by manipulating attributes (last resort)
-        console.log(`   🎯 Strategy 5: Force state change`);
-        if (checkbox) {
-            try {
-                const newState = !initialState;
-                checkbox.setAttribute('aria-checked', newState.toString());
+    //     // Strategy 5: Force state change by manipulating attributes (last resort)
+    //     console.log(`   🎯 Strategy 5: Force state change`);
+    //     if (checkbox) {
+    //         try {
+    //             const newState = !initialState;
+    //             checkbox.setAttribute('aria-checked', newState.toString());
 
-                // Trigger change events
-                const changeEvent = new Event('change', { bubbles: true });
-                const inputEvent = new Event('input', { bubbles: true });
-                checkbox.dispatchEvent(changeEvent);
-                checkbox.dispatchEvent(inputEvent);
+    //             // Trigger change events
+    //             const changeEvent = new Event('change', { bubbles: true });
+    //             const inputEvent = new Event('input', { bubbles: true });
+    //             checkbox.dispatchEvent(changeEvent);
+    //             checkbox.dispatchEvent(inputEvent);
 
-                await this.delay(200);
-                console.log(`   ⚠️ Strategy 5 (force change) applied: ${initialState} → ${newState}`);
-                return true;
-            } catch (e) {
-                console.log(`   ❌ Strategy 5 failed:`, e.message);
-            }
-        }
+    //             await this.delay(200);
+    //             console.log(`   ⚠️ Strategy 5 (force change) applied: ${initialState} → ${newState}`);
+    //             return true;
+    //         } catch (e) {
+    //             console.log(`   ❌ Strategy 5 failed:`, e.message);
+    //         }
+    //     }
 
-        console.log(`   ❌ All strategies failed for photo ${photoId}`);
-        return false;
-    }
+    //     console.log(`   ❌ All strategies failed for photo ${photoId}`);
+    //     return false;
+    // }
 
     async synchronizeAllPhotoStates() {
-        //console.log('🔄 Starting scroll-based photo synchronization with DupeYak Duplicate Remover PWA...');
-
         const overlay = document.getElementById('pc-results-overlay');
         if (!overlay) {
-            console.warn('⚠️ No overlay found for synchronization');
+            console.warn('No overlay found for synchronization');
             return;
         }
 
         const imageItems = overlay.querySelectorAll('.pc-image-item');
-        console.log(`📊 Found ${imageItems.length} photos in overlay to check`);
-
-        // Get photos that should be selected using their proper photo IDs
         const photosToSelect = [];
-
-        // imageItems.forEach(imageItem => {
-        //     const photoId = imageItem.getAttribute('data-photo-id');
-        //     // const checkboxIndicator = imageItem.querySelector('.pc-checkbox-indicator');
-        //     // const shouldBeSelected = checkboxIndicator && checkboxIndicator.getAttribute('data-selected') === 'true';
-        //     const shouldBeSelected= imageItem.querySelectorAll('.will-delete-btn');
-        //     if (shouldBeSelected.length > 0) {
-        //         photosToSelect.push(photoId);
-        //         console.log(`📌 Photo ${photoId} is marked for deletion`);
-        //     }
-        // });
 
         imageItems.forEach(imageItem => {
             const photoId = imageItem.getAttribute('data-photo-id');
 
              const groupContainer = imageItem.closest('.analysisresults-group');
-            // Find the checkbox inside this imageItem
              const checkbox = groupContainer.querySelector('input[type="checkbox"]');
-
-            // Proceed only if checkbox exists AND is checked
             if (checkbox && checkbox.checked) {
                 const shouldBeSelected = imageItem.querySelectorAll('.will-delete-btn');
 
                 if (shouldBeSelected.length > 0) {
                     photosToSelect.push(photoId);
-                    console.log(`📌 Photo ${photoId} is marked for deletion`);
                 }
             }
         });
 
-
-        console.log(`📋 Need to select ${photosToSelect.length} photos marked for deletion`);
-
         if (photosToSelect.length === 0) {
-            //console.log('ℹ️ No photos to select');
             return;
         }
-
-        // Start the scroll-based selection process
         await this.scrollBasedPhotoSelection(photosToSelect);
     }
 
     async scrollBasedPhotoSelection(photoIdsToSelect) {
-        console.log(`🚀 Starting OPTIMIZED position-based selection for ${photoIdsToSelect.length} photos`);
-
-        // NEW OPTIMIZATION: Use stored scroll positions instead of slow scrolling
         const photosWithPositions = [];
         const photosWithoutPositions = [];
-
-        // Categorize photos by whether we have their scroll positions
         for (const photoId of photoIdsToSelect) {
             const scrollPosition = this.photoScrollPositions.get(photoId);
             if (scrollPosition !== undefined) {
@@ -7046,156 +5685,101 @@ overlay.on('click', '.toggle-delete-btn, .keep-btn', function(e) {
                 photosWithoutPositions.push(photoId);
             }
         }
-
-        console.log(`📊 Position data available for ${photosWithPositions.length}/${photoIdsToSelect.length} photos`);
         if (photosWithoutPositions.length > 0) {
-            console.log(`⚠️ No position data for: ${photosWithoutPositions.join(', ')}`);
         }
-
-        // Sort photos by scroll position to minimize scrolling
         photosWithPositions.sort((a, b) => a.scrollPosition - b.scrollPosition);
 
         const foundPhotos = new Set();
         let selectedCount = 0;
-
-        // Process photos with known positions (FAST!)
         if (photosWithPositions.length > 0) {
-            console.log(`🎯 Processing ${photosWithPositions.length} photos with known positions...`);
-
             for (const photoData of photosWithPositions) {
-                console.log(`📍 Jumping to position ${photoData.scrollPosition} for photo ${photoData.id}`);
-
-                // Jump directly to the stored scroll position
                 await this.jumpToScrollPosition(photoData.scrollPosition);
-
-                // Small delay to let photos load at this position
                 await this.delay(300);
-
-                // Look for the photo at this position
                 const visiblePhotos = this.findVisiblePhotosByIds([photoData.id]);
                 if (visiblePhotos.length > 0) {
                     const photoElement = visiblePhotos[0];
-                    console.log(`🎯 Found photo ${photoData.id} at expected position`);
-
                     const success = await this.selectPhotoById(photoData.id, photoElement.element);
                     if (success) {
                         foundPhotos.add(photoData.id);
                         selectedCount++;
-                        console.log(`✅ Selected photo ${photoData.id} (${selectedCount}/${photoIdsToSelect.length})`);
                     }
                 } else {
                     console.warn(`❌ Photo ${photoData.id} not found at expected position ${photoData.scrollPosition}`);
-                    // Add to fallback list
                     photosWithoutPositions.push(photoData.id);
                 }
-
-                // Small delay between selections
                 await this.delay(100);
             }
         }
 
-        // Handle photos without positions or those not found at expected positions
         if (photosWithoutPositions.length > 0) {
-            console.log(`⚠️ ${photosWithoutPositions.length} photos don't have stored scroll positions:`);
             photosWithoutPositions.forEach(photoId => {
-                console.log(`   - ${photoId}: No position data available`);
             });
-
-            // Try a simple retry by looking near the end of the page for missing photos
-            console.log(`🔍 Attempting simple retry for photos without positions...`);
             await this.retryMissingPhotos(photosWithoutPositions, foundPhotos);
             selectedCount = foundPhotos.size;
         }
 
-        // Final summary
         const notFound = photoIdsToSelect.filter(id => !foundPhotos.has(id));
-        console.log(`🎉 POSITION-BASED selection complete:`);
-        console.log(`   ✅ Successfully selected: ${selectedCount}/${photoIdsToSelect.length} photos`);
-        console.log(`   📊 Photos found via stored positions: ${photosWithPositions.length - notFound.length}`);
-        console.log(`   ❌ Photos not found: ${notFound.length}`);
 
         if (notFound.length > 0) {
-            console.warn(`⚠️ Photos that couldn't be selected:`, notFound);
-            console.warn(`💡 Tip: These photos may have been deleted, moved, or weren't properly scanned initially`);
+            console.warn(` Photos that couldn't be selected:`, notFound);
+            console.warn(`Tip: These photos may have been deleted, moved, or weren't properly scanned initially`);
         }
-
-        // Verify final count
         const finalSelected = document.querySelectorAll('[role="checkbox"][aria-checked="true"]').length;
-        console.log(`📊 Final verification: ${finalSelected} total photos selected in DupeYak Duplicate Remover PWA`);
     }
-
-    // NEW: Jump directly to a specific scroll position
     async jumpToScrollPosition(targetPosition) {
         const scrollContainer = this.findScrollableContainer();
         if (scrollContainer) {
             scrollContainer.scrollTop = targetPosition;
-            console.log(`📍 Jumped to container position: ${targetPosition}`);
         } else {
             window.scrollTo(0, targetPosition);
-            console.log(`📍 Jumped to document position: ${targetPosition}`);
         }
     }
 
-    // NEW: Simple retry method - just check a few key positions without full scrolling
     async retryMissingPhotos(photoIdsToSelect, foundPhotos) {
         if (photoIdsToSelect.length === 0) return;
-
-        console.log(`🔍 Simple retry for ${photoIdsToSelect.length} photos without position data`);
-
-        // Try checking at top, middle, and bottom of the page
         const scrollContainer = this.findScrollableContainer();
         const maxScroll = scrollContainer ?
             Math.max(0, scrollContainer.scrollHeight - scrollContainer.clientHeight) :
             Math.max(document.body.scrollHeight, document.documentElement.scrollHeight) - window.innerHeight;
 
         const retryPositions = [
-            0,                    // Top
-            maxScroll * 0.5,     // Middle  
-            maxScroll * 0.8,     // Near bottom
-            maxScroll            // Bottom
+            0,                    
+            maxScroll * 0.5,    
+            maxScroll * 0.8,    
+            maxScroll            
         ];
 
         for (const position of retryPositions) {
-            console.log(`📍 Checking position ${Math.round(position)} for missing photos...`);
             await this.jumpToScrollPosition(position);
-            await this.delay(500); // Wait for photos to load
-
-            // Look for any of the missing photos
+            await this.delay(500); 
             const visiblePhotos = this.findVisiblePhotosByIds(photoIdsToSelect);
             for (const photoData of visiblePhotos) {
                 if (!foundPhotos.has(photoData.id)) {
-                    console.log(`🎯 Found missing photo ${photoData.id} at position ${Math.round(position)}`);
                     const success = await this.selectPhotoById(photoData.id, photoData.element);
                     if (success) {
                         foundPhotos.add(photoData.id);
-                        console.log(`✅ Successfully selected photo ${photoData.id}`);
                     }
                     await this.delay(100);
                 }
             }
-
-            // Stop if we found all missing photos
             const stillMissing = photoIdsToSelect.filter(id => !foundPhotos.has(id));
             if (stillMissing.length === 0) {
-                console.log(`🎉 Found all missing photos!`);
                 break;
             }
         }
 
         const finalMissing = photoIdsToSelect.filter(id => !foundPhotos.has(id));
         if (finalMissing.length > 0) {
-            console.warn(`⚠️ Still couldn't find ${finalMissing.length} photos after retry:`, finalMissing);
+            console.warn(`Still couldn't find ${finalMissing.length} photos after retry:`, finalMissing);
         }
     }
 
     async scrollToTop() {
         const scrollContainer = this.findScrollableContainer();
         if (scrollContainer) {
-            //console.log('📍 Scrolling to top of page...');
             scrollContainer.scrollTop = 0;
-            await this.delay(1000); // Wait for photos to load at top
+            await this.delay(1000); 
         } else {
-            //console.log('📍 Scrolling document to top...');
             window.scrollTo(0, 0);
             await this.delay(1000);
         }
@@ -7203,8 +5787,6 @@ overlay.on('click', '.toggle-delete-btn, .keep-btn', function(e) {
 
     findVisiblePhotosByIds(targetPhotoIds) {
         const visiblePhotos = [];
-
-        // Strategy 1: Find by href attribute containing photo ID
         const linkElements = document.querySelectorAll('a[href*="photo/"]');
 
         for (const link of linkElements) {
@@ -7226,8 +5808,6 @@ overlay.on('click', '.toggle-delete-btn, .keep-btn', function(e) {
                 }
             }
         }
-
-        // Strategy 2: Find by jslog attribute containing photo ID
         const jslogElements = document.querySelectorAll('[jslog]');
 
         for (const element of jslogElements) {
@@ -7257,34 +5837,29 @@ overlay.on('click', '.toggle-delete-btn, .keep-btn', function(e) {
             const checkbox = photoElement.querySelector('[role="checkbox"]');
 
             if (!checkbox) {
-                console.warn(`⚠️ No checkbox found for photo ${photoId}`);
+                console.warn(`No checkbox found for photo ${photoId}`);
                 return false;
             }
 
             const isCurrentlySelected = checkbox.getAttribute('aria-checked') === 'true';
 
             if (isCurrentlySelected) {
-                console.log(`⏭️ Photo ${photoId} already selected, skipping`);
                 return true;
             }
-
-            console.log(`🔘 Clicking checkbox to select photo ${photoId}`);
             checkbox.click();
 
-            // Verify the selection worked
             await this.delay(100);
             const newState = checkbox.getAttribute('aria-checked') === 'true';
 
             if (newState) {
-                console.log(`✅ Successfully selected photo ${photoId}`);
                 return true;
             } else {
-                console.warn(`❌ Click didn't change state for photo ${photoId}`);
+                console.warn(`Click didn't change state for photo ${photoId}`);
                 return false;
             }
 
         } catch (error) {
-            console.error(`❌ Error selecting photo ${photoId}:`, error);
+            console.error(`Error selecting photo ${photoId}:`, error);
             return false;
         }
     }
@@ -7294,69 +5869,40 @@ overlay.on('click', '.toggle-delete-btn, .keep-btn', function(e) {
 
         if (scrollContainer) {
             const beforeScroll = scrollContainer.scrollTop;
-            const scrollAmount = Math.min(400, scrollContainer.clientHeight * 0.5); // Scroll 50% of viewport or 400px max
+            const scrollAmount = Math.min(400, scrollContainer.clientHeight * 0.5);
 
             scrollContainer.scrollTop += scrollAmount;
-
-            console.log(`📍 Scrolled container from ${beforeScroll} to ${scrollContainer.scrollTop} (+${scrollAmount}px)`);
             return scrollContainer.scrollTop;
         } else {
             const beforeScroll = window.pageYOffset;
-            const scrollAmount = Math.min(400, window.innerHeight * 0.5); // Scroll 50% of viewport or 400px max
-
+            const scrollAmount = Math.min(400, window.innerHeight * 0.5);
             window.scrollBy(0, scrollAmount);
-
-            console.log(`📍 Scrolled document from ${beforeScroll} to ${window.pageYOffset} (+${scrollAmount}px)`);
             return window.pageYOffset;
         }
     }
 
     async finalizeSelectionAndSync(overlay) {
-        //console.log('🎯 FINAL SYNC: User clicked "I\'m done selecting" - now syncing with DupeYak Duplicate Remover PWA...');
-
-        // Update the button to show progress
-        // const doneBtn = document.getElementById('pc-done-selecting');
-        // const originalText = doneBtn.innerHTML;
-        // doneBtn.disabled = true;
-        // doneBtn.innerHTML = '🔄 Syncing with DupeYak Duplicate Remover...';
 
         try {
-            // Count how many photos are selected in overlay
-            // const selectedPhotos = overlay.querySelectorAll('.pc-image-item .pc-checkbox-indicator[data-selected="true"]');
             const selectedPhotos = overlay.find('.pc-image-item .will-delete-btn')
-            console.log(`📊 Found ${selectedPhotos.length} photos selected in overlay`);
-
-            // Debug: List all selected photo IDs
             const selectedPhotoIds = Array.from(selectedPhotos).map(checkbox => {
                 const imageItem = checkbox.closest('.pc-image-item');
                 return imageItem ? imageItem.getAttribute('data-photo-id') : 'unknown';
             });
-            console.log(`📋 Selected photo IDs:`, selectedPhotoIds);
 
             if (selectedPhotos.length === 0) {
-                //console.log('ℹ️ No photos selected, skipping DupeYak Duplicate Remover sync');
                 this.showCompletionMessage(overlay);
                 return;
             }
-
-            // Now perform the final synchronization with DupeYak Duplicate Remover PWA
-            //console.log('🔄 Starting final synchronization with DupeYak Duplicate Remover PWA...');
             await this.synchronizeAllPhotoStates();
-
-            // Verify the sync worked with detailed debugging
-            //console.log('🔍 Verifying sync results...');
             const finalCount = this.countSelectedPhotosDetailed();
-            console.log(`✅ Final sync complete: ${finalCount} photos selected in DupeYak Duplicate Remover PWA`);
-
-            // Show completion message
             this.showCompletionMessage(overlay);
 
         } catch (error) {
-            console.error('❌ Error during final sync:', error);
-            doneBtn.innerHTML = '❌ Sync failed - try again';
+            console.error('Error during final sync:', error);
+            doneBtn.innerHTML = 'Sync failed - try again';
             doneBtn.disabled = false;
 
-            // Re-enable after 3 seconds
             setTimeout(() => {
                 doneBtn.innerHTML = originalText;
             }, 3000);
@@ -7364,7 +5910,6 @@ overlay.on('click', '.toggle-delete-btn, .keep-btn', function(e) {
     }
 
     async setPhotoState(googlePhotosElement, photoId, desiredState) {
-        console.log(`🎯 Setting photo ${photoId} state to: ${desiredState}`);
 
         const checkbox = googlePhotosElement.querySelector('[role="checkbox"]');
         if (!checkbox) {
@@ -7373,23 +5918,15 @@ overlay.on('click', '.toggle-delete-btn, .keep-btn', function(e) {
         }
 
         const currentState = checkbox.getAttribute('aria-checked') === 'true';
-        console.log(`   Current state: ${currentState}, Desired state: ${desiredState}`);
 
         // If already in desired state, no need to do anything
         if (currentState === desiredState) {
-            console.log(`   ✅ Photo ${photoId} already in desired state`);
             return true;
         }
 
-        // Need to toggle to reach desired state
-        console.log(`   🔧 Need to toggle photo ${photoId} from ${currentState} to ${desiredState}`);
-        const success = await this.attemptPhotoToggle(googlePhotosElement, photoId);
-
         if (success) {
-            // Verify the state changed correctly
             const newState = checkbox.getAttribute('aria-checked') === 'true';
             if (newState === desiredState) {
-                console.log(`   ✅ Successfully set photo ${photoId} to ${desiredState}`);
                 return true;
             } else {
                 console.warn(`   ❌ Toggle succeeded but state is wrong: expected ${desiredState}, got ${newState}`);
@@ -7402,31 +5939,21 @@ overlay.on('click', '.toggle-delete-btn, .keep-btn', function(e) {
     }
 
     findGooglePhotosElement(photoId, photoUrl) {
-        console.log(`🔍 Searching for photo element: ${photoId}`);
-
-        // Strategy 1: Find by photo ID in href attribute
         const linkElements = document.querySelectorAll('a[href*="photo/"]');
-        //const linkElements = document.querySelectorAll('a[href*="album/"]');
-        console.log(`   Strategy 1: Found ${linkElements.length} photo links`);
 
         for (const link of linkElements) {
             if (link.href.includes(photoId)) {
-                console.log(`   ✅ Found by href: ${link.href}`);
                 const photoContainer = link.closest('.rtIMgb');
                 if (photoContainer) {
                     return photoContainer;
                 }
             }
         }
-
-        // Strategy 2: Find by jslog attribute (contains photo ID)
         const jslogElements = document.querySelectorAll('[jslog]');
-        console.log(`   Strategy 2: Found ${jslogElements.length} jslog elements`);
 
         for (const element of jslogElements) {
             const jslogValue = element.getAttribute('jslog');
             if (jslogValue && jslogValue.includes(photoId)) {
-                console.log(`   ✅ Found by jslog: ${jslogValue}`);
                 const photoContainer = element.closest('.rtIMgb');
                 if (photoContainer) {
                     return photoContainer;
@@ -7436,24 +5963,18 @@ overlay.on('click', '.toggle-delete-btn, .keep-btn', function(e) {
 
         // Strategy 3: Find by partial photo ID match in innerHTML
         const allContainers = document.querySelectorAll('.rtIMgb');
-        console.log(`   Strategy 3: Checking ${allContainers.length} photo containers for innerHTML match`);
 
         for (const container of allContainers) {
             const containerHTML = container.innerHTML;
             if (containerHTML.includes(photoId)) {
-                console.log(`   ✅ Found by full photo ID in innerHTML`);
                 return container;
             }
         }
-
-        // Strategy 4: Find by partial photo ID match (first 20 characters)
-        console.log(`   Strategy 4: Checking for partial photo ID match (first 20 chars)`);
         const partialId = photoId.substring(0, 20);
 
         for (const container of allContainers) {
             const containerHTML = container.innerHTML;
             if (containerHTML.includes(partialId)) {
-                console.log(`   ✅ Found by partial photo ID match: ${partialId}`);
                 return container;
             }
         }
@@ -7466,123 +5987,118 @@ overlay.on('click', '.toggle-delete-btn, .keep-btn', function(e) {
     }
 
     async scrollToFindPhoto(photoId) {
-        console.log(`🔄 Attempting to scroll to find photo ${photoId}`);
 
-        // Try scrolling down a bit to load more photos
         const scrollContainer = this.findScrollableContainer();
         if (scrollContainer) {
             const initialScrollTop = scrollContainer.scrollTop;
-            const scrollAmount = Math.min(300, scrollContainer.clientHeight * 0.4); // Scroll 40% of viewport or 300px max
+            const scrollAmount = Math.min(300, scrollContainer.clientHeight * 0.4); 
             const maxScrollAttempts = 3;
 
             for (let i = 0; i < maxScrollAttempts; i++) {
                 scrollContainer.scrollTop += scrollAmount;
-                await this.delay(300); // Wait for photos to load
+                await this.delay(300); 
 
                 // Check if we found the photo
                 const found = this.findGooglePhotosElement(photoId, null);
                 if (found) {
-                    console.log(`✅ Found photo ${photoId} after scrolling`);
                     return true;
                 }
             }
-
-            // Scroll back to original position if not found
             scrollContainer.scrollTop = initialScrollTop;
         }
 
-        console.warn(`⚠️ Could not find photo ${photoId} even after scrolling`);
+        console.warn(` Could not find photo ${photoId} even after scrolling`);
         return false;
     }
 
-    updateCheckboxIndicator(indicator, isSelected) {
-        if (!indicator) return;
+    // updateCheckboxIndicator(indicator, isSelected) {
+    //     if (!indicator) return;
 
-        indicator.setAttribute('data-selected', isSelected.toString());
-        const checkPath = indicator.querySelector('path');
+    //     indicator.setAttribute('data-selected', isSelected.toString());
+    //     const checkPath = indicator.querySelector('path');
+    //     const imageContainer = indicator.closest('.pc-image-container');
+    //     if (imageContainer) {
+    //         imageContainer.setAttribute('data-selected', isSelected.toString());
+    //     }
 
-        // Also update the image container for red tint
-        const imageContainer = indicator.closest('.pc-image-container');
-        if (imageContainer) {
-            imageContainer.setAttribute('data-selected', isSelected.toString());
-        }
+    //     if (isSelected) {
+    //         indicator.style.backgroundColor = '#dc3545';
+    //         indicator.style.color = 'white';
+    //         if (checkPath) checkPath.style.display = 'block';
+    //     } else {
+    //         indicator.style.backgroundColor = 'rgba(255, 255, 255, 0.9)';
+    //         indicator.style.color = '#666';
+    //         if (checkPath) checkPath.style.display = 'none';
+    //     }
+    // }
 
-        if (isSelected) {
-            indicator.style.backgroundColor = '#dc3545';
-            indicator.style.color = 'white';
-            if (checkPath) checkPath.style.display = 'block';
-        } else {
-            indicator.style.backgroundColor = 'rgba(255, 255, 255, 0.9)';
-            indicator.style.color = '#666';
-            if (checkPath) checkPath.style.display = 'none';
-        }
-    }
+    // showSelectionFeedback(imageItem, isSelected) {
+    //     // Add temporary visual feedback
+    //     const feedback = document.createElement('div');
+    //     feedback.className = 'pc-selection-feedback';
+    //     feedback.textContent = isSelected ? '🗑️ Marked for deletion' : '✓ Unmarked';
+    //     feedback.style.cssText = `
+    //         position: absolute;
+    //         top: 10px;
+    //         right: 10px;
+    //         background: ${isSelected ? '#dc3545' : '#28a745'};
+    //         color: white;
+    //         padding: 4px 8px;
+    //         border-radius: 4px;
+    //         font-size: 12px;
+    //         font-weight: 500;
+    //         pointer-events: none;
+    //         z-index: 1000;
+    //     `;
 
-    showSelectionFeedback(imageItem, isSelected) {
-        // Add temporary visual feedback
-        const feedback = document.createElement('div');
-        feedback.className = 'pc-selection-feedback';
-        feedback.textContent = isSelected ? '🗑️ Marked for deletion' : '✓ Unmarked';
-        feedback.style.cssText = `
-            position: absolute;
-            top: 10px;
-            right: 10px;
-            background: ${isSelected ? '#dc3545' : '#28a745'};
-            color: white;
-            padding: 4px 8px;
-            border-radius: 4px;
-            font-size: 12px;
-            font-weight: 500;
-            pointer-events: none;
-            z-index: 1000;
-        `;
+    //     const container = imageItem.querySelector('.pc-image-container');
+    //     if (container) {
+    //         container.style.position = 'relative';
+    //         container.appendChild(feedback);
 
-        const container = imageItem.querySelector('.pc-image-container');
-        if (container) {
-            container.style.position = 'relative';
-            container.appendChild(feedback);
+    //         // Remove feedback after 2 seconds
+    //         setTimeout(() => {
+    //             if (feedback.parentNode) {
+    //                 feedback.remove();
+    //             }
+    //         }, 2000);
+    //     }
+    // }
 
-            // Remove feedback after 2 seconds
-            setTimeout(() => {
-                if (feedback.parentNode) {
-                    feedback.remove();
-                }
-            }, 2000);
-        }
-    }
+    // showSelectionError(imageItem, message) {
+    //     const feedback = document.createElement('div');
+    //     feedback.className = 'pc-selection-feedback error';
+    //     feedback.textContent = `❌ ${message}`;
+    //     feedback.style.cssText = `
+    //         position: absolute;
+    //         top: 10px;
+    //         right: 10px;
+    //         background: #dc3545;
+    //         color: white;
+    //         padding: 4px 8px;
+    //         border-radius: 4px;
+    //         font-size: 12px;
+    //         font-weight: 500;
+    //         pointer-events: none;
+    //         z-index: 1000;
+    //     `;
 
-    showSelectionError(imageItem, message) {
-        const feedback = document.createElement('div');
-        feedback.className = 'pc-selection-feedback error';
-        feedback.textContent = `❌ ${message}`;
-        feedback.style.cssText = `
-            position: absolute;
-            top: 10px;
-            right: 10px;
-            background: #dc3545;
-            color: white;
-            padding: 4px 8px;
-            border-radius: 4px;
-            font-size: 12px;
-            font-weight: 500;
-            pointer-events: none;
-            z-index: 1000;
-        `;
+    //     const container = imageItem.querySelector('.pc-image-container');
+    //     if (container) {
+    //         container.style.position = 'relative';
+    //         container.appendChild(feedback);
 
-        const container = imageItem.querySelector('.pc-image-container');
-        if (container) {
-            container.style.position = 'relative';
-            container.appendChild(feedback);
+    //         // Remove feedback after 3 seconds
+    //         setTimeout(() => {
+    //             if (feedback.parentNode) {
+    //                 feedback.remove();
+    //             }
+    //         }, 3000);
+    //     }
+    // }
+    
 
-            // Remove feedback after 3 seconds
-            setTimeout(() => {
-                if (feedback.parentNode) {
-                    feedback.remove();
-                }
-            }, 3000);
-        }
-    }
-    //convert to jquery
+
     initializeCheckboxStates(overlay) {
         const imageItems = $(overlay).find('.pc-image-item');
 
@@ -7598,82 +6114,45 @@ overlay.on('click', '.toggle-delete-btn, .keep-btn', function(e) {
                 const checkbox = googlePhotosElement.find('[role="checkbox"]');
                 if (checkbox.length) {
                     const isSelected = checkbox.attr('aria-checked') === 'true';
-                    this.updateCheckboxIndicator(checkboxIndicator[0], isSelected);
+                    // this.updateCheckboxIndicator(checkboxIndicator[0], isSelected);
                 }
             }
         });
 
         // Initialize group toggle button states
-        this.initializeGroupToggleStates(overlay);
+        // this.initializeGroupToggleStates(overlay);
     }
 
-    initializeGroupToggleStates(overlay) {
-        const groups = overlay.querySelectorAll('.pc-group');
+    // initializeGroupToggleStates(overlay) {
+    //     const groups = overlay.querySelectorAll('.pc-group');
 
-        groups.forEach(group => {
-            const toggleButton = group.querySelector('.pc-group-toggle');
-            if (!toggleButton) return;
+    //     groups.forEach(group => {
+    //         const toggleButton = group.querySelector('.pc-group-toggle');
+    //         if (!toggleButton) return;
 
-            const checkboxIndicators = group.querySelectorAll('.pc-checkbox-indicator');
-            let selectedCount = 0;
+    //         const checkboxIndicators = group.querySelectorAll('.pc-checkbox-indicator');
+    //         let selectedCount = 0;
 
-            checkboxIndicators.forEach(indicator => {
-                if (indicator.getAttribute('data-selected') === 'true') {
-                    selectedCount++;
-                }
-            });
+    //         checkboxIndicators.forEach(indicator => {
+    //             if (indicator.getAttribute('data-selected') === 'true') {
+    //                 selectedCount++;
+    //             }
+    //         });
 
-            const totalCount = checkboxIndicators.length;
-            const allSelected = selectedCount === totalCount;
+    //         const totalCount = checkboxIndicators.length;
+    //         const allSelected = selectedCount === totalCount;
 
-            this.updateGroupToggleButton(toggleButton, allSelected, totalCount);
-        });
-    }
+    //         // this.updateGroupToggleButton(toggleButton, allSelected, totalCount);
+    //     });
+    // }
 
     showCompletionMessage(resultsOverlay) {
-        // Count selected photos
         const selectedCount = this.countSelectedPhotos();
-
-        // Hide the results overlay
-        // resultsOverlay.style.display = 'none';
-
-        // Create completion message overlay
         const completionOverlay = document.createElement('div');
         completionOverlay.id = 'pc-completion-overlay';
         const ideaIconUrl = chrome.runtime.getURL('../icons/idea.svg');
         const backIconUrl = chrome.runtime.getURL('../icons/back.svg');
         const deleteIconUrl = chrome.runtime.getURL('../icons/delete.svg');
-        // completionOverlay.innerHTML = `
-        //     <div class="pc-completion-container">
-        //         <div class="pc-completion-header">
-        //             <button id="pc-completion-close" class="pc-completion-close-btn">×</button>
-        //         </div>
-        //         <div class="pc-completion-content">
-        //             <div class="pc-completion-icon">🗑️</div>
-        //             <h2 class="pc-completion-title">Ready to Delete!</h2>
-        //             <div class="pc-completion-message">
-        //                 You have selected <strong>${selectedCount} photo${selectedCount !== 1 ? 's' : ''}</strong> for deletion.
-        //                 <br><br>
-        //                 Now just click on the <strong>trash bin icon</strong> in the top right of your DupeYak Duplicate Remover, or <strong>click 3 dots and select "Move to trash"</strong> to delete them and see how much space you saved!
-        //             </div>
-        //             <div class="pc-completion-instruction">
-        //                 <div class="pc-trash-icon">🗑️</div>
-        //                 <span>Look for the trash icon in DupeYak Duplicate Remover toolbar</span>
-        //             </div>
-        //             <div class="pc-completion-notice">
-        //                 💡 <strong>Want to search again?</strong> Just reload the page to run another duplicate search.
-        //             </div>
-        //             <div class="pc-completion-buttons">
-        //                 <button id="pc-completion-back" class="pc-btn pc-btn-secondary pc-completion-btn">
-        //                     ← Go back
-        //                 </button>
-        //                 <button id="pc-completion-done" class="pc-btn pc-btn-primary pc-completion-btn">
-        //                     Got it!
-        //                 </button>
-        //             </div>
-        //         </div>
-        //     </div>
-        // `;
           completionOverlay.innerHTML = `
             <div class="ap-popupu-in delete_popupu_img h-full flex items-center w-[510px] mx-auto relative">
              <div class="mx-auto px-3 max-[767px]:px-2">
@@ -7719,40 +6198,30 @@ overlay.on('click', '.toggle-delete-btn, .keep-btn', function(e) {
         $(completionOverlay).find('.back-img').attr('src', backIconUrl);
         $(completionOverlay).find('.delete-img').attr('src', deleteIconUrl);
 
-
-        // Add event listeners
         const closeBtn = document.getElementById('pc-completion-close');
         const doneBtn = document.getElementById('pc-completion-done');
         const backBtn = document.getElementById('pc-completion-back');
 
         const removeOverlay = () => {
-            // Clean up viewport observer before removing overlays
             this.cleanupViewportObserver();
 
             completionOverlay.remove();
-            // Also remove the original results overlay
             resultsOverlay.remove();
 
-            // Hide the status panel and find panel
             const statusPanel = document.getElementById('pc-floating-status');
             const findPanel = document.getElementById('photo-cleaner-panel');
 
             if (statusPanel) {
                 statusPanel.style.display = 'none';
-                //console.log('✅ Hidden status panel');
             }
 
             if (findPanel) {
                 findPanel.style.display = 'none';
-                //console.log('✅ Hidden find panel');
             }
-
-            //console.log('🎉 Extension cleanup complete - panels hidden, ready for page reload to search again');
         };
 
         const goBack = () => {
             completionOverlay.remove();
-            // Show the results overlay again
             resultsOverlay.style.display = 'block';
         };
 
@@ -7761,961 +6230,953 @@ overlay.on('click', '.toggle-delete-btn, .keep-btn', function(e) {
         backBtn.addEventListener('click', goBack);
     }
 
-    async autoSelectPhotos(overlay) {
-        //console.log('🤖 Starting intelligent photo selection with face detection...');
-
-        const autoSelectBtn = document.getElementById('pc-auto-select');
-        const originalText = autoSelectBtn.innerHTML;
-
-        // Update button to show progress
-        autoSelectBtn.innerHTML = '🧠 Analyzing faces...';
-        autoSelectBtn.disabled = true;
-
-        try {
-            const groups = overlay.querySelectorAll('.pc-group');
-            let totalSelected = 0;
-            let groupsProcessed = 0;
-            let selectableGroups = 0;
-
-            // Count selectable groups for progress tracking
-            groups.forEach(group => {
-                if (!group.hasAttribute('data-non-selectable')) {
-                    selectableGroups++;
-                }
-            });
-
-            for (const group of groups) {
-                // Skip non-selectable groups for free users
-                if (group.hasAttribute('data-non-selectable')) {
-                    console.log(`⏭️ Skipping non-selectable group ${group.getAttribute('data-group-index')} for free user`);
-                    continue;
-                }
-
-                groupsProcessed++;
-                autoSelectBtn.innerHTML = `🧠 Analyzing group ${groupsProcessed}/${selectableGroups}...`;
-
-                const imageItems = Array.from(group.querySelectorAll('.pc-image-item'));
-
-                if (imageItems.length <= 1) {
-                    continue; // Skip groups with only one photo
-                }
-
-                // Analyze faces and emotions in this group
-                const photoAnalysis = await this.analyzeGroupForFaces(imageItems);
-
-                // Determine which photos to keep vs delete based on face analysis
-                const photosToDelete = this.selectPhotosForDeletion(photoAnalysis);
-
-                // Apply the selection - Update overlay states only (no DupeYak Duplicate Remover PWA sync yet)
-                console.log(`📝 Updating overlay states for ${photosToDelete.length} photos to delete (OVERLAY ONLY)...`);
-
-                for (const photoToDelete of photosToDelete) {
-                    const checkboxIndicator = photoToDelete.imageItem.querySelector('.pc-checkbox-indicator');
-
-                    if (checkboxIndicator) {
-                        this.updateCheckboxIndicator(checkboxIndicator, true);
-                        this.showSelectionFeedback(photoToDelete.imageItem, true);
-                        console.log(`✅ Marked photo ${photoToDelete.photoId} for deletion in overlay (DupeYak Duplicate Remover PWA will be synced when user clicks "I'm done")`);
-                        totalSelected++;
-                    } else {
-                        console.error(`❌ No checkbox indicator found for photo ${photoToDelete.photoId}`);
-                    }
-                }
-
-                console.log(`✅ AI selection complete: ${totalSelected} photos marked in overlay. DupeYak Duplicate Remover PWA will be synced when user clicks "I'm done selecting".`);
-            }
-
-            console.log(`✅ Intelligently selected ${totalSelected} photos for deletion`);
-
-            // Update group toggle button states
-            this.initializeGroupToggleStates(overlay);
-
-            // Update button to show completion
-            autoSelectBtn.innerHTML = `✅ Selected ${totalSelected} photos`;
-
-            // Scroll to the "I'm done selecting" button
-            setTimeout(() => {
-                const doneBtn = document.getElementById('pc-done-selecting');
-                if (doneBtn) {
-                    doneBtn.scrollIntoView({
-                        behavior: 'smooth',
-                        block: 'center'
-                    });
-
-                    // Add a subtle highlight effect
-                    doneBtn.style.animation = 'pc-pulse 2s ease-in-out';
-                }
-            }, 500);
-
-        } catch (error) {
-            console.error('❌ Error during intelligent selection:', error);
-            autoSelectBtn.innerHTML = '❌ Selection failed';
-        }
-
-        // Re-enable button after 3 seconds
-        setTimeout(() => {
-            autoSelectBtn.innerHTML = originalText;
-            autoSelectBtn.disabled = false;
-        }, 3000);
-    }
-
-    async aiSelectPhotosInGroup(overlay, groupIndex, button) {
-        console.log(`🤖 Starting intelligent photo selection for group ${groupIndex + 1}...`);
-
-        // Check if another selection is already in progress
-        if (this.metadataSelectionInProgress) {
-            //console.log('⚠️ Another metadata selection is already in progress, ignoring this request');
-            return;
-        }
-
-        // Set flag to prevent other selections
-        this.metadataSelectionInProgress = true;
-
-        // Disable all metadata buttons
-        this.disableAllMetadataButtons();
-
-        const originalText = button.innerHTML;
-
-        try {
-            // Update button to show progress
-            button.innerHTML = '🧠 Analyzing faces...';
-            button.disabled = true;
-
-            // Clear all previous selections in this group first
-            this.clearGroupSelections(overlay, groupIndex);
-
-            // Find the specific group
-            const group = overlay.querySelector(`[data-group-index="${groupIndex}"]`);
-            if (!group) {
-                console.error(`Group ${groupIndex} not found`);
-                this.metadataSelectionInProgress = false;
-                this.enableAllMetadataButtons();
-                return;
-            }
-
-            const imageItems = Array.from(group.querySelectorAll('.pc-image-item'));
-
-            if (imageItems.length <= 1) {
-                console.log(`⚠️ Group ${groupIndex + 1} has only ${imageItems.length} photos, skipping AI selection`);
-                button.innerHTML = '⚠️ Not enough photos';
-
-                setTimeout(() => {
-                    this.metadataSelectionInProgress = false;
-                    this.enableAllMetadataButtons();
-                    button.innerHTML = originalText;
-                }, 2000);
-                return;
-            }
-
-            console.log(`🤖 Processing group ${groupIndex + 1} with ${imageItems.length} photos...`);
-            button.innerHTML = `🧠 Analyzing ${imageItems.length} photos...`;
-
-            // Analyze faces and emotions in this group
-            const photoAnalysis = await this.analyzeGroupForFaces(imageItems);
-
-            // Determine which photos to keep vs delete based on face analysis
-            const photosToDelete = this.selectPhotosForDeletion(photoAnalysis);
-
-            // Apply the selection
-            let totalSelected = 0;
-            for (const photoToDelete of photosToDelete) {
-                const checkboxIndicator = photoToDelete.imageItem.querySelector('.pc-checkbox-indicator');
-
-                if (checkboxIndicator) {
-                    this.updateCheckboxIndicator(checkboxIndicator, true);
-                    this.showSelectionFeedback(photoToDelete.imageItem, true);
-                    console.log(`✅ Marked photo ${photoToDelete.photoId} for deletion in group ${groupIndex + 1} (AI selection)`);
-                    totalSelected++;
-                } else {
-                    console.error(`❌ No checkbox indicator found for photo ${photoToDelete.photoId}`);
-                }
-            }
-
-            console.log(`✅ AI selection complete for group ${groupIndex + 1}: ${totalSelected} photos marked for deletion`);
-
-            // Update the group's toggle button state
-            const groupToggleButton = group.querySelector('.pc-group-toggle');
-            if (groupToggleButton) {
-                // Check if all photos in the group are selected
-                const checkboxIndicators = group.querySelectorAll('.pc-checkbox-indicator');
-                let selectedCount = 0;
-                checkboxIndicators.forEach(indicator => {
-                    if (indicator.getAttribute('data-selected') === 'true') {
-                        selectedCount++;
-                    }
-                });
-                const allSelected = selectedCount === checkboxIndicators.length;
-                this.updateGroupToggleButton(groupToggleButton, allSelected, checkboxIndicators.length);
-            }
-
-            // Update button to show completion
-            button.innerHTML = `✅ Selected ${totalSelected} photos`;
-
-            // Brief success feedback
-            setTimeout(() => {
-                this.metadataSelectionInProgress = false;
-                this.enableAllMetadataButtons();
-                button.innerHTML = originalText;
-            }, 2000);
-
-        } catch (error) {
-            console.error('❌ Error during group AI selection:', error);
-            button.innerHTML = '❌ AI selection failed';
-
-            setTimeout(() => {
-                this.metadataSelectionInProgress = false;
-                this.enableAllMetadataButtons();
-                button.innerHTML = originalText;
-            }, 3000);
-        }
-    }
-
-    async dumbSelectPhotos(overlay) {
-        //console.log('🎯 Starting dumb photo selection...');
-
-        const dumbSelectBtn = document.getElementById('pc-dumb-select');
-        const originalText = dumbSelectBtn.innerHTML;
-
-        // Update button to show progress
-        dumbSelectBtn.innerHTML = '🎯 Selecting...';
-        dumbSelectBtn.disabled = true;
-
-        try {
-            const groups = overlay.querySelectorAll('.pc-group');
-            let totalSelected = 0;
-
-            for (const group of groups) {
-                // Skip non-selectable groups for free users
-                if (group.hasAttribute('data-non-selectable')) {
-                    console.log(`⏭️ Skipping non-selectable group ${group.getAttribute('data-group-index')} for free user`);
-                    continue;
-                }
-
-                const imageItems = Array.from(group.querySelectorAll('.pc-image-item'));
-
-                if (imageItems.length <= 1) {
-                    continue; // Skip groups with only one photo
-                }
-
-                console.log(`📝 Processing group with ${imageItems.length} photos...`);
-
-                // Keep the first photo, mark the rest for deletion
-                for (let i = 1; i < imageItems.length; i++) {
-                    const imageItem = imageItems[i];
-                    const photoId = imageItem.getAttribute('data-photo-id');
-                    const checkboxIndicator = imageItem.querySelector('.pc-checkbox-indicator');
-
-                    if (checkboxIndicator) {
-                        this.updateCheckboxIndicator(checkboxIndicator, true);
-                        this.showSelectionFeedback(imageItem, true);
-                        console.log(`✅ Marked photo ${photoId} for deletion (dumb selection)`);
-                        totalSelected++;
-                    } else {
-                        console.error(`❌ No checkbox indicator found for photo ${photoId}`);
-                    }
-                }
-
-                console.log(`✅ Dumb selection complete for group: kept first photo, marked ${imageItems.length - 1} for deletion`);
-            }
-
-            console.log(`✅ Dumb selection complete: ${totalSelected} photos marked for deletion`);
-
-            // Update group toggle button states
-            this.initializeGroupToggleStates(overlay);
-
-            // Update button to show completion
-            dumbSelectBtn.innerHTML = `✅ Selected ${totalSelected} photos`;
-
-            // Scroll to the "I'm done selecting" button
-            setTimeout(() => {
-                const doneBtn = document.getElementById('pc-done-selecting');
-                if (doneBtn) {
-                    doneBtn.scrollIntoView({
-                        behavior: 'smooth',
-                        block: 'center'
-                    });
-
-                    // Add a subtle highlight effect
-                    doneBtn.style.animation = 'pc-pulse 2s ease-in-out';
-                }
-            }, 500);
-
-        } catch (error) {
-            console.error('❌ Error during dumb selection:', error);
-            dumbSelectBtn.innerHTML = '❌ Selection failed';
-        }
-
-        // Re-enable button after 3 seconds
-        setTimeout(() => {
-            dumbSelectBtn.innerHTML = originalText;
-            dumbSelectBtn.disabled = false;
-        }, 3000);
-    }
-
-    setupMetadataSelectionHandlers(overlay) {
-        return;
-        const metadataButtons = [
-            { id: 'pc-keep-larger-size', criteria: 'size', preference: 'larger' },
-            { id: 'pc-keep-smaller-size', criteria: 'size', preference: 'smaller' },
-            { id: 'pc-keep-larger-storage', criteria: 'storageSize', preference: 'larger' },
-            { id: 'pc-keep-smaller-storage', criteria: 'storageSize', preference: 'smaller' },
-            { id: 'pc-keep-larger-resolution', criteria: 'resolution', preference: 'larger' },
-            { id: 'pc-keep-smaller-resolution', criteria: 'resolution', preference: 'smaller' },
-            { id: 'pc-keep-newer-taken', criteria: 'takenDate', preference: 'newer' },
-            { id: 'pc-keep-older-taken', criteria: 'takenDate', preference: 'older' },
-            { id: 'pc-keep-newer-upload', criteria: 'uploadDate', preference: 'newer' },
-            { id: 'pc-keep-older-upload', criteria: 'uploadDate', preference: 'older' }
-        ];
-
-        metadataButtons.forEach(buttonConfig => {
-            const button = document.getElementById(buttonConfig.id);
-            if (button) {
-                button.addEventListener('click', () => {
-                    if (!this.isPaidVersion) {
-                        // Show upgrade message for free users
-                        const shouldUpgrade = confirm(
-                            '🔥 Upgrade to Pro Version!\n\n' +
-                            'Metadata-based photo selection is available in the Pro version.\n\n' +
-                            '✨ Features included:\n' +
-                            '• Unlimited photo scanning\n' +
-                            '• AI face detection for smart selection\n' +
-                            '• Advanced metadata-based selection\n' +
-                            '• Priority support\n\n' +
-                            'Price: €9.99 (one-time payment)\n\n' +
-                            'Click OK to upgrade, or Cancel to continue with basic selection.'
-                        );
-
-                        if (shouldUpgrade) {
-                            this.openPurchasePopup();
-                        }
-                    } else {
-                        this.metadataSelectPhotos(overlay, buttonConfig.criteria, buttonConfig.preference);
-                    }
-                });
-            }
-        });
-
-        // Add handlers for group-specific metadata buttons
-        const groupMetadataButtons = overlay.querySelectorAll('.pc-btn-group-metadata');
-        groupMetadataButtons.forEach(button => {
-            button.addEventListener('click', () => {
-                if (!this.isPaidVersion) {
-                    // Show upgrade message for free users
-                    const shouldUpgrade = confirm(
-                        '🔥 Upgrade to Pro Version!\n\n' +
-                        'Metadata-based photo selection is available in the Pro version.\n\n' +
-                        '✨ Features included:\n' +
-                        '• Unlimited photo scanning\n' +
-                        '• AI face detection for smart selection\n' +
-                        '• Advanced metadata-based selection\n' +
-                        '• Priority support\n\n' +
-                        'Price: €9.99 (one-time payment)\n\n' +
-                        'Click OK to upgrade, or Cancel to continue with basic selection.'
-                    );
-
-                    if (shouldUpgrade) {
-                        this.openPurchasePopup();
-                    }
-                } else {
-                    const groupIndex = parseInt(button.getAttribute('data-group-index'));
-                    const criteria = button.getAttribute('data-criteria');
-                    const preference = button.getAttribute('data-preference');
-
-                    // Map criteria to match existing function parameters
-                    let mappedCriteria = criteria;
-                    if (criteria === 'taken_date') mappedCriteria = 'takenDate';
-                    if (criteria === 'upload_date') mappedCriteria = 'uploadDate';
-
-                    this.metadataSelectPhotosInGroup(overlay, groupIndex, mappedCriteria, preference, button);
-                }
-            });
-        });
-
-        // Add handlers for group-specific AI buttons
-        const groupAiButtons = overlay.querySelectorAll('.pc-btn-group-ai');
-        groupAiButtons.forEach(button => {
-            button.addEventListener('click', () => {
-                if (!this.isPaidVersion) {
-                    // Show upgrade message for free users
-                    const shouldUpgrade = confirm(
-                        '🔥 Upgrade to Pro Version!\n\n' +
-                        'AI-powered smart photo selection is available in the Pro version.\n\n' +
-                        '✨ Features included:\n' +
-                        '• Unlimited photo scanning\n' +
-                        '• AI face detection for smart selection\n' +
-                        '• Advanced metadata-based selection\n' +
-                        '• Priority support\n\n' +
-                        'Price: €9.99 (one-time payment)\n\n' +
-                        'Click OK to upgrade, or Cancel to continue with basic selection.'
-                    );
-
-                    if (shouldUpgrade) {
-                        this.openPurchasePopup();
-                    }
-                } else {
-                    const groupIndex = parseInt(button.getAttribute('data-group-index'));
-                    const mediaType = button.getAttribute('data-media-type') || 'photo';
-
-                    console.log(`🧠 Group-specific AI selection: Group ${groupIndex + 1} (${mediaType}s)`);
-                    this.aiSelectPhotosInGroup(overlay, groupIndex, button);
-                }
-            });
-        });
-    }
-
-    clearAllSelections(overlay) {
-        //console.log('🧹 Clearing all previous selections...');
-
-        // Find all checkbox indicators and unselect them
-        const checkboxIndicators = overlay.querySelectorAll('.pc-checkbox-indicator[data-selected="true"]');
-        let clearedCount = 0;
-
-        checkboxIndicators.forEach(indicator => {
-            this.updateCheckboxIndicator(indicator, false);
-            const imageItem = indicator.closest('.pc-image-item');
-            if (imageItem) {
-                this.showSelectionFeedback(imageItem, false);
-                clearedCount++;
-            }
-        });
-
-        // Update all group toggle button states
-        this.initializeGroupToggleStates(overlay);
-
-        console.log(`🧹 Cleared ${clearedCount} previous selections`);
-    }
-
-    clearGroupSelections(overlay, groupIndex) {
-        console.log(`🧹 Clearing previous selections in group ${groupIndex + 1}...`);
-
-        // Find the specific group
-        const group = overlay.querySelector(`[data-group-index="${groupIndex}"]`);
-        if (!group) {
-            console.error(`Group ${groupIndex} not found`);
-            return;
-        }
-
-        // Find all checkbox indicators in this group and unselect them
-        const checkboxIndicators = group.querySelectorAll('.pc-checkbox-indicator[data-selected="true"]');
-        let clearedCount = 0;
-
-        checkboxIndicators.forEach(indicator => {
-            this.updateCheckboxIndicator(indicator, false);
-            const imageItem = indicator.closest('.pc-image-item');
-            if (imageItem) {
-                this.showSelectionFeedback(imageItem, false);
-                clearedCount++;
-            }
-        });
-
-        // Update the group's toggle button state
-        const groupToggleButton = group.querySelector('.pc-group-toggle');
-        if (groupToggleButton) {
-            this.updateGroupToggleButton(groupToggleButton, false, group.querySelectorAll('.pc-checkbox-indicator').length);
-        }
-
-        console.log(`🧹 Cleared ${clearedCount} previous selections in group ${groupIndex + 1}`);
-    }
-
-    async metadataSelectPhotos(overlay, criteria, preference) {
-        console.log(`📊 Starting metadata-based selection: ${criteria} - ${preference}`);
-
-        // Check if another selection is already in progress
-        if (this.metadataSelectionInProgress) {
-            //console.log('⚠️ Another metadata selection is already in progress, ignoring this request');
-            return;
-        }
-
-        // Set flag to prevent other selections
-        this.metadataSelectionInProgress = true;
-
-        // Disable all metadata buttons
-        this.disableAllMetadataButtons();
-
-        // Find the clicked button to update its state
-        let buttonId;
-        if (criteria === 'takenDate') {
-            buttonId = `pc-keep-${preference}-taken`;
-        } else if (criteria === 'uploadDate') {
-            buttonId = `pc-keep-${preference}-upload`;
-        } else if (criteria === 'storageSize') {
-            buttonId = `pc-keep-${preference}-storage`;
-        } else {
-            buttonId = `pc-keep-${preference}-${criteria}`;
-        }
-
-        const button = document.getElementById(buttonId);
-        if (!button) {
-            console.error(`Button not found: ${buttonId}`);
-            this.metadataSelectionInProgress = false;
-            this.enableAllMetadataButtons();
-            return;
-        }
-
-        const originalText = button.innerHTML;
-
-        try {
-            // Disable button and show progress
-            button.disabled = true;
-            button.innerHTML = '📊 Clearing previous selections...';
-
-            // Clear all previous selections first
-            this.clearAllSelections(overlay);
-
-            button.innerHTML = '📊 Getting metadata...';
-
-            const groups = overlay.querySelectorAll('.pc-group');
-            let totalPhotos = 0;
-            let processedPhotos = 0;
-            let totalSelected = 0;
-
-            // Count total photos to process (only in selectable groups)
-            groups.forEach(group => {
-                if (!group.hasAttribute('data-non-selectable')) {
-                    const imageItems = Array.from(group.querySelectorAll('.pc-image-item'));
-                    if (imageItems.length > 1) {
-                        totalPhotos += imageItems.length;
-                    }
-                }
-            });
-
-            console.log(`📊 Processing ${totalPhotos} photos across selectable groups...`);
-
-            // Process each group
-            for (const group of groups) {
-                // Skip non-selectable groups for free users
-                if (group.hasAttribute('data-non-selectable')) {
-                    console.log(`⏭️ Skipping non-selectable group ${group.getAttribute('data-group-index')} for free user`);
-                    continue;
-                }
-
-                const imageItems = Array.from(group.querySelectorAll('.pc-image-item'));
-
-                if (imageItems.length <= 1) {
-                    continue; // Skip groups with only one photo
-                }
-
-                console.log(`📊 Processing group with ${imageItems.length} photos...`);
-
-                // Collect metadata for all photos in this group concurrently
-                const groupStartProgress = processedPhotos;
-                const photosWithMetadata = await this.loadMetadataConcurrently(
-                    imageItems,
-                    (processed, total) => {
-                        const currentProgress = groupStartProgress + processed;
-                        button.innerHTML = `📊 Getting photo metadata ${currentProgress}/${totalPhotos}`;
-                    }
-                );
-
-                // Update processed counter
-                processedPhotos += imageItems.length;
-
-                // Determine which photos to keep based on criteria
-                const photosToDelete = this.selectPhotosBasedOnMetadata(photosWithMetadata, criteria, preference);
-
-                // Apply the selection
-                for (const photoToDelete of photosToDelete) {
-                    const checkboxIndicator = photoToDelete.imageItem.querySelector('.pc-checkbox-indicator');
-                    if (checkboxIndicator) {
-                        this.updateCheckboxIndicator(checkboxIndicator, true);
-                        this.showSelectionFeedback(photoToDelete.imageItem, true);
-                        totalSelected++;
-                    }
-                }
-
-                console.log(`✅ Group processed: kept best photo based on ${criteria}, marked ${photosToDelete.length} for deletion`);
-            }
-
-            console.log(`✅ Metadata selection complete: ${totalSelected} photos marked for deletion based on ${criteria} (${preference})`);
-
-            // Update group toggle button states
-            this.initializeGroupToggleStates(overlay);
-
-            // Update button to show completion
-            button.innerHTML = `✅ Selected ${totalSelected} photos`;
-
-            // Scroll to the "I'm done selecting" button
-            setTimeout(() => {
-                const doneBtn = document.getElementById('pc-done-selecting');
-                if (doneBtn) {
-                    doneBtn.scrollIntoView({
-                        behavior: 'smooth',
-                        block: 'center'
-                    });
-                    doneBtn.style.animation = 'pc-pulse 2s ease-in-out';
-                }
-            }, 500);
-
-        } catch (error) {
-            console.error('❌ Error during metadata selection:', error);
-            button.innerHTML = '❌ Selection failed';
-        } finally {
-            // Always reset the flag and re-enable buttons after operation completes
-            setTimeout(() => {
-                this.metadataSelectionInProgress = false;
-                this.enableAllMetadataButtons();
-                button.innerHTML = originalText;
-            }, 3000);
-        }
-    }
-
-    async metadataSelectPhotosInGroup(overlay, groupIndex, criteria, preference, button) {
-        console.log(`📊 Starting group-specific metadata selection: Group ${groupIndex + 1}, ${criteria} - ${preference}`);
-
-        // Check if another selection is already in progress
-        if (this.metadataSelectionInProgress) {
-            //console.log('⚠️ Another metadata selection is already in progress, ignoring this request');
-            return;
-        }
-
-        // Set flag to prevent other selections
-        this.metadataSelectionInProgress = true;
-
-        // Disable all metadata buttons (both global and group-specific)
-        this.disableAllMetadataButtons();
-
-        const originalText = button.innerHTML;
-
-        try {
-            // Disable button and show progress
-            button.disabled = true;
-            button.innerHTML = '📊 Clearing previous selections...';
-
-            // Clear all previous selections in this group first
-            this.clearGroupSelections(overlay, groupIndex);
-
-            button.innerHTML = '📊 Getting metadata...';
-
-            // Find the specific group
-            const group = overlay.querySelector(`[data-group-index="${groupIndex}"]`);
-            if (!group) {
-                console.error(`Group ${groupIndex} not found`);
-                this.metadataSelectionInProgress = false;
-                this.enableAllMetadataButtons();
-                return;
-            }
-
-            const imageItems = Array.from(group.querySelectorAll('.pc-image-item'));
-
-            if (imageItems.length <= 1) {
-                console.log(`⚠️ Group ${groupIndex + 1} has only ${imageItems.length} photos, skipping selection`);
-                button.innerHTML = '⚠️ Not enough photos';
-
-                setTimeout(() => {
-                    this.metadataSelectionInProgress = false;
-                    this.enableAllMetadataButtons();
-                    button.innerHTML = originalText;
-                }, 2000);
-                return;
-            }
-
-            console.log(`📊 Processing group ${groupIndex + 1} with ${imageItems.length} photos...`);
-
-            // Collect metadata for all photos in this group concurrently
-            const photosWithMetadata = await this.loadMetadataConcurrently(
-                imageItems,
-                (processed, total) => {
-                    button.innerHTML = `📊 Getting metadata ${processed}/${total}`;
-                }
-            );
-
-            // Determine which photos to keep based on criteria
-            const photosToDelete = this.selectPhotosBasedOnMetadata(photosWithMetadata, criteria, preference);
-
-            // Apply the selection
-            let totalSelected = 0;
-            for (const photoToDelete of photosToDelete) {
-                const checkboxIndicator = photoToDelete.imageItem.querySelector('.pc-checkbox-indicator');
-                if (checkboxIndicator) {
-                    this.updateCheckboxIndicator(checkboxIndicator, true);
-                    this.showSelectionFeedback(photoToDelete.imageItem, true);
-                    totalSelected++;
-                }
-            }
-
-            console.log(`✅ Group ${groupIndex + 1} processed: kept best photo based on ${criteria}, marked ${photosToDelete.length} for deletion`);
-
-            // Update the group's toggle button state
-            const groupToggleButton = group.querySelector('.pc-group-toggle');
-            if (groupToggleButton) {
-                // Check if all photos in the group are selected
-                const checkboxIndicators = group.querySelectorAll('.pc-checkbox-indicator');
-                let selectedCount = 0;
-                checkboxIndicators.forEach(indicator => {
-                    if (indicator.getAttribute('data-selected') === 'true') {
-                        selectedCount++;
-                    }
-                });
-                const allSelected = selectedCount === checkboxIndicators.length;
-                this.updateGroupToggleButton(groupToggleButton, allSelected, checkboxIndicators.length);
-            }
-
-            // Update button to show completion
-            button.innerHTML = `✅ Selected ${totalSelected} photos`;
-
-            // Brief success feedback
-            setTimeout(() => {
-                this.metadataSelectionInProgress = false;
-                this.enableAllMetadataButtons();
-                button.innerHTML = originalText;
-            }, 2000);
-
-        } catch (error) {
-            console.error('❌ Error during group metadata selection:', error);
-            button.innerHTML = '❌ Selection failed';
-
-            setTimeout(() => {
-                this.metadataSelectionInProgress = false;
-                this.enableAllMetadataButtons();
-                button.innerHTML = originalText;
-            }, 3000);
-        }
-    }
-
-    selectPhotosBasedOnMetadata(photosWithMetadata, criteria, preference) {
-        if (photosWithMetadata.length <= 1) {
-            return []; // No selection needed for single photo
-        }
-
-        console.log(`📊 Selecting photos based on ${criteria} (${preference}) from ${photosWithMetadata.length} photos`);
-
-        // Filter out photos without the required metadata
-        const validPhotos = photosWithMetadata.filter(photo => {
-            const metadata = photo.metadata;
-
-            switch (criteria) {
-                case 'size':
-                    return metadata.bytes && metadata.bytes > 0;
-                case 'storageSize':
-                    return metadata.spaceTaken !== undefined && metadata.spaceTaken !== null;
-                case 'resolution':
-                    return metadata.resWidth && metadata.resHeight && metadata.resWidth > 0 && metadata.resHeight > 0;
-                case 'takenDate':
-                    return metadata.timestamp && metadata.timestamp > 0;
-                case 'uploadDate':
-                    return metadata.uploadTimestamp && metadata.uploadTimestamp > 0;
-                default:
-                    return false;
-            }
-        });
-
-        if (validPhotos.length <= 1) {
-            console.log(`⚠️ Not enough photos with valid ${criteria} metadata (${validPhotos.length}/${photosWithMetadata.length})`);
-            return photosWithMetadata.slice(1); // Default to keeping first photo
-        }
-
-        // Sort photos based on criteria
-        validPhotos.sort((a, b) => {
-            const aMetadata = a.metadata;
-            const bMetadata = b.metadata;
-
-            switch (criteria) {
-                case 'size':
-                    return preference === 'larger' ? bMetadata.bytes - aMetadata.bytes : aMetadata.bytes - bMetadata.bytes;
-                case 'storageSize':
-                    // Compare storage space taken first
-                    const storageDiff = preference === 'larger' ? bMetadata.spaceTaken - aMetadata.spaceTaken : aMetadata.spaceTaken - bMetadata.spaceTaken;
-                    // If storage sizes are equal, fall back to file size as tiebreaker
-                    if (storageDiff === 0 && aMetadata.bytes && bMetadata.bytes) {
-                        return preference === 'larger' ? bMetadata.bytes - aMetadata.bytes : aMetadata.bytes - bMetadata.bytes;
-                    }
-                    return storageDiff;
-                case 'resolution':
-                    const aResolution = aMetadata.resWidth * aMetadata.resHeight;
-                    const bResolution = bMetadata.resWidth * bMetadata.resHeight;
-                    return preference === 'larger' ? bResolution - aResolution : aResolution - bResolution;
-                case 'takenDate':
-                    return preference === 'newer' ? bMetadata.timestamp - aMetadata.timestamp : aMetadata.timestamp - bMetadata.timestamp;
-                case 'uploadDate':
-                    return preference === 'newer' ? bMetadata.uploadTimestamp - aMetadata.uploadTimestamp : aMetadata.uploadTimestamp - bMetadata.uploadTimestamp;
-                default:
-                    return 0;
-            }
-        });
-
-        // Keep the first photo (best according to criteria), mark others for deletion
-        const photoToKeep = validPhotos[0];
-        const photosToDelete = photosWithMetadata.filter(photo => photo.photoId !== photoToKeep.photoId);
-
-        console.log(`📊 Selection result: keeping photo ${photoToKeep.photoId}, deleting ${photosToDelete.length} others`);
-        console.log(`📊 Kept photo metadata:`, photoToKeep.metadata);
-
-        // Log additional details for storage size selection
-        if (criteria === 'storageSize') {
-            const spaceTaken = photoToKeep.metadata.spaceTaken;
-            const fileSize = photoToKeep.metadata.bytes;
-            console.log(`💳 Storage selection: kept photo with spaceTaken=${spaceTaken}, fileSize=${fileSize ? this.formatFileSize(fileSize) : 'unknown'}`);
-
-            // Check if tiebreaker was used
-            const equalSpaceTaken = validPhotos.filter(p => p.metadata.spaceTaken === spaceTaken);
-            if (equalSpaceTaken.length > 1) {
-                console.log(`🎯 Tiebreaker used: ${equalSpaceTaken.length} photos had equal storage space (${spaceTaken}), selected based on file size`);
-            }
-        }
-
-        return photosToDelete;
-    }
-
-    async analyzeGroupForFaces(imageItems) {
-        const photoAnalysis = [];
-
-        for (const imageItem of imageItems) {
-            const photoId = imageItem.getAttribute('data-photo-id');
-            const photoUrl = imageItem.getAttribute('data-photo-url');
-            const mediaType = imageItem.getAttribute('data-media-type') || 'photo';
-
-            let faceData = null;
-
-            if (this.modelsLoaded) {
-                try {
-                    // Find the original photo data to get the captured image
-                    const originalPhoto = this.photos.find(p => p.id === photoId);
-
-                    if (originalPhoto && originalPhoto.capturedImageData) {
-                        console.log(`🔍 Analyzing captured image for photo ${photoId}...`);
-
-                        // Create a canvas from the captured image data
-                        const canvas = await this.createCanvasFromImageData(originalPhoto.capturedImageData);
-
-                        if (canvas) {
-                            // Detect faces and expressions using the canvas
-                            const detections = await faceapi
-                                .detectAllFaces(canvas, new faceapi.TinyFaceDetectorOptions())
-                                .withFaceExpressions();
-
-                            if (detections && detections.length > 0) {
-                                // Calculate happiness score for all faces
-                                let totalHappiness = 0;
-                                let faceCount = 0;
-
-                                for (const detection of detections) {
-                                    const expressions = detection.expressions;
-                                    // Happiness score: happy + (surprised * 0.3) - (sad * 0.5) - (angry * 0.7)
-                                    const happinessScore = expressions.happy +
-                                        (expressions.surprised * 0.3) -
-                                        (expressions.sad * 0.5) -
-                                        (expressions.angry * 0.7);
-                                    totalHappiness += Math.max(0, Math.min(1, happinessScore));
-                                    faceCount++;
-                                }
-
-                                faceData = {
-                                    faceCount: faceCount,
-                                    averageHappiness: totalHappiness / faceCount,
-                                    detections: detections
-                                };
-
-                                console.log(`😊 Photo ${photoId}: ${faceCount} faces, happiness: ${(faceData.averageHappiness * 100).toFixed(1)}%`);
-                            } else {
-                                console.log(`👤 Photo ${photoId}: No faces detected`);
-                            }
-                        }
-                    } else {
-                        console.warn(`⚠️ No captured image data found for photo ${photoId}`);
-                    }
-                } catch (error) {
-                    console.warn(`⚠️ Face detection failed for photo ${photoId}:`, error);
-                }
-            }
-
-            photoAnalysis.push({
-                imageItem,
-                photoId,
-                photoUrl,
-                faceData
-            });
-        }
-
-        return photoAnalysis;
-    }
-
-    async createCanvasFromImageData(base64Data) {
-        return new Promise((resolve, reject) => {
-            try {
-                const img = new Image();
-                img.onload = () => {
-                    const canvas = document.createElement('canvas');
-                    const ctx = canvas.getContext('2d');
-
-                    canvas.width = img.width;
-                    canvas.height = img.height;
-
-                    ctx.drawImage(img, 0, 0);
-                    resolve(canvas);
-                };
-                img.onerror = () => {
-                    reject(new Error('Failed to load image data'));
-                };
-
-                // Handle both data URL and raw base64
-                if (base64Data.startsWith('data:')) {
-                    img.src = base64Data;
-                } else {
-                    img.src = `data:image/png;base64,${base64Data}`;
-                }
-            } catch (error) {
-                reject(error);
-            }
-        });
-    }
-
-    selectPhotosForDeletion(photoAnalysis) {
-        const photosToDelete = [];
-
-        // Check if any photos have face data
-        const photosWithFaces = photoAnalysis.filter(p => p.faceData && p.faceData.faceCount > 0);
-
-        if (photosWithFaces.length > 0) {
-            // Face-based selection: keep the happiest photo(s)
-            //console.log('🧠 Using face-based selection algorithm');
-
-            // Sort by happiness score (descending)
-            photosWithFaces.sort((a, b) => b.faceData.averageHappiness - a.faceData.averageHappiness);
-
-            // Keep the happiest photo, delete the rest
-            const photoToKeep = photosWithFaces[0];
-            console.log(`😊 Keeping happiest photo ${photoToKeep.photoId} (happiness: ${(photoToKeep.faceData.averageHappiness * 100).toFixed(1)}%)`);
-
-            // Mark all other photos with faces for deletion
-            for (let i = 1; i < photosWithFaces.length; i++) {
-                photosToDelete.push(photosWithFaces[i]);
-                console.log(`🗑️ Deleting photo ${photosWithFaces[i].photoId} (happiness: ${(photosWithFaces[i].faceData.averageHappiness * 100).toFixed(1)}%)`);
-            }
-
-            // Also delete photos without faces in this group
-            const photosWithoutFaces = photoAnalysis.filter(p => !p.faceData || p.faceData.faceCount === 0);
-            for (const photo of photosWithoutFaces) {
-                photosToDelete.push(photo);
-                console.log(`🗑️ Deleting photo without faces ${photo.photoId}`);
-            }
-
-        } else {
-            // Fallback: no faces detected, use original logic (keep first, delete rest)
-            //console.log('🤖 No faces detected, using fallback selection (keep first photo)');
-
-            for (let i = 1; i < photoAnalysis.length; i++) {
-                photosToDelete.push(photoAnalysis[i]);
-                console.log(`🗑️ Deleting photo ${photoAnalysis[i].photoId} (fallback logic)`);
-            }
-        }
-
-        return photosToDelete;
-    }
+    // async autoSelectPhotos(overlay) {
+    //     const autoSelectBtn = document.getElementById('pc-auto-select');
+    //     const originalText = autoSelectBtn.innerHTML;
+
+    //     autoSelectBtn.innerHTML = 'Analyzing faces...';
+    //     autoSelectBtn.disabled = true;
+
+    //     try {
+    //         const groups = overlay.querySelectorAll('.pc-group');
+    //         let totalSelected = 0;
+    //         let groupsProcessed = 0;
+    //         let selectableGroups = 0;
+
+    //         // Count selectable groups for progress tracking
+    //         groups.forEach(group => {
+    //             if (!group.hasAttribute('data-non-selectable')) {
+    //                 selectableGroups++;
+    //             }
+    //         });
+
+    //         for (const group of groups) {
+    //             // Skip non-selectable groups for free users
+    //             if (group.hasAttribute('data-non-selectable')) {
+    //                 console.log(`⏭️ Skipping non-selectable group ${group.getAttribute('data-group-index')} for free user`);
+    //                 continue;
+    //             }
+
+    //             groupsProcessed++;
+    //             autoSelectBtn.innerHTML = `🧠 Analyzing group ${groupsProcessed}/${selectableGroups}...`;
+
+    //             const imageItems = Array.from(group.querySelectorAll('.pc-image-item'));
+
+    //             if (imageItems.length <= 1) {
+    //                 continue; // Skip groups with only one photo
+    //             }
+
+    //             // Analyze faces and emotions in this group
+    //             const photoAnalysis = await this.analyzeGroupForFaces(imageItems);
+
+    //             // Determine which photos to keep vs delete based on face analysis
+    //             const photosToDelete = this.selectPhotosForDeletion(photoAnalysis);
+
+    //             // Apply the selection - Update overlay states only (no DupeYak Duplicate Remover PWA sync yet)
+    //             console.log(`📝 Updating overlay states for ${photosToDelete.length} photos to delete (OVERLAY ONLY)...`);
+
+    //             for (const photoToDelete of photosToDelete) {
+    //                 const checkboxIndicator = photoToDelete.imageItem.querySelector('.pc-checkbox-indicator');
+
+    //                 if (checkboxIndicator) {
+    //                     // this.updateCheckboxIndicator(checkboxIndicator, true);
+    //                     // this.showSelectionFeedback(photoToDelete.imageItem, true);
+    //                     console.log(`✅ Marked photo ${photoToDelete.photoId} for deletion in overlay (DupeYak Duplicate Remover PWA will be synced when user clicks "I'm done")`);
+    //                     totalSelected++;
+    //                 } else {
+    //                     console.error(`❌ No checkbox indicator found for photo ${photoToDelete.photoId}`);
+    //                 }
+    //             }
+
+    //             console.log(`✅ AI selection complete: ${totalSelected} photos marked in overlay. DupeYak Duplicate Remover PWA will be synced when user clicks "I'm done selecting".`);
+    //         }
+
+    //         console.log(`✅ Intelligently selected ${totalSelected} photos for deletion`);
+
+    //         // Update group toggle button states
+    //         // this.initializeGroupToggleStates(overlay);
+
+    //         // Update button to show completion
+    //         autoSelectBtn.innerHTML = `✅ Selected ${totalSelected} photos`;
+
+    //         // Scroll to the "I'm done selecting" button
+    //         setTimeout(() => {
+    //             const doneBtn = document.getElementById('pc-done-selecting');
+    //             if (doneBtn) {
+    //                 doneBtn.scrollIntoView({
+    //                     behavior: 'smooth',
+    //                     block: 'center'
+    //                 });
+
+    //                 // Add a subtle highlight effect
+    //                 doneBtn.style.animation = 'pc-pulse 2s ease-in-out';
+    //             }
+    //         }, 500);
+
+    //     } catch (error) {
+    //         console.error('❌ Error during intelligent selection:', error);
+    //         autoSelectBtn.innerHTML = '❌ Selection failed';
+    //     }
+
+    //     // Re-enable button after 3 seconds
+    //     setTimeout(() => {
+    //         autoSelectBtn.innerHTML = originalText;
+    //         autoSelectBtn.disabled = false;
+    //     }, 3000);
+    // }
+
+    // async aiSelectPhotosInGroup(overlay, groupIndex, button) {
+    //     console.log(`🤖 Starting intelligent photo selection for group ${groupIndex + 1}...`);
+
+    //     // Check if another selection is already in progress
+    //     if (this.metadataSelectionInProgress) {
+    //         //console.log('⚠️ Another metadata selection is already in progress, ignoring this request');
+    //         return;
+    //     }
+
+    //     // Set flag to prevent other selections
+    //     this.metadataSelectionInProgress = true;
+
+    //     // Disable all metadata buttons
+    //     this.disableAllMetadataButtons();
+
+    //     const originalText = button.innerHTML;
+
+    //     try {
+    //         // Update button to show progress
+    //         button.innerHTML = '🧠 Analyzing faces...';
+    //         button.disabled = true;
+
+    //         // Clear all previous selections in this group first
+    //         this.clearGroupSelections(overlay, groupIndex);
+
+    //         // Find the specific group
+    //         const group = overlay.querySelector(`[data-group-index="${groupIndex}"]`);
+    //         if (!group) {
+    //             console.error(`Group ${groupIndex} not found`);
+    //             this.metadataSelectionInProgress = false;
+    //             this.enableAllMetadataButtons();
+    //             return;
+    //         }
+
+    //         const imageItems = Array.from(group.querySelectorAll('.pc-image-item'));
+
+    //         if (imageItems.length <= 1) {
+    //             console.log(`⚠️ Group ${groupIndex + 1} has only ${imageItems.length} photos, skipping AI selection`);
+    //             button.innerHTML = '⚠️ Not enough photos';
+
+    //             setTimeout(() => {
+    //                 this.metadataSelectionInProgress = false;
+    //                 this.enableAllMetadataButtons();
+    //                 button.innerHTML = originalText;
+    //             }, 2000);
+    //             return;
+    //         }
+
+    //         console.log(`🤖 Processing group ${groupIndex + 1} with ${imageItems.length} photos...`);
+    //         button.innerHTML = `🧠 Analyzing ${imageItems.length} photos...`;
+
+    //         // Analyze faces and emotions in this group
+    //         const photoAnalysis = await this.analyzeGroupForFaces(imageItems);
+
+    //         // Determine which photos to keep vs delete based on face analysis
+    //         const photosToDelete = this.selectPhotosForDeletion(photoAnalysis);
+
+    //         // Apply the selection
+    //         let totalSelected = 0;
+    //         for (const photoToDelete of photosToDelete) {
+    //             const checkboxIndicator = photoToDelete.imageItem.querySelector('.pc-checkbox-indicator');
+
+    //             if (checkboxIndicator) {
+    //                 // this.updateCheckboxIndicator(checkboxIndicator, true);
+    //                 // this.showSelectionFeedback(photoToDelete.imageItem, true);
+    //                 console.log(`✅ Marked photo ${photoToDelete.photoId} for deletion in group ${groupIndex + 1} (AI selection)`);
+    //                 totalSelected++;
+    //             } else {
+    //                 console.error(`❌ No checkbox indicator found for photo ${photoToDelete.photoId}`);
+    //             }
+    //         }
+
+    //         console.log(`✅ AI selection complete for group ${groupIndex + 1}: ${totalSelected} photos marked for deletion`);
+
+    //         // Update the group's toggle button state
+    //         const groupToggleButton = group.querySelector('.pc-group-toggle');
+    //         if (groupToggleButton) {
+    //             // Check if all photos in the group are selected
+    //             const checkboxIndicators = group.querySelectorAll('.pc-checkbox-indicator');
+    //             let selectedCount = 0;
+    //             checkboxIndicators.forEach(indicator => {
+    //                 if (indicator.getAttribute('data-selected') === 'true') {
+    //                     selectedCount++;
+    //                 }
+    //             });
+    //             const allSelected = selectedCount === checkboxIndicators.length;
+    //             // this.updateGroupToggleButton(groupToggleButton, allSelected, checkboxIndicators.length);
+    //         }
+
+    //         // Update button to show completion
+    //         button.innerHTML = `✅ Selected ${totalSelected} photos`;
+
+    //         // Brief success feedback
+    //         setTimeout(() => {
+    //             this.metadataSelectionInProgress = false;
+    //             this.enableAllMetadataButtons();
+    //             button.innerHTML = originalText;
+    //         }, 2000);
+
+    //     } catch (error) {
+    //         console.error('❌ Error during group AI selection:', error);
+    //         button.innerHTML = '❌ AI selection failed';
+
+    //         setTimeout(() => {
+    //             this.metadataSelectionInProgress = false;
+    //             this.enableAllMetadataButtons();
+    //             button.innerHTML = originalText;
+    //         }, 3000);
+    //     }
+    // }
+
+
+
+    // async dumbSelectPhotos(overlay) {
+    //     //console.log('🎯 Starting dumb photo selection...');
+
+    //     const dumbSelectBtn = document.getElementById('pc-dumb-select');
+    //     const originalText = dumbSelectBtn.innerHTML;
+
+    //     // Update button to show progress
+    //     dumbSelectBtn.innerHTML = '🎯 Selecting...';
+    //     dumbSelectBtn.disabled = true;
+
+    //     try {
+    //         const groups = overlay.querySelectorAll('.pc-group');
+    //         let totalSelected = 0;
+
+    //         for (const group of groups) {
+    //             // Skip non-selectable groups for free users
+    //             if (group.hasAttribute('data-non-selectable')) {
+    //                 console.log(`⏭️ Skipping non-selectable group ${group.getAttribute('data-group-index')} for free user`);
+    //                 continue;
+    //             }
+
+    //             const imageItems = Array.from(group.querySelectorAll('.pc-image-item'));
+
+    //             if (imageItems.length <= 1) {
+    //                 continue; // Skip groups with only one photo
+    //             }
+
+    //             console.log(`📝 Processing group with ${imageItems.length} photos...`);
+
+    //             // Keep the first photo, mark the rest for deletion
+    //             for (let i = 1; i < imageItems.length; i++) {
+    //                 const imageItem = imageItems[i];
+    //                 const photoId = imageItem.getAttribute('data-photo-id');
+    //                 const checkboxIndicator = imageItem.querySelector('.pc-checkbox-indicator');
+
+    //                 if (checkboxIndicator) {
+    //                     this.updateCheckboxIndicator(checkboxIndicator, true);
+    //                     this.showSelectionFeedback(imageItem, true);
+    //                     console.log(`✅ Marked photo ${photoId} for deletion (dumb selection)`);
+    //                     totalSelected++;
+    //                 } else {
+    //                     console.error(`❌ No checkbox indicator found for photo ${photoId}`);
+    //                 }
+    //             }
+
+    //             console.log(`✅ Dumb selection complete for group: kept first photo, marked ${imageItems.length - 1} for deletion`);
+    //         }
+
+    //         console.log(`✅ Dumb selection complete: ${totalSelected} photos marked for deletion`);
+
+    //         // Update group toggle button states
+    //         this.initializeGroupToggleStates(overlay);
+
+    //         // Update button to show completion
+    //         dumbSelectBtn.innerHTML = `✅ Selected ${totalSelected} photos`;
+
+    //         // Scroll to the "I'm done selecting" button
+    //         setTimeout(() => {
+    //             const doneBtn = document.getElementById('pc-done-selecting');
+    //             if (doneBtn) {
+    //                 doneBtn.scrollIntoView({
+    //                     behavior: 'smooth',
+    //                     block: 'center'
+    //                 });
+
+    //                 // Add a subtle highlight effect
+    //                 doneBtn.style.animation = 'pc-pulse 2s ease-in-out';
+    //             }
+    //         }, 500);
+
+    //     } catch (error) {
+    //         console.error('❌ Error during dumb selection:', error);
+    //         dumbSelectBtn.innerHTML = '❌ Selection failed';
+    //     }
+
+    //     // Re-enable button after 3 seconds
+    //     setTimeout(() => {
+    //         dumbSelectBtn.innerHTML = originalText;
+    //         dumbSelectBtn.disabled = false;
+    //     }, 3000);
+    // }
+
+    // setupMetadataSelectionHandlers(overlay) {
+    //     return;
+    //     const metadataButtons = [
+    //         { id: 'pc-keep-larger-size', criteria: 'size', preference: 'larger' },
+    //         { id: 'pc-keep-smaller-size', criteria: 'size', preference: 'smaller' },
+    //         { id: 'pc-keep-larger-storage', criteria: 'storageSize', preference: 'larger' },
+    //         { id: 'pc-keep-smaller-storage', criteria: 'storageSize', preference: 'smaller' },
+    //         { id: 'pc-keep-larger-resolution', criteria: 'resolution', preference: 'larger' },
+    //         { id: 'pc-keep-smaller-resolution', criteria: 'resolution', preference: 'smaller' },
+    //         { id: 'pc-keep-newer-taken', criteria: 'takenDate', preference: 'newer' },
+    //         { id: 'pc-keep-older-taken', criteria: 'takenDate', preference: 'older' },
+    //         { id: 'pc-keep-newer-upload', criteria: 'uploadDate', preference: 'newer' },
+    //         { id: 'pc-keep-older-upload', criteria: 'uploadDate', preference: 'older' }
+    //     ];
+
+    //     metadataButtons.forEach(buttonConfig => {
+    //         const button = document.getElementById(buttonConfig.id);
+    //         if (button) {
+    //             button.addEventListener('click', () => {
+    //                 if (!this.isPaidVersion) {
+    //                     // Show upgrade message for free users
+    //                     const shouldUpgrade = confirm(
+    //                         '🔥 Upgrade to Pro Version!\n\n' +
+    //                         'Metadata-based photo selection is available in the Pro version.\n\n' +
+    //                         '✨ Features included:\n' +
+    //                         '• Unlimited photo scanning\n' +
+    //                         '• AI face detection for smart selection\n' +
+    //                         '• Advanced metadata-based selection\n' +
+    //                         '• Priority support\n\n' +
+    //                         'Price: €9.99 (one-time payment)\n\n' +
+    //                         'Click OK to upgrade, or Cancel to continue with basic selection.'
+    //                     );
+
+    //                     if (shouldUpgrade) {
+    //                         this.openPurchasePopup();
+    //                     }
+    //                 } else {
+    //                     this.metadataSelectPhotos(overlay, buttonConfig.criteria, buttonConfig.preference);
+    //                 }
+    //             });
+    //         }
+    //     });
+
+    //     // Add handlers for group-specific metadata buttons
+    //     const groupMetadataButtons = overlay.querySelectorAll('.pc-btn-group-metadata');
+    //     groupMetadataButtons.forEach(button => {
+    //         button.addEventListener('click', () => {
+    //             if (!this.isPaidVersion) {
+    //                 // Show upgrade message for free users
+    //                 const shouldUpgrade = confirm(
+    //                     '🔥 Upgrade to Pro Version!\n\n' +
+    //                     'Metadata-based photo selection is available in the Pro version.\n\n' +
+    //                     '✨ Features included:\n' +
+    //                     '• Unlimited photo scanning\n' +
+    //                     '• AI face detection for smart selection\n' +
+    //                     '• Advanced metadata-based selection\n' +
+    //                     '• Priority support\n\n' +
+    //                     'Price: €9.99 (one-time payment)\n\n' +
+    //                     'Click OK to upgrade, or Cancel to continue with basic selection.'
+    //                 );
+
+    //                 if (shouldUpgrade) {
+    //                     this.openPurchasePopup();
+    //                 }
+    //             } else {
+    //                 const groupIndex = parseInt(button.getAttribute('data-group-index'));
+    //                 const criteria = button.getAttribute('data-criteria');
+    //                 const preference = button.getAttribute('data-preference');
+
+    //                 // Map criteria to match existing function parameters
+    //                 let mappedCriteria = criteria;
+    //                 if (criteria === 'taken_date') mappedCriteria = 'takenDate';
+    //                 if (criteria === 'upload_date') mappedCriteria = 'uploadDate';
+
+    //                 this.metadataSelectPhotosInGroup(overlay, groupIndex, mappedCriteria, preference, button);
+    //             }
+    //         });
+    //     });
+
+    //     // Add handlers for group-specific AI buttons
+    //     const groupAiButtons = overlay.querySelectorAll('.pc-btn-group-ai');
+    //     groupAiButtons.forEach(button => {
+    //         button.addEventListener('click', () => {
+    //             if (!this.isPaidVersion) {
+    //                 // Show upgrade message for free users
+    //                 const shouldUpgrade = confirm(
+    //                     '🔥 Upgrade to Pro Version!\n\n' +
+    //                     'AI-powered smart photo selection is available in the Pro version.\n\n' +
+    //                     '✨ Features included:\n' +
+    //                     '• Unlimited photo scanning\n' +
+    //                     '• AI face detection for smart selection\n' +
+    //                     '• Advanced metadata-based selection\n' +
+    //                     '• Priority support\n\n' +
+    //                     'Price: €9.99 (one-time payment)\n\n' +
+    //                     'Click OK to upgrade, or Cancel to continue with basic selection.'
+    //                 );
+
+    //                 if (shouldUpgrade) {
+    //                     this.openPurchasePopup();
+    //                 }
+    //             } else {
+    //                 const groupIndex = parseInt(button.getAttribute('data-group-index'));
+    //                 const mediaType = button.getAttribute('data-media-type') || 'photo';
+
+    //                 console.log(`🧠 Group-specific AI selection: Group ${groupIndex + 1} (${mediaType}s)`);
+    //                 this.aiSelectPhotosInGroup(overlay, groupIndex, button);
+    //             }
+    //         });
+    //     });
+    // }
+
+    // clearAllSelections(overlay) {
+    //     //console.log('🧹 Clearing all previous selections...');
+
+    //     // Find all checkbox indicators and unselect them
+    //     const checkboxIndicators = overlay.querySelectorAll('.pc-checkbox-indicator[data-selected="true"]');
+    //     let clearedCount = 0;
+
+    //     checkboxIndicators.forEach(indicator => {
+    //         // this.updateCheckboxIndicator(indicator, false);
+    //         const imageItem = indicator.closest('.pc-image-item');
+    //         if (imageItem) {
+    //             // this.showSelectionFeedback(imageItem, false);
+    //             clearedCount++;
+    //         }
+    //     });
+
+    //     // Update all group toggle button states
+    //     // this.initializeGroupToggleStates(overlay);
+
+    //     console.log(`🧹 Cleared ${clearedCount} previous selections`);
+    // }
+
+    // clearGroupSelections(overlay, groupIndex) {
+    //     console.log(`🧹 Clearing previous selections in group ${groupIndex + 1}...`);
+
+    //     // Find the specific group
+    //     const group = overlay.querySelector(`[data-group-index="${groupIndex}"]`);
+    //     if (!group) {
+    //         console.error(`Group ${groupIndex} not found`);
+    //         return;
+    //     }
+
+    //     // Find all checkbox indicators in this group and unselect them
+    //     const checkboxIndicators = group.querySelectorAll('.pc-checkbox-indicator[data-selected="true"]');
+    //     let clearedCount = 0;
+
+    //     checkboxIndicators.forEach(indicator => {
+    //         // this.updateCheckboxIndicator(indicator, false);
+    //         const imageItem = indicator.closest('.pc-image-item');
+    //         if (imageItem) {
+    //             // this.showSelectionFeedback(imageItem, false);
+    //             clearedCount++;
+    //         }
+    //     });
+
+    //     // Update the group's toggle button state
+    //     const groupToggleButton = group.querySelector('.pc-group-toggle');
+    //     if (groupToggleButton) {
+    //         // this.updateGroupToggleButton(groupToggleButton, false, group.querySelectorAll('.pc-checkbox-indicator').length);
+    //     }
+
+    //     console.log(`🧹 Cleared ${clearedCount} previous selections in group ${groupIndex + 1}`);
+    // }
+
+    // async metadataSelectPhotos(overlay, criteria, preference) {
+    //     console.log(`📊 Starting metadata-based selection: ${criteria} - ${preference}`);
+
+    //     // Check if another selection is already in progress
+    //     if (this.metadataSelectionInProgress) {
+    //         //console.log('⚠️ Another metadata selection is already in progress, ignoring this request');
+    //         return;
+    //     }
+
+    //     // Set flag to prevent other selections
+    //     this.metadataSelectionInProgress = true;
+
+    //     // Disable all metadata buttons
+    //     // this.disableAllMetadataButtons();
+
+    //     // Find the clicked button to update its state
+    //     let buttonId;
+    //     if (criteria === 'takenDate') {
+    //         buttonId = `pc-keep-${preference}-taken`;
+    //     } else if (criteria === 'uploadDate') {
+    //         buttonId = `pc-keep-${preference}-upload`;
+    //     } else if (criteria === 'storageSize') {
+    //         buttonId = `pc-keep-${preference}-storage`;
+    //     } else {
+    //         buttonId = `pc-keep-${preference}-${criteria}`;
+    //     }
+
+    //     const button = document.getElementById(buttonId);
+    //     if (!button) {
+    //         console.error(`Button not found: ${buttonId}`);
+    //         this.metadataSelectionInProgress = false;
+    //         // this.enableAllMetadataButtons();
+    //         return;
+    //     }
+
+    //     const originalText = button.innerHTML;
+
+    //     try {
+    //         // Disable button and show progress
+    //         button.disabled = true;
+    //         button.innerHTML = '📊 Clearing previous selections...';
+
+    //         // Clear all previous selections first
+    //         this.clearAllSelections(overlay);
+
+    //         button.innerHTML = '📊 Getting metadata...';
+
+    //         const groups = overlay.querySelectorAll('.pc-group');
+    //         let totalPhotos = 0;
+    //         let processedPhotos = 0;
+    //         let totalSelected = 0;
+
+    //         // Count total photos to process (only in selectable groups)
+    //         groups.forEach(group => {
+    //             if (!group.hasAttribute('data-non-selectable')) {
+    //                 const imageItems = Array.from(group.querySelectorAll('.pc-image-item'));
+    //                 if (imageItems.length > 1) {
+    //                     totalPhotos += imageItems.length;
+    //                 }
+    //             }
+    //         });
+
+    //         console.log(`📊 Processing ${totalPhotos} photos across selectable groups...`);
+
+    //         // Process each group
+    //         for (const group of groups) {
+    //             // Skip non-selectable groups for free users
+    //             if (group.hasAttribute('data-non-selectable')) {
+    //                 console.log(`⏭️ Skipping non-selectable group ${group.getAttribute('data-group-index')} for free user`);
+    //                 continue;
+    //             }
+
+    //             const imageItems = Array.from(group.querySelectorAll('.pc-image-item'));
+
+    //             if (imageItems.length <= 1) {
+    //                 continue; // Skip groups with only one photo
+    //             }
+
+    //             console.log(`📊 Processing group with ${imageItems.length} photos...`);
+
+    //             // Collect metadata for all photos in this group concurrently
+    //             const groupStartProgress = processedPhotos;
+    //             const photosWithMetadata = await this.loadMetadataConcurrently(
+    //                 imageItems,
+    //                 (processed, total) => {
+    //                     const currentProgress = groupStartProgress + processed;
+    //                     button.innerHTML = `📊 Getting photo metadata ${currentProgress}/${totalPhotos}`;
+    //                 }
+    //             );
+
+    //             // Update processed counter
+    //             processedPhotos += imageItems.length;
+
+    //             // Determine which photos to keep based on criteria
+    //             const photosToDelete = this.selectPhotosBasedOnMetadata(photosWithMetadata, criteria, preference);
+
+    //             // Apply the selection
+    //             for (const photoToDelete of photosToDelete) {
+    //                 const checkboxIndicator = photoToDelete.imageItem.querySelector('.pc-checkbox-indicator');
+    //                 if (checkboxIndicator) {
+    //                     // this.updateCheckboxIndicator(checkboxIndicator, true);
+    //                     // this.showSelectionFeedback(photoToDelete.imageItem, true);
+    //                     totalSelected++;
+    //                 }
+    //             }
+
+    //             console.log(`✅ Group processed: kept best photo based on ${criteria}, marked ${photosToDelete.length} for deletion`);
+    //         }
+
+    //         console.log(`✅ Metadata selection complete: ${totalSelected} photos marked for deletion based on ${criteria} (${preference})`);
+
+    //         // Update group toggle button states
+    //         // this.initializeGroupToggleStates(overlay);
+
+    //         // Update button to show completion
+    //         button.innerHTML = `✅ Selected ${totalSelected} photos`;
+
+    //         // Scroll to the "I'm done selecting" button
+    //         setTimeout(() => {
+    //             const doneBtn = document.getElementById('pc-done-selecting');
+    //             if (doneBtn) {
+    //                 doneBtn.scrollIntoView({
+    //                     behavior: 'smooth',
+    //                     block: 'center'
+    //                 });
+    //                 doneBtn.style.animation = 'pc-pulse 2s ease-in-out';
+    //             }
+    //         }, 500);
+
+    //     } catch (error) {
+    //         console.error('❌ Error during metadata selection:', error);
+    //         button.innerHTML = '❌ Selection failed';
+    //     } finally {
+    //         // Always reset the flag and re-enable buttons after operation completes
+    //         setTimeout(() => {
+    //             this.metadataSelectionInProgress = false;
+    //             this.enableAllMetadataButtons();
+    //             button.innerHTML = originalText;
+    //         }, 3000);
+    //     }
+    // }
+
+    // async metadataSelectPhotosInGroup(overlay, groupIndex, criteria, preference, button) {
+    //     console.log(`📊 Starting group-specific metadata selection: Group ${groupIndex + 1}, ${criteria} - ${preference}`);
+
+    //     // Check if another selection is already in progress
+    //     if (this.metadataSelectionInProgress) {
+    //         //console.log('⚠️ Another metadata selection is already in progress, ignoring this request');
+    //         return;
+    //     }
+
+    //     // Set flag to prevent other selections
+    //     this.metadataSelectionInProgress = true;
+
+    //     // Disable all metadata buttons (both global and group-specific)
+    //     this.disableAllMetadataButtons();
+
+    //     const originalText = button.innerHTML;
+
+    //     try {
+    //         // Disable button and show progress
+    //         button.disabled = true;
+    //         button.innerHTML = '📊 Clearing previous selections...';
+
+    //         // Clear all previous selections in this group first
+    //         // this.clearGroupSelections(overlay, groupIndex);
+
+    //         button.innerHTML = '📊 Getting metadata...';
+
+    //         // Find the specific group
+    //         const group = overlay.querySelector(`[data-group-index="${groupIndex}"]`);
+    //         if (!group) {
+    //             console.error(`Group ${groupIndex} not found`);
+    //             this.metadataSelectionInProgress = false;
+    //             this.enableAllMetadataButtons();
+    //             return;
+    //         }
+
+    //         const imageItems = Array.from(group.querySelectorAll('.pc-image-item'));
+
+    //         if (imageItems.length <= 1) {
+    //             console.log(`⚠️ Group ${groupIndex + 1} has only ${imageItems.length} photos, skipping selection`);
+    //             button.innerHTML = '⚠️ Not enough photos';
+
+    //             setTimeout(() => {
+    //                 this.metadataSelectionInProgress = false;
+    //                 this.enableAllMetadataButtons();
+    //                 button.innerHTML = originalText;
+    //             }, 2000);
+    //             return;
+    //         }
+
+    //         console.log(`📊 Processing group ${groupIndex + 1} with ${imageItems.length} photos...`);
+
+    //         // Collect metadata for all photos in this group concurrently
+    //         const photosWithMetadata = await this.loadMetadataConcurrently(
+    //             imageItems,
+    //             (processed, total) => {
+    //                 button.innerHTML = `📊 Getting metadata ${processed}/${total}`;
+    //             }
+    //         );
+
+    //         // Determine which photos to keep based on criteria
+    //         const photosToDelete = this.selectPhotosBasedOnMetadata(photosWithMetadata, criteria, preference);
+
+    //         // Apply the selection
+    //         let totalSelected = 0;
+    //         for (const photoToDelete of photosToDelete) {
+    //             const checkboxIndicator = photoToDelete.imageItem.querySelector('.pc-checkbox-indicator');
+    //             if (checkboxIndicator) {
+    //                 // this.updateCheckboxIndicator(checkboxIndicator, true);
+    //                 // this.showSelectionFeedback(photoToDelete.imageItem, true);
+    //                 totalSelected++;
+    //             }
+    //         }
+
+    //         console.log(`✅ Group ${groupIndex + 1} processed: kept best photo based on ${criteria}, marked ${photosToDelete.length} for deletion`);
+
+    //         // Update the group's toggle button state
+    //         const groupToggleButton = group.querySelector('.pc-group-toggle');
+    //         if (groupToggleButton) {
+    //             // Check if all photos in the group are selected
+    //             const checkboxIndicators = group.querySelectorAll('.pc-checkbox-indicator');
+    //             let selectedCount = 0;
+    //             checkboxIndicators.forEach(indicator => {
+    //                 if (indicator.getAttribute('data-selected') === 'true') {
+    //                     selectedCount++;
+    //                 }
+    //             });
+    //             const allSelected = selectedCount === checkboxIndicators.length;
+    //             // this.updateGroupToggleButton(groupToggleButton, allSelected, checkboxIndicators.length);
+    //         }
+
+    //         // Update button to show completion
+    //         button.innerHTML = `✅ Selected ${totalSelected} photos`;
+
+    //         // Brief success feedback
+    //         setTimeout(() => {
+    //             this.metadataSelectionInProgress = false;
+    //             this.enableAllMetadataButtons();
+    //             button.innerHTML = originalText;
+    //         }, 2000);
+
+    //     } catch (error) {
+    //         console.error('❌ Error during group metadata selection:', error);
+    //         button.innerHTML = '❌ Selection failed';
+
+    //         setTimeout(() => {
+    //             this.metadataSelectionInProgress = false;
+    //             this.enableAllMetadataButtons();
+    //             button.innerHTML = originalText;
+    //         }, 3000);
+    //     }
+    // }
+
+    // selectPhotosBasedOnMetadata(photosWithMetadata, criteria, preference) {
+    //     if (photosWithMetadata.length <= 1) {
+    //         return []; // No selection needed for single photo
+    //     }
+
+    //     console.log(`📊 Selecting photos based on ${criteria} (${preference}) from ${photosWithMetadata.length} photos`);
+
+    //     // Filter out photos without the required metadata
+    //     const validPhotos = photosWithMetadata.filter(photo => {
+    //         const metadata = photo.metadata;
+
+    //         switch (criteria) {
+    //             case 'size':
+    //                 return metadata.bytes && metadata.bytes > 0;
+    //             case 'storageSize':
+    //                 return metadata.spaceTaken !== undefined && metadata.spaceTaken !== null;
+    //             case 'resolution':
+    //                 return metadata.resWidth && metadata.resHeight && metadata.resWidth > 0 && metadata.resHeight > 0;
+    //             case 'takenDate':
+    //                 return metadata.timestamp && metadata.timestamp > 0;
+    //             case 'uploadDate':
+    //                 return metadata.uploadTimestamp && metadata.uploadTimestamp > 0;
+    //             default:
+    //                 return false;
+    //         }
+    //     });
+
+    //     if (validPhotos.length <= 1) {
+    //         console.log(`⚠️ Not enough photos with valid ${criteria} metadata (${validPhotos.length}/${photosWithMetadata.length})`);
+    //         return photosWithMetadata.slice(1); // Default to keeping first photo
+    //     }
+
+    //     // Sort photos based on criteria
+    //     validPhotos.sort((a, b) => {
+    //         const aMetadata = a.metadata;
+    //         const bMetadata = b.metadata;
+
+    //         switch (criteria) {
+    //             case 'size':
+    //                 return preference === 'larger' ? bMetadata.bytes - aMetadata.bytes : aMetadata.bytes - bMetadata.bytes;
+    //             case 'storageSize':
+    //                 // Compare storage space taken first
+    //                 const storageDiff = preference === 'larger' ? bMetadata.spaceTaken - aMetadata.spaceTaken : aMetadata.spaceTaken - bMetadata.spaceTaken;
+    //                 // If storage sizes are equal, fall back to file size as tiebreaker
+    //                 if (storageDiff === 0 && aMetadata.bytes && bMetadata.bytes) {
+    //                     return preference === 'larger' ? bMetadata.bytes - aMetadata.bytes : aMetadata.bytes - bMetadata.bytes;
+    //                 }
+    //                 return storageDiff;
+    //             case 'resolution':
+    //                 const aResolution = aMetadata.resWidth * aMetadata.resHeight;
+    //                 const bResolution = bMetadata.resWidth * bMetadata.resHeight;
+    //                 return preference === 'larger' ? bResolution - aResolution : aResolution - bResolution;
+    //             case 'takenDate':
+    //                 return preference === 'newer' ? bMetadata.timestamp - aMetadata.timestamp : aMetadata.timestamp - bMetadata.timestamp;
+    //             case 'uploadDate':
+    //                 return preference === 'newer' ? bMetadata.uploadTimestamp - aMetadata.uploadTimestamp : aMetadata.uploadTimestamp - bMetadata.uploadTimestamp;
+    //             default:
+    //                 return 0;
+    //         }
+    //     });
+
+    //     // Keep the first photo (best according to criteria), mark others for deletion
+    //     const photoToKeep = validPhotos[0];
+    //     const photosToDelete = photosWithMetadata.filter(photo => photo.photoId !== photoToKeep.photoId);
+
+    //     console.log(`📊 Selection result: keeping photo ${photoToKeep.photoId}, deleting ${photosToDelete.length} others`);
+    //     console.log(`📊 Kept photo metadata:`, photoToKeep.metadata);
+
+    //     // Log additional details for storage size selection
+    //     if (criteria === 'storageSize') {
+    //         const spaceTaken = photoToKeep.metadata.spaceTaken;
+    //         const fileSize = photoToKeep.metadata.bytes;
+    //         console.log(`💳 Storage selection: kept photo with spaceTaken=${spaceTaken}, fileSize=${fileSize ? this.formatFileSize(fileSize) : 'unknown'}`);
+
+    //         // Check if tiebreaker was used
+    //         const equalSpaceTaken = validPhotos.filter(p => p.metadata.spaceTaken === spaceTaken);
+    //         if (equalSpaceTaken.length > 1) {
+    //             console.log(`🎯 Tiebreaker used: ${equalSpaceTaken.length} photos had equal storage space (${spaceTaken}), selected based on file size`);
+    //         }
+    //     }
+
+    //     return photosToDelete;
+    // }
+
+    // async analyzeGroupForFaces(imageItems) {
+    //     const photoAnalysis = [];
+
+    //     for (const imageItem of imageItems) {
+    //         const photoId = imageItem.getAttribute('data-photo-id');
+    //         const photoUrl = imageItem.getAttribute('data-photo-url');
+    //         const mediaType = imageItem.getAttribute('data-media-type') || 'photo';
+
+    //         let faceData = null;
+
+    //         if (this.modelsLoaded) {
+    //             try {
+    //                 // Find the original photo data to get the captured image
+    //                 const originalPhoto = this.photos.find(p => p.id === photoId);
+
+    //                 if (originalPhoto && originalPhoto.capturedImageData) {
+    //                     console.log(`🔍 Analyzing captured image for photo ${photoId}...`);
+
+    //                     // Create a canvas from the captured image data
+    //                     const canvas = await this.createCanvasFromImageData(originalPhoto.capturedImageData);
+
+    //                     if (canvas) {
+    //                         // Detect faces and expressions using the canvas
+    //                         const detections = await faceapi
+    //                             .detectAllFaces(canvas, new faceapi.TinyFaceDetectorOptions())
+    //                             .withFaceExpressions();
+
+    //                         if (detections && detections.length > 0) {
+    //                             // Calculate happiness score for all faces
+    //                             let totalHappiness = 0;
+    //                             let faceCount = 0;
+
+    //                             for (const detection of detections) {
+    //                                 const expressions = detection.expressions;
+    //                                 // Happiness score: happy + (surprised * 0.3) - (sad * 0.5) - (angry * 0.7)
+    //                                 const happinessScore = expressions.happy +
+    //                                     (expressions.surprised * 0.3) -
+    //                                     (expressions.sad * 0.5) -
+    //                                     (expressions.angry * 0.7);
+    //                                 totalHappiness += Math.max(0, Math.min(1, happinessScore));
+    //                                 faceCount++;
+    //                             }
+
+    //                             faceData = {
+    //                                 faceCount: faceCount,
+    //                                 averageHappiness: totalHappiness / faceCount,
+    //                                 detections: detections
+    //                             };
+
+    //                             console.log(`😊 Photo ${photoId}: ${faceCount} faces, happiness: ${(faceData.averageHappiness * 100).toFixed(1)}%`);
+    //                         } else {
+    //                             console.log(`👤 Photo ${photoId}: No faces detected`);
+    //                         }
+    //                     }
+    //                 } else {
+    //                     console.warn(`⚠️ No captured image data found for photo ${photoId}`);
+    //                 }
+    //             } catch (error) {
+    //                 console.warn(`⚠️ Face detection failed for photo ${photoId}:`, error);
+    //             }
+    //         }
+
+    //         photoAnalysis.push({
+    //             imageItem,
+    //             photoId,
+    //             photoUrl,
+    //             faceData
+    //         });
+    //     }
+
+    //     return photoAnalysis;
+    // }
+
+    // async createCanvasFromImageData(base64Data) {
+    //     return new Promise((resolve, reject) => {
+    //         try {
+    //             const img = new Image();
+    //             img.onload = () => {
+    //                 const canvas = document.createElement('canvas');
+    //                 const ctx = canvas.getContext('2d');
+
+    //                 canvas.width = img.width;
+    //                 canvas.height = img.height;
+
+    //                 ctx.drawImage(img, 0, 0);
+    //                 resolve(canvas);
+    //             };
+    //             img.onerror = () => {
+    //                 reject(new Error('Failed to load image data'));
+    //             };
+
+    //             // Handle both data URL and raw base64
+    //             if (base64Data.startsWith('data:')) {
+    //                 img.src = base64Data;
+    //             } else {
+    //                 img.src = `data:image/png;base64,${base64Data}`;
+    //             }
+    //         } catch (error) {
+    //             reject(error);
+    //         }
+    //     });
+    // }
+
+    // selectPhotosForDeletion(photoAnalysis) {
+    //     const photosToDelete = [];
+
+    //     // Check if any photos have face data
+    //     const photosWithFaces = photoAnalysis.filter(p => p.faceData && p.faceData.faceCount > 0);
+
+    //     if (photosWithFaces.length > 0) {
+    //         // Face-based selection: keep the happiest photo(s)
+    //         //console.log('🧠 Using face-based selection algorithm');
+
+    //         // Sort by happiness score (descending)
+    //         photosWithFaces.sort((a, b) => b.faceData.averageHappiness - a.faceData.averageHappiness);
+
+    //         // Keep the happiest photo, delete the rest
+    //         const photoToKeep = photosWithFaces[0];
+    //         console.log(`😊 Keeping happiest photo ${photoToKeep.photoId} (happiness: ${(photoToKeep.faceData.averageHappiness * 100).toFixed(1)}%)`);
+
+    //         // Mark all other photos with faces for deletion
+    //         for (let i = 1; i < photosWithFaces.length; i++) {
+    //             photosToDelete.push(photosWithFaces[i]);
+    //             console.log(`🗑️ Deleting photo ${photosWithFaces[i].photoId} (happiness: ${(photosWithFaces[i].faceData.averageHappiness * 100).toFixed(1)}%)`);
+    //         }
+
+    //         // Also delete photos without faces in this group
+    //         const photosWithoutFaces = photoAnalysis.filter(p => !p.faceData || p.faceData.faceCount === 0);
+    //         for (const photo of photosWithoutFaces) {
+    //             photosToDelete.push(photo);
+    //             console.log(`🗑️ Deleting photo without faces ${photo.photoId}`);
+    //         }
+
+    //     } else {
+    //         //console.log('🤖 No faces detected, using fallback selection (keep first photo)');
+    //         for (let i = 1; i < photoAnalysis.length; i++) {
+    //             photosToDelete.push(photoAnalysis[i]);
+    //             console.log(`🗑️ Deleting photo ${photoAnalysis[i].photoId} (fallback logic)`);
+    //         }
+    //     }
+
+    //     return photosToDelete;
+    // }
 
     countSelectedPhotos() {
         let count = 0;
         const imageItems = document.querySelectorAll('#pc-results-overlay .pc-image-item');
-
         imageItems.forEach(item => {
-            // const checkboxIndicator = item.querySelector('.pc-checkbox-indicator');
-            // if (checkboxIndicator && checkboxIndicator.getAttribute('data-selected') === 'true') {
               const deleteButton = item.querySelector('.will-delete-btn');
                 if (deleteButton) {
                 count++;
             }
         });
-
-        console.log(`📊 countSelectedPhotos: Found ${count} selected photos in overlay`);
         return count;
     }
 
@@ -8728,44 +7189,12 @@ overlay.on('click', '.toggle-delete-btn, .keep-btn', function(e) {
         const notFound = [];
 
         const imageItems = document.querySelectorAll('#pc-results-overlay .pc-image-item');
-        console.log(`🔍 Checking ${imageItems.length} photos in overlay...`);
-
-        // imageItems.forEach(item => {
-        //     const photoId = item.getAttribute('data-photo-id');
-        //     const photoUrl = item.getAttribute('data-photo-url');
-        //     // const checkboxIndicator = item.querySelector('.pc-checkbox-indicator');
-        //     // const overlaySelected = checkboxIndicator && checkboxIndicator.getAttribute('data-selected') === 'true';
-        //      const overlaySelected= item.querySelectorAll('.will-delete-btn');
-
-        //     if (overlaySelected.length>0 ) {
-        //         selectedInOverlay.push(photoId);
-        //     }
-
-        //     // Find the corresponding DupeYak Duplicate Remover element
-        //     const googlePhotosElement = this.findGooglePhotosElement(photoId, photoUrl);
-
-        //     if (googlePhotosElement) {
-        //         foundCount++;
-        //         const checkbox = googlePhotosElement.querySelector('[role="checkbox"]');
-        //         if (checkbox && checkbox.getAttribute('aria-checked') === 'true') {
-        //             count++;
-        //             selectedInGoogle.push(photoId);
-        //         }
-        //     } else {
-        //         notFoundCount++;
-        //         notFound.push(photoId);
-        //     }
-        // });
 
    imageItems.forEach(item => {
     const photoId = item.getAttribute('data-photo-id');
     const photoUrl = item.getAttribute('data-photo-url');
-
-    // Find checkbox inside the item
   const groupContainer = item.closest('.analysisresults-group');
-            // Find the checkbox inside this imageItem
    const checkbox = groupContainer.querySelector('input[type="checkbox"]');
-    // Proceed only if checkbox exists and is checked
     if (checkbox && checkbox.checked) {
         const overlaySelected = item.querySelectorAll('.will-delete-btn');
 
@@ -8773,8 +7202,6 @@ overlay.on('click', '.toggle-delete-btn, .keep-btn', function(e) {
             selectedInOverlay.push(photoId);
         }
     }
-
-    // Find the corresponding DupeYak Duplicate Remover element
     const googlePhotosElement = this.findGooglePhotosElement(photoId, photoUrl);
 
     if (googlePhotosElement) {
@@ -8789,25 +7216,15 @@ overlay.on('click', '.toggle-delete-btn, .keep-btn', function(e) {
         notFound.push(photoId);
     }
 });
-
-        console.log(`📊 Detailed count results:`);
-        console.log(`   - Photos in overlay: ${imageItems.length}`);
-        console.log(`   - Selected in overlay: ${selectedInOverlay.length}`, selectedInOverlay);
-        console.log(`   - Found in DupeYak Duplicate Remover: ${foundCount}`);
-        console.log(`   - Selected in DupeYak Duplicate Remover: ${count}`, selectedInGoogle);
-        console.log(`   - Not found in DupeYak Duplicate Remover: ${notFoundCount}`, notFound);
-
-        // Check if there are mismatches
         const overlayButNotGoogle = selectedInOverlay.filter(id => !selectedInGoogle.includes(id));
         const googleButNotOverlay = selectedInGoogle.filter(id => !selectedInOverlay.includes(id));
 
         if (overlayButNotGoogle.length > 0) {
-            console.warn(`⚠️ Photos selected in overlay but NOT in DupeYak Duplicate Remover:`, overlayButNotGoogle);
+            console.warn(`Photos selected in overlay but NOT in DupeYak Duplicate Remover:`, overlayButNotGoogle);
         }
         if (googleButNotOverlay.length > 0) {
-            console.warn(`⚠️ Photos selected in DupeYak Duplicate Remover but NOT in overlay:`, googleButNotOverlay);
+            console.warn(`Photos selected in DupeYak Duplicate Remover but NOT in overlay:`, googleButNotOverlay);
         }
-
         return count;
     }
 
@@ -8837,10 +7254,7 @@ overlay.on('click', '.toggle-delete-btn, .keep-btn', function(e) {
                         <span class="new-128 flex w-[45px] max-[767px]:w-[45px] items-center justify-center rounded-[10px]" src="chrome-extension://flcmckdkmfkfebllbphddhghjkmoijfl/icons/new128.png"><img class="pc-warning-icon new-128 rounded-[10px]" alt="warning icon" src="chrome-extension://flcmckdkmfkfebllbphddhghjkmoijfl/icons/new128.png" alt="logo" data-iml="50074.300000190735"></span>
                     </a><p class="dark-color !leading-[17px]">Please keep this window active — resizing may interrupt your task</p></div>
             `);
-
-            // Set icon src just like your paush-img example
             warningElement.find('.pc-warning-icon').attr('src', warningIconUrl);
-
             $('body').append(warningElement);
         }
         warningElement.show();
@@ -8850,8 +7264,6 @@ overlay.on('click', '.toggle-delete-btn, .keep-btn', function(e) {
 }
 
     updateProgress(percent, text) {
-    // document.querySelectorAll('.rtIMgb, .fCPuz, .nV0gYe').forEach(el => el.remove());
-
     const floatingStatusElement = document.getElementById('pc-floating-status');
     const newMagnifierIconUrl = chrome.runtime.getURL('../icons/magnifier.svg');
 
@@ -8863,8 +7275,6 @@ overlay.on('click', '.toggle-delete-btn, .keep-btn', function(e) {
 
     if (textElement) {
 if (!textElement.querySelector('input[type="range"]')) {
-
-
    textElement.innerHTML = `
                 <label class="labelrange">
                     <img src="${newMagnifierIconUrl}" alt="icon" style="width:16px;height:16px;"> ${text}
@@ -8890,7 +7300,6 @@ if (!textElement.querySelector('input[type="range"]')) {
             progressDone.textContent = displayPercent + '%';
         }
 
-        // Label ka text update karo
         const label = textElement.querySelector('label');
         if (label) {
             label.childNodes[1].nodeValue = ` ${text}`;
@@ -8917,33 +7326,17 @@ if (!textElement.querySelector('input[type="range"]')) {
             const blob = new Blob([bytes], { type: 'image/jpeg' });
             const blobUrl = URL.createObjectURL(blob);
 
-            // Create a temporary link for download
             const link = document.createElement('a');
             link.href = blobUrl;
             link.download = `${filename}.jpg`;
             link.style.display = 'none';
             document.body.appendChild(link);
-
-            // Log debug information with blob URL for inspection
-            console.log(`💾 Debug: Image "${filename}" created as blob`);
-            console.log(`🔗 Blob URL (right-click to open in new tab): ${blobUrl}`);
-            console.log(`📊 Blob size: ${blob.size} bytes`);
-            console.log(`🖼️ Click to download:`, link);
-
-            // Create visual preview in console (works in Chrome DevTools)
             this.debugShowImagePreview(blobUrl, filename);
-
-            // Auto-click to download (commented out by default)
-            // link.click();
-
-            // Clean up after 30 seconds to prevent memory leaks
             setTimeout(() => {
                 document.body.removeChild(link);
                 URL.revokeObjectURL(blobUrl);
-                console.log(`🧹 Cleaned up blob URL for "${filename}"`);
             }, 30000);
 
-            // Return blob URL for immediate use if needed
             return blobUrl;
         } catch (error) {
             console.warn('Debug save failed:', error);
@@ -8953,20 +7346,8 @@ if (!textElement.querySelector('input[type="range"]')) {
 
     debugShowImagePreview(blobUrl, filename) {
         try {
-            // Create a small preview image for console logging
             const img = new Image();
             img.onload = () => {
-                console.log(`🖼️ Preview of "${filename}" (${img.naturalWidth}x${img.naturalHeight}):`, img);
-                console.log(`%c `, `
-                    background-image: url(${blobUrl}); 
-                    background-size: contain; 
-                    background-repeat: no-repeat; 
-                    background-position: center;
-                    width: 100px; 
-                    height: 100px; 
-                    border: 1px solid #ccc;
-                    display: inline-block;
-                `);
             };
             img.src = blobUrl;
         } catch (error) {
@@ -8990,7 +7371,6 @@ if (!textElement.querySelector('input[type="range"]')) {
     }
 
     showViewportResizeMessage(viewportInfo) {
-        // Remove existing resize message if any
         const existingMessage = document.getElementById('pc-resize-message');
         if (existingMessage) {
             existingMessage.remove();
@@ -9028,19 +7408,15 @@ if (!textElement.querySelector('input[type="range"]')) {
         `;
 
         document.body.appendChild(message);
-
-        // Add event listeners
         document.getElementById('pc-resize-check').addEventListener('click', () => {
             message.remove();
-            this.initializeFullPanel(); // Try again
+            this.initializeFullPanel(); 
         });
 
         document.getElementById('pc-resize-close').addEventListener('click', () => {
             message.remove();
-            this.addMinimalButton(); // Go back to minimal button
+            this.addMinimalButton();
         });
-
-        // Also listen for window resize
         const resizeHandler = () => {
             const newCheck = this.checkViewportSize();
             if (newCheck.adequate) {
@@ -9048,7 +7424,6 @@ if (!textElement.querySelector('input[type="range"]')) {
                 window.removeEventListener('resize', resizeHandler);
                 this.initializeFullPanel();
             } else {
-                // Update the displayed current size
                 const currentSizeEl = message.querySelector('.pc-size-current');
                 if (currentSizeEl) {
                     currentSizeEl.innerHTML = `<strong>Current Size:</strong><br>${newCheck.currentWidth} × ${newCheck.currentHeight} pixels`;
@@ -9058,12 +7433,8 @@ if (!textElement.querySelector('input[type="range"]')) {
 
         window.addEventListener('resize', resizeHandler);
     }
-
-    //convert to jquery
     async startFullWorkflow() {
         if (this.isProcessing) return;
-
-        // Check viewport size before starting workflow
         const viewportCheck = this.checkViewportSize();
         if (!viewportCheck.adequate) {
             this.showViewportResizeMessage(viewportCheck);
@@ -9071,42 +7442,22 @@ if (!textElement.querySelector('input[type="range"]')) {
         }
 
         try {
-            // Fetch user-defined similarity threshold value
             const similarityInput = $('#pc-similarity');
             const similarityThreshold = parseInt(similarityInput.text()) || 75;
-
-            console.log(`▶️ Full scan initiated with similarity set to ${similarityThreshold}%`);
-            console.log(`📥 Raw input: "${similarityInput?.value}", Parsed: ${similarityThreshold}`);
-
-            // Store threshold for later use
             this.similarityThreshold = similarityThreshold;
-            console.log(`📌 Threshold saved as: ${this.similarityThreshold}%`);
 
-            // Set flag to indicate this is a full workflow (not standalone scan)
             this.isFullWorkflow = true;
-
-              // Start scanning process
-            //console.log('🔍 Commencing image scan...');
             const scanResult = await this.startScanning();
-
-            // Exit if redirected to new tab/window
             if (scanResult === 'NEW_WINDOW_OPENED') {
-                //console.log('🪟 Workflow moved to newly opened window');
                 return;
             }
 
-            console.log(`✔️ Scanning finished. Total images collected: ${this.photos.length}`);
-
             // Proceed to analysis if enough images exist
             if (this.photos.length >= 2) {
-                console.log(`🧪 Beginning duplicate analysis on ${this.photos.length} photos`);
                 await this.analyzePhotos();
-                //console.log('🎯 Duplicate check completed successfully');
             } else if (this.photos.length === 1) {
-                //console.log('⚠️  Only one photo found — insufficient for comparison');
                 alert('Found only one photo. Need at least two photos for comparison.');
             } else {
-                //console.log('📭 No photos detected on current page');
                 alert('No photos found. Please ensure you are viewing visible DupeYak Duplicate Remover items');
                 const scanButtonEl = $('#pc-scan');
                 if (scanButtonEl.length) {
@@ -9114,8 +7465,6 @@ if (!textElement.querySelector('input[type="range"]')) {
                     scanButtonEl.find('.btn-label').text('🔍 Scan for Duplicates').parent().prop('disabled', false);
                 }
             }
-
-           // Resetting internal flags and UI elements
             this.isFullWorkflow = false;
             this.isProcessing = false;
 
@@ -9126,13 +7475,11 @@ if (!textElement.querySelector('input[type="range"]')) {
         } catch (error) {
             console.error('🚫 An error occurred during workflow execution:', error);
 
-            // Reset all states
             this.isFullWorkflow = false;
             this.isProcessing = false;
             this.isScanning = false;
-            this.showWindowWarning(false); // Hide window warning on error
+            this.showWindowWarning(false); 
 
-            // Reset UI state
             const scanButtonEl = $('#pc-scan');
             if (scanButtonEl.length) {
                 scanBtn.find('.btn-label').text('🔍 Scan for Duplicates').parent().prop('disabled', false);
@@ -9141,125 +7488,96 @@ if (!textElement.querySelector('input[type="range"]')) {
             alert('Error during scanning/analysis: ' + error.message);
         }
     }
+    // showAnalysisButtons() {
+    //     if (!isValidGooglePhotosPage()) {
+    //         this.showInfoMessage();
+    //         return;
+    //     }
+    //     this.extractPhotos();
+    //     const photosFound = this.photos.length;
 
+    //     if (photosFound === 0) {
+    //         return;
+    //     }
+    //     this.removeExistingControls();
+    //     const container = document.createElement('div');
+    //     container.id = 'pc-controls';
+    //     container.innerHTML = `
+    //         <div class="pc-header">
+    //             <h3>📸 Photo & Video Duplicate Finder</h3>
+    //             <p>Found ${photosFound} photos and ${this.videos.length} videos on this page</p>
+    //         </div>
+    //         <div class="pc-actions">
+    //             <button id="pc-find-duplicates" class="pc-button pc-button-primary">
+    //                 🔍 Find Duplicates & Similar Photos/Videos
+    //             </button>
+    //             <button id="pc-choose-auto" class="pc-button pc-button-secondary" style="display: none;">
+    //                 🤖 Choose automatically
+    //             </button>
+    //         </div>
+    //     `;
 
+    //     // Insert the container
+    //     const targetContainer = document.querySelector('[data-ved]') || document.body;
+    //     targetContainer.insertBefore(container, targetContainer.firstChild);
 
-    showAnalysisButtons() {
-        if (!isValidGooglePhotosPage()) {
-            this.showInfoMessage();
-            return;
-        }
+    //     // Add event listeners
+    //     const findDuplicatesBtn = document.getElementById('pc-find-duplicates');
+    //     if (findDuplicatesBtn) {
+    //         findDuplicatesBtn.onclick = () => {
+    //             this.startFullWorkflow();
+    //         };
+    //     }
 
-        // Extract photos to get count
-        this.extractPhotos();
-        const photosFound = this.photos.length;
+    //     const chooseAutoBtn = document.getElementById('pc-choose-auto');
+    //     if (chooseAutoBtn) {
+    //         chooseAutoBtn.onclick = () => {
+    //             this.chooseAutomatically();
+    //         };
+    //     }
 
-        if (photosFound === 0) {
-            //console.log('No photos found on this page');
-            return;
-        }
+    //     //console.log('✅ Analysis buttons added successfully');
+    // }
 
-        // Remove existing controls
-        this.removeExistingControls();
+    // removeExistingControls() {
+    //     // Remove any existing control elements
+    //     const existingControls = document.getElementById('pc-controls');
+    //     if (existingControls) {
+    //         existingControls.remove();
+    //     }
+    // }
 
-        // Create main container
-        const container = document.createElement('div');
-        container.id = 'pc-controls';
-        container.innerHTML = `
-            <div class="pc-header">
-                <h3>📸 Photo & Video Duplicate Finder</h3>
-                <p>Found ${photosFound} photos and ${this.videos.length} videos on this page</p>
-            </div>
-            <div class="pc-actions">
-                <button id="pc-find-duplicates" class="pc-button pc-button-primary">
-                    🔍 Find Duplicates & Similar Photos/Videos
-                </button>
-                <button id="pc-choose-auto" class="pc-button pc-button-secondary" style="display: none;">
-                    🤖 Choose automatically
-                </button>
-            </div>
-        `;
-
-        // Insert the container
-        const targetContainer = document.querySelector('[data-ved]') || document.body;
-        targetContainer.insertBefore(container, targetContainer.firstChild);
-
-        // Add event listeners
-        const findDuplicatesBtn = document.getElementById('pc-find-duplicates');
-        if (findDuplicatesBtn) {
-            findDuplicatesBtn.onclick = () => {
-                this.startFullWorkflow();
-            };
-        }
-
-        const chooseAutoBtn = document.getElementById('pc-choose-auto');
-        if (chooseAutoBtn) {
-            chooseAutoBtn.onclick = () => {
-                this.chooseAutomatically();
-            };
-        }
-
-        //console.log('✅ Analysis buttons added successfully');
-    }
-
-    removeExistingControls() {
-        // Remove any existing control elements
-        const existingControls = document.getElementById('pc-controls');
-        if (existingControls) {
-            existingControls.remove();
-        }
-    }
-
-    chooseAutomatically() {
-        // Placeholder method for automatic photo selection
-        //console.log('🤖 Automatic photo selection not yet implemented');
-        alert('Automatic photo selection feature coming soon!');
-    }
+    // chooseAutomatically() {
+    //     // Placeholder method for automatic photo selection
+    //     //console.log('🤖 Automatic photo selection not yet implemented');
+    //     alert('Automatic photo selection feature coming soon!');
+    // }
 
     async getOriginalImageSize(photo) {
         try {
             // Check cache first using photo ID
             if (this.imageSizeCache && this.imageSizeCache[photo.id]) {
                 const cachedInfo = this.imageSizeCache[photo.id];
-
-                // Handle backward compatibility: if cached data is old string format, convert it
                 if (typeof cachedInfo === 'string') {
-                    console.log(`🔄 Converting old cached format for photo ${photo.id}`);
-                    // Check if we're already upgrading this cache entry to prevent double requests
                     if (this.imageSizeLoaders && this.imageSizeLoaders.has(photo.id)) {
-                        console.log(`⏳ Already upgrading cache for photo ${photo.id}, returning old format for now`);
                         return { formatted: cachedInfo, bytes: 0, takesUpSpace: null, spaceTaken: null, isOriginalQuality: null };
                     }
-                    // Don't return here - continue to fetch full info and update cache
                 } else {
-                    // New format - return immediately
                     return cachedInfo;
                 }
             }
-
-            // Get media key from photo data - we need to extract this from the photo element
             const mediaKey = await this.extractMediaKeyFromPhoto(photo);
             if (!mediaKey) {
                 console.warn(`⚠️ Could not extract media key for photo ${photo.id}`);
                 return null;
             }
 
-            // Use dual API approach: getItemInfoExt for detailed info + getBatchMediaInfo for upload timestamp
-            console.log(`🌐 Making dual API calls for media key: ${mediaKey.substring(0, 20)}...`);
-
             const [extendedInfo, batchInfo] = await Promise.all([
                 this.getItemInfoExt(mediaKey),
                 this.getBatchMediaInfo([mediaKey])
             ]);
-
-            console.log(`📊 Extended API response for photo ${photo.id}:`, extendedInfo);
-            console.log(`📊 Batch API response for photo ${photo.id}:`, batchInfo);
-
-            // Check if we have enough data from at least one API
             if (extendedInfo && extendedInfo.size) {
                 const sizeFormatted = this.formatFileSize(extendedInfo.size);
-
-                // Merge data from both APIs, with fallback if batch API fails
                 const sizeInfo = {
                     formatted: sizeFormatted,
                     bytes: extendedInfo.size,
@@ -9268,8 +7586,8 @@ if (!textElement.querySelector('input[type="range"]')) {
                     takesUpSpace: extendedInfo.takesUpSpace,
                     spaceTaken: extendedInfo.spaceTaken,
                     isOriginalQuality: extendedInfo.isOriginalQuality,
-                    timestamp: extendedInfo.timestamp,              // Photo taken date from extended API
-                    uploadTimestamp: batchInfo?.[0]?.creationTimestamp || null, // Upload date from batch API (may be null)
+                    timestamp: extendedInfo.timestamp,              
+                    uploadTimestamp: batchInfo?.[0]?.creationTimestamp || null, 
                     timezoneOffset: extendedInfo.timezoneOffset,
                     fileName: extendedInfo.fileName,
                     cameraInfo: extendedInfo.cameraInfo,
@@ -9277,43 +7595,32 @@ if (!textElement.querySelector('input[type="range"]')) {
                     geoLocation: extendedInfo.geoLocation
                 };
 
-                // Cache the result
                 if (!this.imageSizeCache) this.imageSizeCache = {};
                 this.imageSizeCache[photo.id] = sizeInfo;
-
-                console.log(`📏 Got merged media info for photo ${photo.id}:`, sizeInfo);
                 const uploadStatus = sizeInfo.uploadTimestamp ?
                     `upload: ${sizeInfo.uploadTimestamp}` : 'upload: not available';
-                console.log(`🕐 Timestamps - taken: ${sizeInfo.timestamp}, ${uploadStatus}`);
                 return sizeInfo;
             } else {
-                console.warn(`⚠️ No complete data in API responses for photo ${photo.id}:`, { extendedInfo, batchInfo });
+                console.warn(`No complete data in API responses for photo ${photo.id}:`, { extendedInfo, batchInfo });
             }
 
             return null;
         } catch (error) {
-            console.warn(`⚠️ Failed to get image size for photo ${photo.id}:`, error);
+            console.warn(`Failed to get image size for photo ${photo.id}:`, error);
             return null;
         }
     }
 
     async extractMediaKeyFromPhoto(photo) {
         try {
-            console.log(`🔍 Extracting media key for photo ${photo.id}...`);
-
-            // Method 1: Photo ID might be the media key itself
             if (photo.id && photo.id.length > 20) {
-                console.log(`📋 Using photo ID as media key: ${photo.id.substring(0, 20)}...`);
                 return photo.id;
             }
-
-            // Method 2: Try to find the photo element in the DOM
             const photoElements = document.querySelectorAll('[data-id], [jsdata], [data-ved]');
 
             for (const element of photoElements) {
                 const elementId = element.getAttribute('data-id');
                 if (elementId === photo.id) {
-                    // Look for media key in various possible attributes
                     const mediaKey = element.getAttribute('data-media-key') ||
                         element.getAttribute('data-itemkey') ||
                         element.getAttribute('data-item-key') ||
@@ -9321,59 +7628,41 @@ if (!textElement.querySelector('input[type="range"]')) {
                         element.getAttribute('data-ved');
 
                     if (mediaKey && mediaKey.length > 10) {
-                        console.log(`📋 Found media key from DOM attribute for photo ${photo.id}: ${mediaKey.substring(0, 20)}...`);
                         return mediaKey;
                     }
                 }
             }
-
-            // Method 3: Extract from the photo URL
             const urlKey = await this.extractMediaKeyFromUrl(photo.url);
             if (urlKey) {
-                console.log(`📋 Found media key from URL for photo ${photo.id}: ${urlKey.substring(0, 20)}...`);
                 return urlKey;
             }
-
-            // Method 4: Look for photo element by background image URL
             const bgKey = await this.extractMediaKeyFromBackgroundImage(photo.url);
             if (bgKey) {
-                console.log(`📋 Found media key from background image for photo ${photo.id}: ${bgKey.substring(0, 20)}...`);
                 return bgKey;
             }
-
-            // Method 5: Try alternative ID formats
             const alternativeKey = await this.tryAlternativeMediaKeyFormats(photo);
             if (alternativeKey) {
-                console.log(`📋 Found media key from alternative format for photo ${photo.id}: ${alternativeKey.substring(0, 20)}...`);
                 return alternativeKey;
             }
 
-            console.warn(`⚠️ Could not find media key for photo ${photo.id}`);
+            console.warn(`Could not find media key for photo ${photo.id}`);
             return null;
         } catch (error) {
-            console.warn(`❌ Error extracting media key for photo ${photo.id}:`, error);
+            console.warn(`Error extracting media key for photo ${photo.id}:`, error);
             return null;
         }
     }
 
     async extractMediaKeyFromUrl(imageUrl) {
         try {
-            // Try to extract media key from the image URL structure
-            // DupeYak Duplicate Remover URLs sometimes contain encoded media keys
-
-            // Pattern 1: Standard format with =w000-h000
             const urlMatch = imageUrl.match(/\/([A-Za-z0-9_-]{20,})=w\d+-h\d+/);
             if (urlMatch && urlMatch[1]) {
                 return urlMatch[1];
             }
-
-            // Pattern 2: Different URL patterns
             const altMatch = imageUrl.match(/\/([A-Za-z0-9_-]{20,})\?/);
             if (altMatch && altMatch[1]) {
                 return altMatch[1];
             }
-
-            // Pattern 3: Base64-like IDs in path
             const pathMatch = imageUrl.match(/\/([A-Za-z0-9_-]{20,})/);
             if (pathMatch && pathMatch[1] && !pathMatch[1].includes('photos')) {
                 return pathMatch[1];
@@ -9388,13 +7677,10 @@ if (!textElement.querySelector('input[type="range"]')) {
 
     async extractMediaKeyFromBackgroundImage(imageUrl) {
         try {
-            // Find elements with background images matching this URL
             const elements = document.querySelectorAll('*');
-
             for (const element of elements) {
                 const bgImage = window.getComputedStyle(element).backgroundImage;
                 if (bgImage && bgImage.includes(imageUrl.substring(0, 50))) {
-                    // Found the element, now look for data attributes
                     const mediaKey = element.getAttribute('data-id') ||
                         element.getAttribute('jsdata') ||
                         element.getAttribute('data-ved') ||
@@ -9415,17 +7701,12 @@ if (!textElement.querySelector('input[type="range"]')) {
 
     async tryAlternativeMediaKeyFormats(photo) {
         try {
-            // Sometimes the photo ID needs to be transformed
-
-            // Method 1: Remove common prefixes/suffixes
             let cleanId = photo.id.replace(/^(photo|img|item)[-_]?/i, '');
             cleanId = cleanId.replace(/[-_]?(thumb|preview)$/i, '');
 
             if (cleanId !== photo.id && cleanId.length > 15) {
                 return cleanId;
             }
-
-            // Method 2: Look for the photo ID in the page source
             const pageHtml = document.documentElement.outerHTML;
             const idPattern = new RegExp(`["']([A-Za-z0-9_-]{20,})["'][^"']*${photo.id.substring(0, 10)}`, 'g');
             const matches = pageHtml.match(idPattern);
@@ -9436,8 +7717,6 @@ if (!textElement.querySelector('input[type="range"]')) {
                     return match[1];
                 }
             }
-
-            // Method 3: Try the photo href if available
             if (photo.href) {
                 const hrefMatch = photo.href.match(/\/photo\/([A-Za-z0-9_-]{20,})/);
                 if (hrefMatch && hrefMatch[1]) {
@@ -9454,13 +7733,10 @@ if (!textElement.querySelector('input[type="range"]')) {
 
     async getItemInfoExt(mediaKey) {
         try {
-            // Get DupeYak Duplicate Remover authentication data
             const authData = await this.getGooglePhotosAuthData();
             if (!authData) {
                 throw new Error('Could not extract DupeYak Duplicate Remover authentication data');
             }
-
-            // Prepare the RPC request for getItemInfoExt (fDcn4b)
             const rpcid = 'fDcn4b';
             const requestData = [mediaKey, 1, null, null, 1];
 
@@ -9485,7 +7761,6 @@ if (!textElement.querySelector('input[type="range"]')) {
                 .join('&');
 
             const url = `https://photos.google.com${authData.path}data/batchexecute?${paramsString}`;
-
             const response = await fetch(url, {
                 headers: {
                     'content-type': 'application/x-www-form-urlencoded;charset=UTF-8',
@@ -9504,8 +7779,6 @@ if (!textElement.querySelector('input[type="range"]')) {
 
             const parsedData = JSON.parse(jsonLines[0]);
             const rawResponse = JSON.parse(parsedData[0][2]);
-
-            // Parse the response similar to GPTK's itemInfoExtParse
             return this.parseItemInfoExt(rawResponse);
 
         } catch (error) {
@@ -9516,17 +7789,12 @@ if (!textElement.querySelector('input[type="range"]')) {
 
     async getBatchMediaInfo(mediaKeyArray) {
         try {
-            // Get DupeYak Duplicate Remover authentication data
             const authData = await this.getGooglePhotosAuthData();
             if (!authData) {
                 throw new Error('Could not extract DupeYak Duplicate Remover authentication data');
             }
-
-            // Prepare the RPC request similar to GPTK
             const rpcid = 'EWgK9e';
             const formattedMediaKeys = mediaKeyArray.map(key => [key]);
-
-            // Request data structure from GPTK
             const requestData = [[[formattedMediaKeys], [[null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, [], null, null, null, null, null, null, null, null, null, null, []]]]];
 
             const wrappedRequestData = [[[rpcid, JSON.stringify(requestData), null, 'generic']]];
@@ -9569,8 +7837,6 @@ if (!textElement.querySelector('input[type="range"]')) {
 
             const parsedData = JSON.parse(jsonLines[0]);
             const rawResponse = JSON.parse(parsedData[0][2]);
-
-            // Parse the response similar to GPTK's bulkMediaInfo parser
             return this.parseBulkMediaInfo(rawResponse);
 
         } catch (error) {
@@ -9581,55 +7847,40 @@ if (!textElement.querySelector('input[type="range"]')) {
 
     async getGooglePhotosAuthData() {
         try {
-            // Return cached auth data if available
             if (this.authDataCache) {
-                //console.log('📋 Using cached authentication data');
                 return this.authDataCache;
             }
-
-            //console.log('🔑 Extracting DupeYak Duplicate Remover authentication data...');
-
-            // Method 1: Try to extract from existing script elements
             const authData = await this.extractAuthFromDomScripts();
             if (authData) {
-                //console.log('✅ Successfully extracted auth data from DOM scripts');
-                this.authDataCache = authData; // Cache the result
+                this.authDataCache = authData; 
                 return authData;
             }
-
-            // Method 2: Try to extract from network requests
             const networkAuthData = await this.extractAuthFromNetworkRequests();
             if (networkAuthData) {
-                //console.log('✅ Successfully extracted auth data from network requests');
-                this.authDataCache = networkAuthData; // Cache the result
+                this.authDataCache = networkAuthData; 
                 return networkAuthData;
             }
-
-            // Method 3: Use a simpler approach - extract common values
             const fallbackAuthData = await this.extractAuthDataFallback();
             if (fallbackAuthData) {
-                //console.log('✅ Successfully extracted auth data using fallback method');
-                this.authDataCache = fallbackAuthData; // Cache the result
+                this.authDataCache = fallbackAuthData; 
                 return fallbackAuthData;
             }
 
-            console.warn('⚠️ Could not extract DupeYak Duplicate Remover authentication data');
+            console.warn('Could not extract DupeYak Duplicate Remover authentication data');
             return null;
 
         } catch (error) {
-            console.warn('⚠️ Failed to extract DupeYak Duplicate Remover auth data:', error);
+            console.warn('Failed to extract DupeYak Duplicate Remover auth data:', error);
             return null;
         }
     }
 
     async extractAuthFromDomScripts() {
         try {
-            // Look for auth data in existing script elements
             const scripts = document.querySelectorAll('script');
 
             for (const script of scripts) {
                 if (script.textContent) {
-                    // Look for patterns that might contain auth data
                     const snlm0eMatch = script.textContent.match(/SNlM0e['"]\s*:\s*['"]([^'"]+)['"]/);
                     const fdrfjeMatch = script.textContent.match(/FdrFJe['"]\s*:\s*['"]([^'"]+)['"]/);
                     const cfb2hMatch = script.textContent.match(/cfb2h['"]\s*:\s*['"]([^'"]+)['"]/);
@@ -9641,8 +7892,8 @@ if (!textElement.querySelector('input[type="range"]')) {
                             'f.sid': fdrfjeMatch[1],
                             bl: cfb2hMatch[1],
                             path: eptzeMatch[1],
-                            rapt: null, // May not be present
-                            account: null // May not be present
+                            rapt: null, 
+                            account: null 
                         };
                     }
                 }
@@ -9657,20 +7908,13 @@ if (!textElement.querySelector('input[type="range"]')) {
 
     async extractAuthFromNetworkRequests() {
         try {
-            // Intercept network requests to extract auth tokens
             return new Promise((resolve) => {
                 let authData = null;
-
-                // Set up a temporary request interceptor
                 const originalFetch = window.fetch;
-
                 const interceptor = async function (...args) {
                     const result = await originalFetch.apply(this, args);
-
-                    // Check if this is a DupeYak Duplicate Remover API request
                     if (args[0] && args[0].includes && args[0].includes('batchexecute')) {
                         try {
-                            // Extract auth data from the request
                             const url = new URL(args[0]);
                             const params = new URLSearchParams(url.search);
 
@@ -9684,7 +7928,6 @@ if (!textElement.querySelector('input[type="range"]')) {
                                     account: null
                                 };
 
-                                // Restore original fetch
                                 window.fetch = originalFetch;
                                 resolve(authData);
                                 return result;
@@ -9697,10 +7940,8 @@ if (!textElement.querySelector('input[type="range"]')) {
                     return result;
                 };
 
-                // Temporarily replace fetch
                 window.fetch = interceptor;
 
-                // Set a timeout
                 setTimeout(() => {
                     window.fetch = originalFetch;
                     resolve(null);
@@ -9715,16 +7956,11 @@ if (!textElement.querySelector('input[type="range"]')) {
 
     async extractAuthDataFallback() {
         try {
-            // Simplified approach: Try to make a test request and extract from response headers
-            // or use known patterns in the page
-
-            // Check for meta tags or data attributes that might contain auth info
             const metaElements = document.querySelectorAll('meta[name*="csrf"], meta[name*="token"], meta[content*="token"]');
 
             for (const meta of metaElements) {
                 const content = meta.getAttribute('content');
                 if (content && content.length > 10) {
-                    // This might be an auth token
                     return {
                         at: content,
                         'f.sid': '',
@@ -9736,7 +7972,6 @@ if (!textElement.querySelector('input[type="range"]')) {
                 }
             }
 
-            // Last resort: return minimal auth data that might work
             return {
                 at: '',
                 'f.sid': '',
@@ -9759,19 +7994,16 @@ if (!textElement.querySelector('input[type="range"]')) {
                 return [];
             }
             const mediaInfo = data[0][1][0];
-            const mediaKey = mediaInfo[0]; // "AF1QipNwY8Mp-chWTwJv2DcZAiZXKeKFHNhMGI8QPj9Q"
-            const infoArray = mediaInfo[1]; // Array with 35 elements
+            const mediaKey = mediaInfo[0]; 
+            const infoArray = mediaInfo[1]; 
 
-            const fileName = infoArray[3]; // "IMG_2208.HEIC"
-            const size = infoArray[9]; // 560263
+            const fileName = infoArray[3]; 
+            const size = infoArray[9]; 
 
-            // Extract storage-related information (similar to GPTK)
-            const storageInfo = infoArray?.at(-1); // Last element contains storage info
+            const storageInfo = infoArray?.at(-1); 
             const takesUpSpace = storageInfo?.[0] === undefined ? null : storageInfo[0] === 1;
             const spaceTaken = storageInfo?.[1];
             const isOriginalQuality = storageInfo?.[2] === undefined ? null : storageInfo[2] === 2;
-
-            console.log(`📊 Extracted from API: fileName="${fileName}", size=${size} bytes, takesUpSpace=${takesUpSpace}, spaceTaken=${spaceTaken}, isOriginalQuality=${isOriginalQuality}`);
 
             const result = {
                 mediaKey: mediaKey,
@@ -9784,8 +8016,6 @@ if (!textElement.querySelector('input[type="range"]')) {
                 timestamp: infoArray[6],
                 timezoneOffset: infoArray[7]
             };
-
-            console.log(`✅ Final parsed result:`, result);
             return [result];
 
         } catch (error) {
@@ -9802,18 +8032,13 @@ if (!textElement.querySelector('input[type="range"]')) {
             }
 
             const itemData = data[0];
-
-            // Extract photo taken timestamp - upload timestamp not available in this API
-            const photoTakenTimestamp = itemData?.[3]; // When photo was taken
-
-            console.log(`🕐 Photo taken timestamp: ${photoTakenTimestamp}`);
-
+            const photoTakenTimestamp = itemData?.[3]; 
             return {
                 mediaKey: itemData?.[0],
                 dedupKey: itemData?.[11],
                 descriptionFull: itemData?.[1],
                 fileName: itemData?.[2],
-                timestamp: photoTakenTimestamp,           // Photo taken date
+                timestamp: photoTakenTimestamp,           
                 timezoneOffset: itemData?.[4],
                 size: itemData?.[5],
                 resWidth: itemData?.[6],
@@ -9826,7 +8051,6 @@ if (!textElement.querySelector('input[type="range"]')) {
                     coordinates: itemData?.[9]?.[0] || itemData?.[13]?.[0],
                     name: itemData?.[13]?.[2]?.[0]?.[1]?.[0]?.[0],
                 },
-                // Extract source information
                 source: this.parseSourceInfo(itemData?.[27])
             };
 
@@ -9869,19 +8093,10 @@ if (!textElement.querySelector('input[type="range"]')) {
     formatDateTime(timestamp, timezoneOffset) {
         try {
             if (!timestamp) return '';
-
-            // Convert timestamp to milliseconds if needed
             const timestampMs = timestamp < 10000000000 ? timestamp * 1000 : timestamp;
 
-            // Create date object from the timestamp
             let date = new Date(timestampMs);
-
-            // Apply timezone offset if provided
-            // DupeYak Duplicate Remover API provides timezone offset in milliseconds
-            // We need to adjust the UTC time to local time
             if (timezoneOffset !== undefined && timezoneOffset !== null) {
-                // timezoneOffset is in milliseconds (e.g., 10800000 = 3 hours)
-                // Subtract the offset to get the correct local time
                 date = new Date(timestampMs - timezoneOffset);
             }
 
@@ -9894,10 +8109,6 @@ if (!textElement.querySelector('input[type="range"]')) {
             const seconds = String(date.getSeconds()).padStart(2, '0');
 
             const formattedDate = `${day}.${month}.${year} ${hours}:${minutes}:${seconds}`;
-
-            // Debug logging to verify the conversion
-            console.log(`🕐 Timestamp conversion: ${timestamp} (${timezoneOffset}ms offset) → ${formattedDate}`);
-
             return formattedDate;
         } catch (error) {
             console.warn('Error formatting date:', error, 'timestamp:', timestamp, 'offset:', timezoneOffset);
@@ -9916,34 +8127,20 @@ if (!textElement.querySelector('input[type="range"]')) {
     }
 
     clearAuthCache() {
-        // Clear the authentication cache (useful if session changes)
         this.authDataCache = null;
-        //console.log('🧹 Cleared authentication cache');
     }
 
     async loadImageSizes(overlay) {
-        //console.log('📏 Setting up viewport-based image size loading...');
-
-        // Clean up any existing observer and timers
         this.cleanupViewportObserver();
-
-        // Set up intersection observer to watch for images entering viewport
         this.setupViewportObserver(overlay);
-
-        //console.log('📏 Viewport-based image size loading initialized');
     }
 
     setupViewportObserver(overlay) {
         const imageItems = overlay[0].querySelectorAll('.pc-image-item');
 
         if (imageItems.length === 0) {
-            //console.log('📏 No image items found, skipping viewport observer setup');
             return;
         }
-
-        console.log(`📏 Setting up viewport observer for ${imageItems.length} image items`);
-
-        // Create intersection observer with a small root margin to start loading slightly before visible
         this.viewportObserver = new IntersectionObserver((entries) => {
             entries.forEach(entry => {
                 const imageItem = entry.target;
@@ -9951,66 +8148,49 @@ if (!textElement.querySelector('input[type="range"]')) {
                 const imageSizeElement = imageItem.querySelector('.pc-image-size');
 
                 if (entry.isIntersecting) {
-                    // Image item entered viewport - start timer
-                    console.log(`👁️ Image item ${photoId} entered viewport`);
                     this.startViewportTimer(imageSizeElement, photoId);
                 } else {
-                    // Image item left viewport - cancel timer
-                    console.log(`👁️ Image item ${photoId} left viewport`);
                     this.cancelViewportTimer(photoId);
                 }
             });
         }, {
-            root: null, // Use viewport as root
-            rootMargin: '50px', // Start loading 50px before entering viewport
-            threshold: 0.1 // Trigger when 10% of element is visible
+            root: null, 
+            rootMargin: '50px', 
+            threshold: 0.1 
         });
 
-        // Observe all image items
         imageItems.forEach(imageItem => {
             this.viewportObserver.observe(imageItem);
         });
 
-        console.log(`📏 Viewport observer observing ${imageItems.length} image items`);
     }
 
     startViewportTimer(element, photoId) {
-        // Cancel any existing timer for this photo
         this.cancelViewportTimer(photoId);
 
         if (!element) {
             console.warn(`⚠️ No image size element found for photo ${photoId}`);
             return;
         }
-
-        // Check if size is already displayed in the UI
         const currentContent = element.innerHTML?.trim();
         if (currentContent &&
             (currentContent.includes('color: #666') || currentContent.includes('pc-size-info')) &&
             !currentContent.includes('Loading...')) {
-            console.log(`✅ Photo ${photoId} size already displayed, no timer needed`);
             return;
         }
 
-        // Check if size is already cached - if so, display immediately without timer
         if (this.imageSizeCache && this.imageSizeCache[photoId]) {
             const sizeInfo = this.imageSizeCache[photoId];
             this.displaySizeInfo(element, sizeInfo);
-            console.log(`💾 Photo ${photoId} size displayed immediately from cache:`, sizeInfo);
             return;
         }
 
-        console.log(`👁️ Photo ${photoId} entered viewport, starting 500ms timer...`);
-
-        // Set loading indicator
         element.textContent = 'Loading...';
         element.style.color = '#999';
         element.style.fontSize = '0.8em';
         element.style.fontStyle = 'italic';
 
-        // Start timer for 500ms
         const timer = setTimeout(async () => {
-            console.log(`⏰ 500ms timer expired for photo ${photoId}, loading size...`);
             await this.loadImageSizeForElement(element, photoId);
         }, 500);
 
@@ -10022,17 +8202,14 @@ if (!textElement.querySelector('input[type="range"]')) {
         if (timer) {
             clearTimeout(timer);
             this.viewportTimers.delete(photoId);
-            console.log(`⏹️ Cancelled viewport timer for photo ${photoId}`);
         }
     }
 
     async loadImageSizeForElement(element, photoId) {
-        // Check if size is already displayed in the UI
         const currentContent = element.innerHTML?.trim();
         if (currentContent &&
             (currentContent.includes('color: #666') || currentContent.includes('pc-size-info')) &&
             !currentContent.includes('Loading...')) {
-            console.log(`✅ Photo ${photoId} size already displayed, skipping...`);
             return;
         }
 
@@ -10040,21 +8217,16 @@ if (!textElement.querySelector('input[type="range"]')) {
         if (this.imageSizeCache && this.imageSizeCache[photoId]) {
             const sizeInfo = this.imageSizeCache[photoId];
             this.displaySizeInfo(element, sizeInfo);
-            console.log(`💾 Photo ${photoId} size loaded from cache:`, sizeInfo);
             return;
         }
 
-        // Check if we're already loading this image
         if (this.imageSizeLoaders.has(photoId)) {
-            console.log(`🔄 Already loading size for photo ${photoId}, skipping...`);
             return;
         }
 
-        // Mark as loading
         this.imageSizeLoaders.set(photoId, true);
 
         try {
-            // Find the media item - check both photos and videos arrays
             let mediaItem = this.photos.find(p => p.id === photoId);
             let mediaType = 'photo';
 
@@ -10064,68 +8236,44 @@ if (!textElement.querySelector('input[type="range"]')) {
             }
 
             if (!mediaItem) {
-                console.warn(`⚠️ Media item ${photoId} not found in photos or videos array`);
+                console.warn(` Media item ${photoId} not found in photos or videos array`);
                 element.textContent = '';
                 return;
             }
-
-            console.log(`📏 Loading size for ${mediaType} ${photoId}...`);
             const sizeInfo = await this.getOriginalImageSize(mediaItem);
 
             if (sizeInfo) {
                 this.displaySizeInfo(element, sizeInfo);
-                console.log(`✅ Loaded size for ${mediaType} ${photoId}:`, sizeInfo);
             } else {
                 element.innerHTML = '';
                 element.style.fontStyle = 'normal';
-                console.log(`⚠️ Could not get size for ${mediaType} ${photoId}`);
             }
         } catch (error) {
             console.warn(`❌ Error loading size for photo ${photoId}:`, error);
             element.innerHTML = '';
             element.style.fontStyle = 'normal';
         } finally {
-            // Remove from loading set
             this.imageSizeLoaders.delete(photoId);
         }
     }
 
     displaySizeInfo(element, sizeInfo) {
-        // Also update the photo label with resolution and date
         const imageItem = element.closest('.pc-image-item');
         const photoLabel = imageItem?.querySelector('p');
-
-        // Handle both old string format (for backward compatibility) and new object format
         if (typeof sizeInfo === 'string') {
-            // Old format - just display the size string
             element.innerHTML = `<div class="pc-size-info" style="color: #666; font-size: 0.9em; margin: 0; padding: 0;">(${sizeInfo})</div>`;
             return;
         }
-
-        // Create multi-line display format
         let html = '';
-
-        // Line 1: Resolution and taken date
         if (sizeInfo.resWidth && sizeInfo.resHeight && sizeInfo.timestamp) {
             const resolution = `${sizeInfo.resWidth}x${sizeInfo.resHeight}`;
-            // const takenDateTime = this.formatDateTime(sizeInfo.timestamp, sizeInfo.timezoneOffset);
             const fullDateTime = this.formatDateTime(sizeInfo.timestamp, sizeInfo.timezoneOffset);
             const takenDateTime = fullDateTime.split(" ")[0];
 
             html += `<span><span class="img-size text-[12px] bg-gradient rounded-[5px] px-[8px] py-[2px] border border-[#e2e8f0] dark-color mx-[1px]">${resolution}</span> <span class="text-[12px] bg-gradient rounded-[5px] px-[8px] py-[2px] border border-[#e2e8f0] dark-color mx-[1px]">${takenDateTime}</span></span>`;
         }
-
-        // Line 2: Upload date (if available and different from taken date)
-        // if (sizeInfo.uploadTimestamp && sizeInfo.uploadTimestamp !== sizeInfo.timestamp) {
-        //     const uploadDateTime = this.formatDateTime(sizeInfo.uploadTimestamp, sizeInfo.timezoneOffset);
-        //     html += `<div style="color: #333; font-size: 0.9em; margin: 0; padding: 0; text-align: center; font-weight: normal;">uploaded ${uploadDateTime}</div>`;
-        // }
-
-        // Line 3: File size and storage information
         let storageText = `(${sizeInfo.formatted}) `;
         let storageColor = '#666';
-
-        // Add storage notice based on whether photo takes up space
         if (sizeInfo.takesUpSpace === false) {
             storageText += `not taking space`;
             storageColor = '#28a745';
@@ -10136,17 +8284,13 @@ if (!textElement.querySelector('input[type="range"]')) {
         }
 
         html += `<div class="pc-size-info" style="color: ${storageColor}; font-size: 0.9em; margin: 0; padding: 0; text-align: center;">${storageText}</div>`;
-
-        // Replace photo label content and add our multi-line info
         if (photoLabel) {
             photoLabel.innerHTML = '';
-            photoLabel.style.display = 'none'; // Hide original label
+            photoLabel.style.display = 'none'; 
         }
 
         element.innerHTML = html;
         element.style.fontStyle = 'normal';
-
-        console.log(`📝 Updated photo info with multi-line format`);
     }
 
     cleanupViewportObserver() {
@@ -10154,43 +8298,28 @@ if (!textElement.querySelector('input[type="range"]')) {
         if (this.viewportObserver) {
             this.viewportObserver.disconnect();
             this.viewportObserver = null;
-            //console.log('🧹 Cleaned up viewport observer');
         }
 
         // Clear all timers
         this.viewportTimers.forEach((timer, photoId) => {
             clearTimeout(timer);
-            console.log(`🧹 Cleared timer for photo ${photoId}`);
         });
         this.viewportTimers.clear();
 
         // Clear loading set
         this.imageSizeLoaders.clear();
-
-        //console.log('🧹 Cleaned up all viewport timers and loading states');
     }
 
     convertToFullResolution(thumbnailUrl) {
         try {
-            // Convert thumbnail URL to full resolution
-            // From: https://photos.fife.usercontent.google.com/pw/...=w256-h192-no?authuser=0
-            // To:   https://photos.fife.usercontent.google.com/pw/...=w1200-h1200-no?authuser=0
-
-            // Extract base URL (everything before the =w part)
             const baseUrlMatch = thumbnailUrl.match(/^(.+)=w\d+-h\d+(-[^?]+)?(\?.*)?$/);
             if (baseUrlMatch) {
                 const baseUrl = baseUrlMatch[1];
-                const suffix = baseUrlMatch[2] || '-no'; // Keep the suffix (like -no, -k-rw-no)
+                const suffix = baseUrlMatch[2] || '-no'; 
                 const queryParams = baseUrlMatch[3] || '';
-
-                // Use a good resolution for comparison (not too large to avoid memory issues)
                 const fullResUrl = `${baseUrl}=w1200-h1200${suffix}${queryParams}`;
-
-                console.log(`Converted thumbnail to full-res: ${thumbnailUrl.substring(0, 80)}... -> ${fullResUrl.substring(0, 80)}...`);
                 return fullResUrl;
             }
-
-            // If pattern doesn't match, return original URL
             console.warn('Could not convert URL to full resolution, using original:', thumbnailUrl.substring(0, 100));
             return thumbnailUrl;
 
@@ -10201,20 +8330,15 @@ if (!textElement.querySelector('input[type="range"]')) {
     }
 }
 
-// Listen for messages from popup
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (message.action === 'purchaseCompleted') {
-        //console.log('💰 Purchase completed, updating paid status...');
         if (window.photoCleanerInstance) {
-            window.photoCleanerInstance.setPaidStatus(message.isPaidVersion);
         }
         sendResponse({ success: true });
     }
 
-    // Debug message handlers
     else if (message.action === 'debugStatus') {
         if (window.photoCleanerInstance) {
-            window.photoCleanerInstance.showDebugStatus();
             sendResponse({
                 success: true,
                 isPaidVersion: window.photoCleanerInstance.isPaidVersion,
@@ -10222,127 +8346,49 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                 dailySimilarGroupsLimit: window.photoCleanerInstance.dailySimilarGroupsLimit,
                 todayReAnalysisCount: window.photoCleanerInstance.todayReAnalysisCount,
                 dailyReAnalysisLimit: window.photoCleanerInstance.dailyReAnalysisLimit,
-                canShowMoreSimilarGroups: window.photoCleanerInstance.canShowMoreSimilarGroups(),
-                canPerformReAnalysis: window.photoCleanerInstance.canPerformReAnalysis(),
-                remainingGroupsToday: window.photoCleanerInstance.getRemainingGroupsToday(),
-                remainingReAnalysisToday: window.photoCleanerInstance.getRemainingReAnalysisToday()
             });
         } else {
             sendResponse({ success: false, error: 'Extension not initialized' });
         }
     }
-
-    else if (message.action === 'resetDailyLimits') {
-        if (window.photoCleanerInstance) {
-            window.photoCleanerInstance.resetDailyLimits();
-            sendResponse({ success: true, message: 'Daily limits reset' });
-        } else {
-            sendResponse({ success: false, error: 'Extension not initialized' });
-        }
-    }
-
-    else if (message.action === 'setGroupCount') {
-        if (window.photoCleanerInstance) {
-            window.photoCleanerInstance.setGroupCount(message.count);
-            sendResponse({ success: true, message: `Group count set to ${message.count}` });
-        } else {
-            sendResponse({ success: false, error: 'Extension not initialized' });
-        }
-    }
-
-    else if (message.action === 'setReAnalysisCount') {
-        if (window.photoCleanerInstance) {
-            window.photoCleanerInstance.setReAnalysisCount(message.count);
-            sendResponse({ success: true, message: `Re-analysis count set to ${message.count}` });
-        } else {
-            sendResponse({ success: false, error: 'Extension not initialized' });
-        }
-    }
-
-    else if (message.action === 'clearProStatus') {
-        if (window.photoCleanerInstance) {
-            window.photoCleanerInstance.clearProStatus();
-            sendResponse({ success: true, message: 'Pro status cleared' });
-        } else {
-            sendResponse({ success: false, error: 'Extension not initialized' });
-        }
-    }
-
     else if (message.action === 'setProStatus') {
         if (window.photoCleanerInstance) {
-            window.photoCleanerInstance.testPurchase();
             sendResponse({ success: true, message: 'Pro status set' });
         } else {
             sendResponse({ success: false, error: 'Extension not initialized' });
         }
     }
-
-    else if (message.action === 'paymentStatusUpdated') {
-        //console.log('💰 Payment status updated, refreshing from storage...');
-        if (window.photoCleanerInstance) {
-            window.photoCleanerInstance.loadPaidStatus();
-            sendResponse({ success: true });
-        } else {
-            sendResponse({ success: false, error: 'Extension not initialized' });
-        }
-    }
-
-    // Return true to indicate we'll send a response asynchronously
     return true;
 });
 
-// Initialize extension based on URL pattern
 function initializeExtension() {
     const currentUrl = window.location.href;
     const isGooglePhotos = currentUrl.includes('photos.google.com/');
     const isValidPage = isValidGooglePhotosPage(currentUrl);
 
-    //console.log('   Is DupeYak Duplicate Remover?:', isGooglePhotos);
-    //console.log('   Is Valid Page?:', isValidPage);
-
     if (!isGooglePhotos) {
-        //console.log('❌ Not on DupeYak Duplicate Remover, skipping extension initialization');
         return;
     }
-
-    // Clean up any existing instances
     cleanupExistingExtension();
 
     if (isValidPage) {
-        //console.log('✅ On DupeYak Duplicate Remover valid page (search/album/share) - initializing full functionality');
         window.photoCleanerInstance = new PhotoExtractor();
 
         // Add global debug helper
         window.pcDebug = {
-            status: () => window.photoCleanerInstance?.showDebugStatus(),
-            resetLimits: () => window.photoCleanerInstance?.resetDailyLimits(),
-            setGroupCount: (count) => window.photoCleanerInstance?.setGroupCount(count),
-            setReAnalysisCount: (count) => window.photoCleanerInstance?.setReAnalysisCount(count),
-            clearPro: () => window.photoCleanerInstance?.clearProStatus(),
-            setPro: () => window.photoCleanerInstance?.testPurchase(),
             instance: () => window.photoCleanerInstance
         };
-
-        //console.log('🛠️ Debug helper available: window.pcDebug');
-        //console.log('   Usage: pcDebug.status(), pcDebug.resetLimits(), pcDebug.setGroupCount(2), pcDebug.setReAnalysisCount(1), etc.');
     } else {
-        //console.log('ℹ️ On DupeYak Duplicate Remover but not valid page (search/album/share) - showing info message');
         showInfoMessage();
     }
 }
-
-// Clean up existing extension elements
 function cleanupExistingExtension() {
-    // Remove existing instance
     if (window.photoCleanerInstance) {
-        //console.log('🧹 Cleaning up existing extension instance');
         if (typeof window.photoCleanerInstance.closePanel === 'function') {
             window.photoCleanerInstance.closePanel();
         }
         window.photoCleanerInstance = null;
     }
-
-    // Remove any existing UI elements
     const elementsToRemove = [
         'photo-cleaner-panel',
         'pc-floating-status',
@@ -10359,16 +8405,11 @@ function cleanupExistingExtension() {
         }
     });
 }
-
-// Show info message for non-search DupeYak Duplicate Remover pages
-//convert to jquery
 function showInfoMessage() {
-    // Don't show if already exists
     if ($('#pc-info-message').length) {
         return;
     }
 
-    // Don't show if user has dismissed it in this session
     if (window.infoMessageDismissed) {
         return;
     }
@@ -10391,45 +8432,27 @@ function showInfoMessage() {
         </div>
     `);
      infoMessage.find('.new-Magnifier').attr('src', newMagnifierIconUrl);
-     //   panel.find('.play-img').attr('src', playIconUrl);
-    // Add close event
     infoMessage.find('.pc-info-close').on('click', function () {
         infoMessage.remove();
         window.infoMessageDismissed = true;
-        //console.log('ℹ️ Info message closed and dismissed for this session');
     });
-
-    // Append to body
     $('body').append(infoMessage);
-    //console.log('ℹ️ Info message displayed');
 }
-
-//convert to jquery
 
 $(document).ready(function () {
     initializeExtension();
 });
-
-// Re-initialize on navigation (for SPA behavior)
-//console.log('🔍 Setting up SPA navigation observer...');
 let lastUrl = location.href;
-
-// Enhanced URL change detection for PWA
 function setupUrlChangeDetection() {
-    // Method 1: MutationObserver for DOM changes
     const observer = new MutationObserver(() => {
         const url = location.href;
         if (url !== lastUrl) {
-            //console.log('🌐 URL changed via MutationObserver from:', lastUrl);
-            //console.log('                                    to:', url);
             lastUrl = url;
             handleUrlChange();
         }
     });
 
     observer.observe(document, { subtree: true, childList: true });
-
-    // Method 2: Intercept history API for PWA navigation
     const originalPushState = history.pushState;
     const originalReplaceState = history.replaceState;
 
@@ -10438,8 +8461,6 @@ function setupUrlChangeDetection() {
         setTimeout(() => {
             const url = location.href;
             if (url !== lastUrl) {
-                //console.log('🌐 URL changed via pushState from:', lastUrl);
-                //console.log('                              to:', url);
                 lastUrl = url;
                 handleUrlChange();
             }
@@ -10451,21 +8472,15 @@ function setupUrlChangeDetection() {
         setTimeout(() => {
             const url = location.href;
             if (url !== lastUrl) {
-                //console.log('🌐 URL changed via replaceState from:', lastUrl);
-                //console.log('                                  to:', url);
                 lastUrl = url;
                 handleUrlChange();
             }
         }, 100);
     };
-
-    // Method 3: Listen for popstate events (back/forward buttons)
     window.addEventListener('popstate', () => {
         setTimeout(() => {
             const url = location.href;
             if (url !== lastUrl) {
-                //console.log('🌐 URL changed via popstate from:', lastUrl);
-                //console.log('                               to:', url);
                 lastUrl = url;
                 handleUrlChange();
             }
@@ -10474,17 +8489,14 @@ function setupUrlChangeDetection() {
 }
 
 function handleUrlChange() {
-    // Debounce multiple rapid URL changes
     clearTimeout(window.urlChangeTimer);
     window.urlChangeTimer = setTimeout(() => {
-        //console.log('⏰ Processing URL change, calling initializeExtension...');
         initializeExtension();
-    }, 500); // Shorter delay for better responsiveness
+    }, 500); 
 }
 
 setupUrlChangeDetection();
 
-// Listen for messages from background script
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     if (request.action === 'getTempElementInfo') {
         const extractor = window.photoCleanerInstance;
@@ -10494,7 +8506,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         } else {
             sendResponse(null);
         }
-        return true; // Will respond asynchronously
+        return true; 
     }
 });
 
@@ -10506,19 +8518,9 @@ async function getUserData() {
     });
 }
 
-// Test hash computation when library loads
 window.addEventListener('load', () => {
     setTimeout(async () => {
         if (typeof window.phash !== 'undefined' && typeof window.ahash !== 'undefined') {
-            //console.log('✅ ImageHash library functions available:', {
-            //     phash: typeof window.phash,
-            //     ahash: typeof window.ahash,
-            //     dhash: typeof window.dhash,
-            //     whash: typeof window.whash,
-            //     ImageHash: typeof window.ImageHash
-            // });
-
-            // Test with a simple image
             try {
                 const canvas = document.createElement('canvas');
                 canvas.width = 100;
@@ -10530,9 +8532,7 @@ window.addEventListener('load', () => {
                 const img = new Image();
                 img.onload = async () => {
                     try {
-                        //console.log('🧪 Testing hash computation...');
                         const testHash = await window.phash(img, 8);
-                        //console.log('✅ Hash computation test successful:', testHash.toString());
                     } catch (error) {
                         console.error('❌ Hash computation test failed:', error);
                     }
@@ -10542,19 +8542,6 @@ window.addEventListener('load', () => {
                 console.error('❌ Failed to create test image:', error);
             }
         } else {
-            // //console.log('⚠️ ImageHash library functions not yet available - checking again...');
-            // Check what's actually loaded
-            // //console.log('🔍 Global scope check:', {
-            //     phash: typeof window.phash,
-            //     ahash: typeof window.ahash,
-            //     dhash: typeof window.dhash,
-            //     whash: typeof window.whash,
-            //     ImageHash: typeof window.ImageHash,
-            //     windowKeys: Object.keys(window).filter(k => k.includes('hash')),
-            // });
         }
-    }, 2000); // Reduced timeout for custom library
+    }, 2000);
 });
-
-// //console.log('🚀 Frontend Session Manager initialized - server replacement active');
-// //console.log('🚀 Frontend Session Manager initialized - server replacement active');
