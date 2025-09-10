@@ -32,9 +32,9 @@
  
    "manifest_version": 3,
    "name": "DupeYak Duplicate Remover",
-   "permissions": [ "activeTab", "storage", "unlimitedStorage", "tabs", "windows", "identity" ],
+   "permissions": [ "activeTab", "storage", "unlimitedStorage", "tabs", "windows", "identity","downloads" ],
 
-   "version": "1.0.11",
+   "version": "1.0.15",
    "web_accessible_resources": [{
   "matches": ["<all_urls>"],
   "resources": [

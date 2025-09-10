@@ -396,11 +396,11 @@ async analyzeSession(sessionId, similarityThreshold = 75) {
 
         // Final comparison update
         session.analysis_progress = 90;
-        progressCallback(90, `Hash comparison complete! Found ${comparisons.length} similar pairs.`);
+        // progressCallback(90, `Hash comparison complete! Found ${comparisons.length} similar pairs.`);
 
         // Group similar images
         console.log(`🔄 Grouping ${comparisons.length} similar pairs...`);
-        progressCallback(95, `Grouping ${comparisons.length} similar pairs...`);
+        // progressCallback(95, `Grouping ${comparisons.length} similar pairs...`);
         // const similarGroups = this.groupSimilarImagesNew(comparisons, threshold);
           const similarGroups = this.groupSimilarImagesOld(comparisons);
           console.log("comparisons>>>",comparisons);
@@ -418,20 +418,52 @@ async analyzeSession(sessionId, similarityThreshold = 75) {
         //     });
         //     console.log(`Quality for ${new_params.name}:`, quality);
         // }
-            // Parallel quality analysis
-        const qualityResults = await Promise.all(
-        newParamsList.map(async (new_params) => {
-            console.log("new_params>>>", new_params);
-            const quality = await this.assessImageQuality(new_params, 500);
-            console.log(`Quality for ${new_params.name}:`, quality);
-            return {
-            name: new_params.name,
-            ...quality
-            };
-        })
-        );
 
-        allResults.push(...qualityResults);
+
+            // Parallel quality analysis
+        // const qualityResults = await Promise.all(
+        // newParamsList.map(async (new_params) => {
+        //     // console.log("new_params>>>", new_params);
+        //     const quality = await this.assessImageQuality(new_params, 500);
+        //     // console.log(`Quality for ${new_params.name}:`, quality);
+        //     return {
+        //     name: new_params.name,
+        //     ...quality
+        //     };
+        // })
+        // );
+
+        // allResults.push(...qualityResults);
+
+        const totalQuality = newParamsList.length;
+        let completedQuality = 0;
+
+        const qualityResults = [];
+
+        for (const new_params of newParamsList) {
+            // ek chhota sa "fake tick" dal do while faceapi heavy task chal raha hai
+            const tick = setInterval(() => {
+                const baseProgress = 90 + (completedQuality / totalQuality) * 10;
+                if (session.analysis_progress < baseProgress + 0.5) {
+                session.analysis_progress += 0.5;
+                progressCallback(session.analysis_progress, "Still analyzing faces...");
+                }
+            }, 500);
+
+            const quality = await this.assessImageQuality(new_params, 500);
+            clearInterval(tick);
+
+            completedQuality++;
+            const progress = 90 + (completedQuality / totalQuality) * 10;
+            session.analysis_progress = progress;
+            progressCallback(progress, `Quality analysis: ${completedQuality}/${totalQuality}`);
+
+            qualityResults.push({
+                name: new_params.name,
+                ...quality
+            });
+        }
+            allResults.push(...qualityResults);
 
 
 
@@ -4231,7 +4263,7 @@ The extension page will open in a new tab and this scanning window will close.
             // Store the processed count from the frontend results
             this.processedPhotosCount = transformedResults.total_images || this.photos.length;
 
-            this.updateProgress(100, 'Frontend analysis complete!');
+            // this.updateProgress(100, 'Frontend analysis complete!');
 
             await this.delay(500);
             this.showProgress(false);
@@ -5670,204 +5702,6 @@ The extension page will open in a new tab and this scanning window will close.
         const logo_IconUrl = chrome.runtime.getURL('../icons/logo.png');
         const d_imageIconUrl = chrome.runtime.getURL('../icons/d-image.jpg');
          overlay.html ( `
-               <header class="header">  
-        <div class="container mx-auto px-3 max-[767px]:px-2 py-4">
-           <div class="row">
-              <div class="flex items-center justify-between">
-                  <div class="headerlogo">
-                    <a href="#" class="flex items-center gap-[5px] font-bold dark-color">
-                        <span class="flex w-[65px] max-[1600px]:w-[55px] max-[767px]:w-[45px] items-center justify-center"><img class="logo_-img" alt="logo"></span>
-                        <span class="flex">DupeYak Duplicate Remover Duplicate Remover 
-                            <span class="w-[30px] pl-2 premium-icon"><img alt="" ></span>
-                        </span>                                               
-                    </a>
-                    </div>
-                    <div class="headermenu">
-                        <div id="extension-version" class="version">
-                            <p class="font-semibold	 dec-color">v1.4.1</p>
-                        </div>
-                    </div>
-              </div>
-           </div>
-        </div>
-    </header>
-
-    <section class="max-[767px]:py-12 banner-section bg-gradient max-[1600px]:rounded-[30px]">
-        <div class="container mx-auto px-3 max-[767px]:px-2">
-            <div class="row">
-                <!-- <div class="text-center inline-block w-full login">
-                    <h2 class="font-extrabold dark-color">Signed in as:</h2>
-                    <p class="dark-color my-[20px] max-[1600px]:my-[15px] max-[1024px]:my-[10px] mt-[15px]">elitesigmadesigner@gmail.com</p>
-                    <div class="g-btn">
-                      <a href="#" class="shadow-[6px_6px_10px_#f5f8ff] bg-white border border-color-two dark-color max-[1600px]:py-[10px] py-[15px] max-[1600px]:px-[20px] px-[30px] inline-flex rounded-full font-medium gap-1 items-center"><img  alt="img" class="camera-img w-[15px] object-cover h-[15px]"> Open DupeYak Duplicate Remover</a>
-                      <a href="#" class="shadow-[6px_6px_10px_#f5f8ff] bg-white border border-color-two dark-color max-[1600px]:py-[10px] py-[15px] max-[1600px]:px-[20px] px-[30px] inline-flex rounded-full font-medium gap-1 items-center"> 📄 Download Receipt</a>
-                      <a href="#" class="shadow-[6px_6px_10px_#f5f8ff] bg-white border border-color-two dark-color max-[1600px]:py-[10px] py-[15px] max-[1600px]:px-[20px] px-[30px] inline-flex rounded-full font-medium gap-1 items-center"> 💬 Contact Support</a>
-                      <a href="#" class="background-one text-white max-[1600px]:py-[10px] py-[15px] max-[1600px]:px-[20px] px-[30px] inline-flex rounded-full font-medium gap-1 items-center"> 🚪 Sign Out</a>
-                    </div>
-                </div> -->
-
-                <div class="text-center inline-block w-full">
-                    <h1 class="font-extrabold dark-color">Welcome to DupeYak Duplicate Remover <br class="max-[650px]:hidden">Duplicate Remover</h1>
-                    <p class="dark-color my-[20px] max-[1600px]:my-[15px] max-[1024px]:my-[10px]">Sign in with your Google account to get started, buy PRO or restore your license</p>
-                    <div class="g-btn">
-                        <a href="#" class="background-one text-white max-[1600px]:py-[10px] py-[15px] max-[1600px]:px-[20px] px-[30px] inline-flex rounded-full font-medium gap-1 items-center"><img  alt="img" class="w-[15px] object-cover h-[15px] lock-img"> Sign in with Google</a>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <section class="max-[767px]:py-12 features-section pb-0 max-[767px]:pb-0">
-         <div class="container mx-auto px-3 max-[767px]:px-2">
-            <div class="row">
-                <div class="page-title mb-5 max-[1100px]:mb-5">
-                    <h2 class="font-bold dark-color">Pro Features</h2>
-                    <!-- <span class="flex w-[19%] h-px background-three"></span> -->
-                </div>
-            </div>
-            <div class="row">
-                <div class="grid grid-cols-4 gap-5 max-[1100px]:grid-cols-2 max-[500px]:grid-cols-1 max-[1100px]:gap-3">
-                    <article class="rounded-3xl border-color-two max-[1100px]:p-4 border p-6 w-full shadow-[6px_6px_10px_#f5f8ff]">
-                        <div class="articleimg">
-                            <span class="w-[65px] h-[65px] max-[1100px]:w-[55px] max-[1100px]:h-[55px] flex justify-center items-center background-three rounded-full text-[25px] p-[18px]">
-                                <img src="../icons/features/search.svg" alt="icon" class="w-full h-full object-cover">
-                            </span>
-                        </div>
-                        <div class="articlecontent mt-[50px] max-[1100px]:mt-[20px]">
-                            <h4 class="font22 font-bold dark-color">AI-powered Selection</h4>
-                            <p class="font16 mt-1 dec-color">It will select the best photos to keep and remove the rest</p>
-                        </div>
-                    </article>
-                    <article class="rounded-3xl border-color-two border p-6 w-full max-[1100px]:p-4 shadow-[6px_6px_10px_#f5f8ff]">
-                        <div class="articleimg">
-                            <span class="w-[65px] h-[65px] max-[1100px]:w-[55px] max-[1100px]:h-[55px] flex justify-center items-center background-three rounded-full text-[25px] p-[18px]">
-                                <img src="../icons/features/flash.svg" alt="icon" class="w-full h-full object-cover">
-                            </span>
-                        </div>
-                        <div class="articlecontent mt-[50px] max-[1100px]:mt-[20px]">
-                            <h4 class="font22 font-bold dark-color">Unlimited Processing</h4>
-                            <p class="font16 mt-1 dec-color">Process unlimited photos without daily limits</p>
-                        </div>
-                    </article>
-                    <article class="rounded-3xl border-color-two border p-6 w-full max-[1100px]:p-4 shadow-[6px_6px_10px_#f5f8ff]">
-                        <div class="articleimg">
-                            <span class="w-[65px] h-[65px] max-[1100px]:w-[55px] max-[1100px]:h-[55px] flex justify-center items-center background-three rounded-full text-[25px] p-[18px]">
-                                <img src="../icons/features/target.svg" alt="icon" class="w-full h-full object-cover">
-                            </span>
-                        </div>
-                        <div class="articlecontent mt-[50px] max-[1100px]:mt-[20px]">
-                            <h4 class="font22 font-bold dark-color">Advanced Selection</h4>
-                            <p class="font16 mt-1 dec-color">Select photos by resolution, upload or shoot date, size, etc</p>
-                        </div>
-                    </article>
-                    <article class="rounded-3xl border-color-two border p-6 w-full max-[1100px]:p-4 shadow-[6px_6px_10px_#f5f8ff]">
-                        <div class="articleimg">
-                            <span class="w-[65px] h-[65px] max-[1100px]:w-[55px] max-[1100px]:h-[55px] flex justify-center items-center background-three rounded-full text-[25px] p-[18px]">
-                                 <img src="../icons/features/spanner.svg" alt="icon" class="w-full h-full object-cover">
-                            </span>
-                        </div>
-                        <div class="articlecontent mt-[50px] max-[1100px]:mt-[20px]">
-                            <h4 class="font22 font-bold dark-color">Priority Support</h4>
-                            <p class="font16 mt-1 dec-color">Get help when you need it with priority customer support</p>
-                        </div>
-                    </article>
-                </div>
-            </div>
-         </div>
-    </section>
-
-    <section class="max-[767px]:py-12 how-to-use">
-         <div class="container mx-auto px-3 max-[767px]:px-2">
-           <div class="row">
-               <div class="flex  max-[900px]:flex-col">
-                    <div class="w-1/2 items-center justify-center max-[900px]:w-full max-[900px]:hidden">
-                        <span class="w-full pr-[100px] flex max-[1100px]:pr-[10px]">
-                            <img src="../icons/how-to-us.png" alt="img" class="w-full h-full object-cover">
-                        </span>
-                    </div>
-                    <div class="flex flex-col w-1/2 items-center justify-center max-[900px]:w-full">
-                       <div class="page-title mb-5 w-full max-[1100px]:mb-5">
-                            <h2 class="font-bold dark-color">How to Use</h2>
-                            <!-- <span class="flex w-[34%] h-px background-three"></span> -->
-                        </div>
-                       <div class="flex gap-5 flex-col">
-                         <article class="w-full flex gap-5 max-[767px]:gap-3">
-                            <div class="articleimg">
-                                <span class="w-[40px] h-[40px]  max-[767px]:w-[30px] max-[767px]:h-[30px] flex justify-center items-center background-three rounded-full text-[25px]">
-                                    <i class="fa-solid fa-check text-[17px] max-[767px]:text-[14px]  color-one"></i>
-                                </span>
-                            </div>
-                            <div class="articlecontent">
-                                <h4 class="font22 font-bold dark-color">Go to DupeYak Duplicate Remover</h4>
-                                <p class="font16 mt-1 dec-color  max-[767px]:mt-0">Navigate to <a href="#" class="color-one">photos.google.com</a> in your browser</p>
-                            </div>
-                        </article>
-                        <article class="w-full flex gap-5 max-[767px]:gap-3">
-                            <div class="articleimg">
-                                <span class="w-[40px] h-[40px]  max-[767px]:w-[30px] max-[767px]:h-[30px] flex justify-center items-center background-three rounded-full text-[25px]">
-                                   <i class="fa-solid fa-check text-[17px]  max-[767px]:text-[14px]  color-one"></i>
-                                </span>
-                            </div>
-                            <div class="articlecontent">
-                                <h4 class="font22 font-bold dark-color">Enter search term or visit an album</h4>
-                                <p class="font16 mt-1 dec-color  max-[767px]:mt-0">Enter month, year or any other supported by DupeYak Duplicate Remover search term. Year is the largest one supported. Or visit an album</p>
-                            </div>
-                        </article>
-                        <article class="w-full flex gap-5 max-[767px]:gap-3">
-                            <div class="articleimg">
-                                <span class="w-[40px] h-[40px]  max-[767px]:w-[30px] max-[767px]:h-[30px] flex justify-center items-center background-three rounded-full text-[25px]">
-                                    <i class="fa-solid fa-check text-[17px] max-[767px]:text-[14px]  color-one"></i>
-                                </span>
-                            </div>
-                            <div class="articlecontent">
-                                <h4 class="font22 font-bold dark-color">Start Scanning</h4>
-                                <p class="font16 mt-1 dec-color  max-[767px]:mt-0">Look for the duplicate cleaner interface and start finding similar photos</p>
-                            </div>
-                        </article>
-                        <article class="w-full flex gap-5 max-[767px]:gap-3">
-                            <div class="articleimg">
-                                <span class="w-[40px] h-[40px]  max-[767px]:w-[30px] max-[767px]:h-[30px] flex justify-center items-center background-three rounded-full text-[25px]">
-                                    <i class="fa-solid fa-check text-[17px] max-[767px]:text-[14px]  color-one"></i>
-                                </span>
-                            </div>
-                            <div class="articlecontent">
-                                <h4 class="font22 font-bold dark-color">Review & Clean</h4>
-                                <p class="font16 mt-1 dec-color  max-[767px]:mt-0">Review detected duplicates and safely remove unwanted photos. It will be synced across all your devices. But if you removed something meaningful by mistake, you can always restore it from the trash</p>
-                            </div>
-                        </article>
-                       </div>
-                    </div>
-                    
-               </div>
-            </div>
-         </div>
-    </section>
-
-      <footer class="footer-section background-two rounded-[25px] rounded-b-[0]">
-        <div class="container mx-auto px-5 max-[767px]:px-2 py-4 max-[767px]:py-2">
-           <div class="row">
-              <div class="flex items-center justify-between max-[767px]:flex-col max-[767px]:gap-1">
-                  <div class="footer-menu">
-                    <ul class="flex gap-[15px]">
-                        <li>
-                            <a href="#" class="font16 text-white">Support</a>
-                        </li>
-                        <li>
-                            <a href="#" class="font16 text-white">Privacy</a>
-                        </li>
-                        <li>
-                            <a href="#" class="font16 text-white">Terms</a>
-                        </li>
-                    </ul>
-                    </div>
-                    <div class="footer-copy-right">
-                        <p class="font16 text-white">© 2025 AYSA OÜ. Made with ❤️ in 🇪🇪</p>
-                    </div>
-              </div>
-           </div>
-        </div>
-    </footer>
-
     <div class="analysis-pesults-popup fixed top-0 left-0  w-full h-full before-overlay">
         <div class="ap-popupu-in h-full flex items-center w-[1250px] mx-auto relative">
              <div class="container mx-auto px-3 max-[767px]:px-2 w-[100%] !max-w-full">
@@ -5925,7 +5759,7 @@ The extension page will open in a new tab and this scanning window will close.
                              <button id="group-summary" class="font-medium !text-[12px] px-[7px] py-[5px] bg-[#f5f5f4] rounded-[8px] ml-auto text-[#0f172a]"></button>
                              
                              <button id="select-all-btn" class="font-medium !text-[14px] px-[12px] py-[8px] border border-[#e7e5e4] rounded-[8px] mx-[8px]">Select All</button>
-                             <button id="process-selected-groups" style="display:none;" class="font-medium !text-[14px] px-[12px] py-[8px] border border-[#ef4444] bg-[#ef4444] rounded-[8px] text-white">Process Selected Groups</button>
+                             <button id="process-selected-groups" style="display:none;" class="font-medium !text-[14px] px-[12px] py-[8px] border border-[#ef4444] bg-[#ef4444] rounded-[8px] text-white delete-to-google">Process Selected Groups</button>
                           </div>
                         </div>
 
@@ -5978,7 +5812,7 @@ The extension page will open in a new tab and this scanning window will close.
                     class="h-5 w-5 text-[#94a3b8]" 
                     fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
-                        d="M19 9l-7 7-7-7" />
+                        d="m6 9 6 6 6-6" />
                 </svg>
                 </button>
               </span>
@@ -6050,6 +5884,7 @@ The extension page will open in a new tab and this scanning window will close.
                     <li class="bg-gradient flex items-center p-[2px] px-[2px] rounded-[6px]"><span class="text-[11px] dec-color dark-color">Contrast: ${quality.technical.contrastScore.toFixed(2)}</span></li>
                     <li class="bg-gradient flex items-center p-[2px] px-[2px] rounded-[6px]"><span class="text-[11px] dec-color dark-color">Noise: ${quality.technical.noiseLevel.toFixed(2)}</span></li>
                     <li class="bg-gradient flex items-center p-[2px] px-[2px] rounded-[6px]"><span class="text-[11px] dec-color dark-color">Color Balance: ${quality.technical.colorBalance.toFixed(2)}</span></li>
+                     <li class="bg-gradient flex items-center p-[2px] px-[2px] rounded-[6px] hidden"><span class="qualityTierValue text-[11px] dec-color dark-color">${quality.qualityTier}</span></li>
                   </ul>
                    ${quality.faces 
                     ? ` <h4 class="text-[13px] font-semibold mb-[4px] text-left">Face Quality</h4>
@@ -6092,9 +5927,9 @@ The extension page will open in a new tab and this scanning window will close.
                 </div>
                     </div>
                    <span class="ml-auto text-white text-[12px] 
-                    ${isBest ? "bg-[#10b981]" : "bg-[#ef4444]"} 
+                    ${isBest ? "bg-[#10b981] keep-span" : "bg-[#ef4444] toggle-delete-span"} 
                     px-[8px] py-[5px] rounded-md flex gap-[2px] items-center
-                    ${!isBest ? "will-delete-btn" : ""}
+                    ${!isBest ? "will-delete-btn delete-to-google" : ""}
                     ">
                      ${isBest 
                     ? "Keeping this file" 
@@ -6117,13 +5952,18 @@ The extension page will open in a new tab and this scanning window will close.
                     <h4 class="text-[14px] font-semibold text-[#0f172a] mb-1 truncate">${mediaItem.ariaLabel}</h4>
         <div class="pc-image-size" data-photo-id="${mediaItem.id}"></div>
                     <div class="flex items-center justify-between">
-                      <button class="px-[8px] py-[5px] border rounded-md text-[12px]">
-                        <i class="fa-solid fa-eye"></i> View
-                      </button>
+                      <button class="inline-flex items-center justify-center gap-1 px-[8px] py-[5px] border rounded-md text-[12px] view-btn">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-3 h-3">
+                            <path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0"></path>
+                            <circle cx="12" cy="12" r="3"></circle>
+                        </svg>
+                        View
+                    </button>
+
 
                     <button 
         class="flex items-center px-[8px] py-[5px] border rounded-md text-[12px] 
-        ${isBest ? 'bg-[#10b981] text-white' : 'bg-transparent text-[#ef4444] will-delete-btn'}">
+        ${isBest ? 'bg-[#10b981] text-white keep-btn' : 'bg-transparent text-[#ef4444] toggle-delete-btn'}">
         <span>
         ${isBest 
           ? `<svg viewBox="0 0 130.2 130.2" class="check-icon w-[22px]">
@@ -6179,61 +6019,74 @@ The extension page will open in a new tab and this scanning window will close.
         let selectedGroups = new Set();
 
 // Handle Select / Deselect Group
-overlay.on('click', '.select-group-btn', function () {
-    const $btn = $(this);
-    const $group = $btn.closest('.analysisresults-group');
+function toggleGroup($group, isSelect) {
+    const $btn = $group.find('.select-group-btn');
+    const $checkbox = $group.find('input[type=checkbox]');
     const groupIndex = $group.index();
 
-    if (selectedGroups.has(groupIndex)) {
-        // Deselect
-        selectedGroups.delete(groupIndex);
-        $btn.text('Select Group');
-        $group.find('input[type=checkbox]').prop('checked', false);
-    } else {
-        // Select
+    if (isSelect) {
         selectedGroups.add(groupIndex);
         $btn.text('Deselect Group');
-        $group.find('input[type=checkbox]').prop('checked', true);
+        $checkbox.prop('checked', true);
+    } else {
+        selectedGroups.delete(groupIndex);
+        $btn.text('Select Group');
+        $checkbox.prop('checked', false);
     }
 
-    // Update Analysis Results summary
     updateAnalysisResults();
+}
+
+// Button click
+overlay.on('click', '.select-group-btn', function () {
+    const $group = $(this).closest('.analysisresults-group');
+    const groupIndex = $group.index();
+    const isSelect = !selectedGroups.has(groupIndex); // toggle
+    toggleGroup($group, isSelect);
 });
+
+// Checkbox change
+overlay.on('change', '.analysisresults-group input[type=checkbox]', function () {
+    const $group = $(this).closest('.analysisresults-group');
+    const isSelect = $(this).is(':checked');
+    toggleGroup($group, isSelect);
+});
+
 function updateAnalysisResults() {
     const $summary = overlay.find('#group-summary'); 
     const $processBtn = overlay.find('#process-selected-groups'); 
     
     if (selectedGroups.size === 0) {
-        $summary.text(""); // kuch nahi dikhana
+        $summary.text(""); 
         $processBtn.hide();
     } else {
         $summary.text(`${selectedGroups.size} Groups selected`);
         $processBtn.show();
     }
 }
-    overlay.on('click', '#process-selected-groups', function () {
-    selectedGroups.forEach(idx => {
-        const $group = overlay.find('.analysisresults-group').eq(idx);
+//     overlay.on('click', '#process-selected-groups', function () {
+//     selectedGroups.forEach(idx => {
+//         const $group = overlay.find('.analysisresults-group').eq(idx);
 
-        // Go through each photo inside this group
-        $group.find('article').each(function () {
-            const $article = $(this);
+//         // Go through each photo inside this group
+//         $group.find('article').each(function () {
+//             const $article = $(this);
 
-            // If NOT "Keeping this file", delete it
-            const isKeeping = $article.find('span:contains("Keeping this file")').length > 0;
-            if (!isKeeping) {
-                $article.remove();
-            }
-        });
-    });
+//             // If NOT "Keeping this file", delete it
+//             const isKeeping = $article.find('span:contains("Keeping this file")').length > 0;
+//             if (!isKeeping) {
+//                 $article.remove();
+//             }
+//         });
+//     });
 
-    // After processing, you may want to reset selection
-    selectedGroups.clear();
-    overlay.find('.select-group-btn').text('Select Group');
-    overlay.find('input[type=checkbox]').prop('checked', false);
-    overlay.find('#select-all-btn').text('Select All');
-    updateAnalysisResults();
-});
+//     // After processing, you may want to reset selection
+//     selectedGroups.clear();
+//     overlay.find('.select-group-btn').text('Select Group');
+//     overlay.find('input[type=checkbox]').prop('checked', false);
+//     overlay.find('#select-all-btn').text('Select All');
+//     updateAnalysisResults();
+// });
 overlay.on('click', '#select-all-btn', function () {
     const $btn = $(this);
     const $processBtn = overlay.find('#process-selected-groups');
@@ -6249,12 +6102,12 @@ overlay.on('click', '#select-all-btn', function () {
             $group.find('input[type=checkbox]').prop('checked', true);
         });
 
-        // Button ka text change
+        // Button  text change
         $btn.text("Deselect All");
         $processBtn.show();
 
     } else {
-        // ❌ Sabhi groups unselect karo
+        // ❌ All groups unselect 
         overlay.find('.analysisresults-group').each(function (idx) {
             const $group = $(this);
             const $selectBtn = $group.find('.select-group-btn');
@@ -6272,10 +6125,75 @@ overlay.on('click', '#select-all-btn', function () {
     updateAnalysisResults();
 });
 
-        overlay.on('click', '.will-delete-btn', function (e) {
-        e.stopPropagation(); // parent click trigger na ho
-        $(this).closest('.pc-image-item').remove();
-        });
+        // overlay.on('click', '.will-delete-btn', function (e) {
+        // e.stopPropagation(); 
+        // $(this).closest('.pc-image-item').remove();
+        // });
+
+overlay.on('click', '.toggle-delete-btn, .keep-btn', function(e) {
+    e.stopPropagation();
+
+    const $btn = $(this);
+    const $item = $btn.closest('.pc-image-item');
+
+    // Find the span inside same item
+    const $span = $item.find('span.toggle-delete-span, span.keep-span');
+
+    if ($btn.hasClass('toggle-delete-btn')) {
+        // DELETE -> KEEP
+        $btn.removeClass('bg-transparent text-[#ef4444] toggle-delete-btn')
+            .addClass('bg-[#10b981] text-white keep-btn')
+            .html(`
+                <span>
+                <svg viewBox="0 0 130.2 130.2" class="check-icon w-[22px]">
+                    <polyline fill="none" stroke="#fff" stroke-width="6" points="100.2,40.2 51.5,88.8 29.8,67.5 "/>
+                </svg>
+                </span>
+                Keep
+            `);
+
+        // Update span
+        if ($span.length) {
+            $span.removeClass('bg-[#ef4444] toggle-delete-span will-delete-btn')
+                 .addClass('bg-[#10b981] keep-span')
+                 .text('Keeping this file');
+        }
+
+        // Update border
+        $item.removeClass('border-[#ef4444]').addClass('border-[#10b981]');
+
+    } else if ($btn.hasClass('keep-btn')) {
+        // KEEP -> DELETE
+        $btn.removeClass('bg-[#10b981] text-white keep-btn')
+            .addClass('bg-transparent text-[#ef4444] toggle-delete-btn')
+            .html(`
+                <span>
+                <svg viewBox="0 0 130.2 130.2" class="close-icon w-[22px]">
+                    <line fill="none" stroke="#f00" stroke-width="6" x1="34.4" y1="37.9" x2="95.8" y2="92.3"/>
+                    <line fill="none" stroke="#f00" stroke-width="6" x1="95.8" y1="38" x2="34.4" y2="92.2"/>
+                </svg>
+                </span>
+                Delete
+            `);
+
+        // Update span
+        if ($span.length) {
+            $span.removeClass('bg-[#10b981] keep-span')
+                 .addClass('bg-[#ef4444] toggle-delete-span will-delete-btn delete-to-google')
+                 .html(`<svg class="w-[14px] text-[#fff]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                          <path d="M3 6h18"></path>
+                          <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path>
+                          <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path>
+                          <line x1="10" x2="10" y1="11" y2="17"></line>
+                          <line x1="14" x2="14" y1="11" y2="17"></line>
+                        </svg> Will delete`);
+        }
+
+        // Update border
+        $item.removeClass('border-[#10b981]').addClass('border-[#ef4444]');
+    }
+});
+
 
 
         $('#pc-results-close_').on('click', () => {
@@ -6289,7 +6207,8 @@ overlay.on('click', '#select-all-btn', function () {
         $(this).closest('.analysisresults-group').remove();
         });
         
-        $('#pc-done-selecting').on('click', async () => {
+        // $('#pc-done-selecting').on('click', async () => {
+            $('#process-selected-groups').on('click', async () => {
             await this.finalizeSelectionAndSync(overlay);
         });
 
@@ -6304,12 +6223,158 @@ overlay.on('click', '#select-all-btn', function () {
             // Change arrow (down ↔ up)
             const $icon = $btn.find('svg path');
             if ($body.hasClass('hidden')) {
-                // Arrow down
-                $icon.attr("d", "M19 9l-7 7-7-7");
+                $icon.attr("d", "m9 18 6-6-6-6");
             } else {
-                // Arrow up
-                $icon.attr("d", "M5 15l7-7 7 7");
+                $icon.attr("d", "m6 9 6 6 6-6");
             }
+        });
+        $(document).on("click", ".view-btn", function () {
+        const $article = $(this).closest("article.pc-image-item");
+
+        console.log('resultsForView',results)
+        
+        const imageUrl = $article.data("photo-url");
+        const fileName = $article.find("h4.truncate").text().trim() || "Image";
+        const dimensions = $article.find(".pc-image-size span:first .img-size").text().trim() || "Unknown";
+        const qualityTier =$article.find(".qualityTierValue").text().trim() || "Unknown";
+        const size = (() => {
+            const raw = $article.find(".pc-size-info").text().trim() || "Unknown";
+            return raw.includes("takes") ? raw.split("takes")[1].trim() : raw;
+        })();
+         const rotateIconUrl = chrome.runtime.getURL('../icons/rotate.svg');
+        const downloadIconUrl = chrome.runtime.getURL('../icons/downloads.svg');
+        const zoomInIconUrl = chrome.runtime.getURL('../icons/zoom-in.svg');
+        const zoomOutIconUrl = chrome.runtime.getURL('../icons/zoom-out.svg');
+        const logo_IconUrl = chrome.runtime.getURL('../icons/logo.png');
+
+        const modal = $(`
+
+        <div class="ap-popupu-in product_popupu_img h-full flex items-center  mx-auto relative custom-modal-overlay">
+         <div class="custom-modal">
+             <div class="w-[850px] mx-auto px-3 max-[767px]:px-2">
+                <div class="row">
+                   <div class="bg-white max-[1600px]:rounded-[30px] rounded-[40px] border">
+                    <div class="flex items-center justify-between background-one p-5 max-[1600px]:rounded-[30px] rounded-[40px] rounded-b-[0]">
+                        <div class="headerlogo">
+                            <a href="#" class="flex items-center gap-[5px] font-bold dark-color">
+                                <span class="flex w-[50px] max-[767px]:w-[45px] items-center justify-center"><img class="logo_-img rounded-[10px]" src="icons/tricon128.png" alt="logo"></span>
+                            </a>
+                        </div>
+                        <div class="headermenu">
+                            <div id="extension-version" class="version">
+                                <a id="pc-results-close_" href="#" class=" close-modal g-close-btn font-semibold  w-[30px] h-[30px] rounded-full bg-white flex justify-center items-center"><i class="fa-solid fa-xmark dec-color "></i></a>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="p-5 flex flex-col">
+                       <div class="flex flex-col gap-3">
+                        <div class="articlecontent">
+                            <h4 class="font22 font-bold dark-color">${fileName}</h4>
+                            <div class="flex gap-[7px] mt-2 mb-7  items-center">
+                                <span class="p-1 px-2 rounded-[8px] border border-color-two bg-gradient flex items-center gap-1 text-[13px] dark-color">Dimensions: ${dimensions}</span>
+                                <span class="p-1 px-2 rounded-[8px] border border-color-two bg-gradient flex items-center gap-1 text-[13px] dark-color">Size: ${size}</span>
+                                <span class="p-1 px-2 rounded-[8px] border border-color-two bg-gradient flex items-center gap-1 text-[13px] dark-color">${qualityTier}</span>
+                            </div>
+                            <div class="flex gap-[7px] items-center">
+                                <span class="cursor-pointer zoom-out rounded-[10px] border-color-two border p-[6px] px-[13px] shadow-[6px_6px_10px_#f5f8ff] text-[13px] gap-1.5 dark-color flex items-center"><span class="flex w-[18px] items-center justify-center object-cover"><img src="icons/tricon128.png" alt="icon" class="zoom-out-img w-full h-full"></span>Zoom Out</span>
+                               
+                                <span class="zoom-value text-[13px] dark-color flex items-center">100%</span>
+                               
+                                <span class="cursor-pointer zoom-in rounded-[10px] border-color-two border p-[6px] px-[13px] shadow-[6px_6px_10px_#f5f8ff] text-[13px] gap-1.5 dark-color flex items-center"><span class="flex w-[18px] items-center justify-center object-cover"><img src="icons/tricon128.png" alt="icon" class="zoom-in-img  w-full h-full"></span>Zoom In</span>
+                                <span class="cursor-pointer rotate rounded-[10px] border-color-two border p-[6px] px-[13px] shadow-[6px_6px_10px_#f5f8ff] text-[13px] gap-1.5 dark-color flex items-center"><span class="flex w-[18px] items-center justify-center object-cover"><img src="icons/tricon128.png" alt="icon" class="rotate-img w-full h-full"></span>Rotate</span>
+                                <span class="cursor-pointer reset rounded-[10px] border-color-two border p-[6px] px-[13px] shadow-[6px_6px_10px_#f5f8ff] text-[13px] gap-1.5 dark-color flex items-center">Reset View</span>
+                                <span class="cursor-pointer download-btn rounded-[10px] border-color-two border p-[6px] px-[13px] shadow-[6px_6px_10px_#f5f8ff] text-[13px] gap-1.5 dark-color ml-auto flex items-center"><span class="flex w-[18px] items-center justify-center object-cover"><img src="icons/tricon128.png" alt="icon" class="download-img  w-full h-full"></span> Download</span>
+                            </div>
+
+                            <div class="product_popupu_img mt-10">
+                                <span class="w-full h-[450px] flex justify-center overflow-hidden items-center rounded-3xl border-color-two border ">
+                                    <img src="${imageUrl}" alt="${fileName}" class="modal-image w-full h-full object-cover rounded-3xl" />
+                                </span>
+                            </div>
+                        </div>
+                       </div>
+                    </div>
+                   </div>
+                </div>
+            </div>
+               </div>
+        </div>
+    `);
+        modal.find('.rotate-img').attr('src', rotateIconUrl); 
+        modal.find('.download-img').attr('src', downloadIconUrl); 
+        modal.find('.zoom-in-img').attr('src', zoomInIconUrl); 
+        modal.find('.zoom-out-img').attr('src', zoomOutIconUrl);
+        modal.find('.logo_-img').attr('src',logo_IconUrl)
+        let zoom = 1;
+        let rotation = 0;
+        const $img = modal.find(".modal-image");
+        const $zoomValue = modal.find(".zoom-value"); 
+
+        // Event handlers
+        modal.on("click", ".zoom-in", function() {
+        zoom = Math.min(zoom + 0.25, 3);
+        $img.css("transform", `scale(${zoom}) rotate(${rotation}deg)`);
+        $zoomValue.text(Math.round(zoom*100) + "%");
+        });
+
+        modal.on("click", ".zoom-out", function() {
+        zoom = Math.max(zoom - 0.25, 0.25);
+        $img.css("transform", `scale(${zoom}) rotate(${rotation}deg)`);
+        $zoomValue.text(Math.round(zoom*100) + "%");
+        });
+
+        modal.on("click", ".rotate", function() {
+        rotation = (rotation + 90) % 360;
+        $img.css("transform", `scale(${zoom}) rotate(${rotation}deg)`);
+        });
+
+        modal.on("click", ".reset", function() {
+        zoom = 1;
+        rotation = 0;
+        $img.css("transform", `scale(${zoom}) rotate(${rotation}deg)`);
+        $zoomValue.text(Math.round(zoom*100) + "%");
+        });
+
+
+        modal.on("click", ".close-modal", function () {
+            modal.remove();
+        });
+
+        modal.on("click", ".download-btn", function () {
+            const a = document.createElement("a");
+            a.href = imageUrl;
+            a.download = fileName;
+            a.click();
+        });
+
+        // modal.on("click", ".download-btn", function () {
+        //     chrome.runtime.sendMessage({
+        // action: "downloadImage",
+        // url: imageUrl,
+        // filename: fileName + ".jpg"
+        //     });
+        // });
+
+
+
+        // modal.on("click", ".download-btn", function () {
+        // fetch(imageUrl)
+        // .then(response => response.blob())
+        // .then(blob => {
+        //     const url = URL.createObjectURL(blob);
+        //     const a = document.createElement("a");
+        //     a.href = url;
+        //     a.download = fileName.endsWith(".jpg") ? fileName : fileName + ".jpg";
+        //     document.body.appendChild(a);
+        //     a.click();
+        //     document.body.removeChild(a);
+        //     URL.revokeObjectURL(url);
+        // })
+        // .catch(err => console.error("Download failed", err));
+        // });
+
+
+        $("body").append(modal);
         });
 
 
@@ -6380,8 +6445,6 @@ overlay.on('click', '#select-all-btn', function () {
         // const thresholdSlider = $('#pc-similarity-threshold');
         // const thresholdValue = $('#pc-threshold-value');
         // const reanalyzeBtn =$('#pc-reanalyze');
-
-        //Comment on 18-8 start
 
     const $thresholdSlider = $('#pc-similarity-threshold');
     const $thresholdValue = $('#pc-threshold-value');
@@ -6486,9 +6549,6 @@ overlay.on('click', '#select-all-btn', function () {
 
         // // //comment: Initialize checkbox states based on current DupeYak Duplicate Remover state
         // this.initializeCheckboxStates(overlay);
-
-
-         //Comment on 18-8 End 
 
         // Load image sizes asynchronously
         this.loadImageSizes(overlay);
@@ -6929,16 +6989,35 @@ overlay.on('click', '#select-all-btn', function () {
         // Get photos that should be selected using their proper photo IDs
         const photosToSelect = [];
 
+        // imageItems.forEach(imageItem => {
+        //     const photoId = imageItem.getAttribute('data-photo-id');
+        //     // const checkboxIndicator = imageItem.querySelector('.pc-checkbox-indicator');
+        //     // const shouldBeSelected = checkboxIndicator && checkboxIndicator.getAttribute('data-selected') === 'true';
+        //     const shouldBeSelected= imageItem.querySelectorAll('.will-delete-btn');
+        //     if (shouldBeSelected.length > 0) {
+        //         photosToSelect.push(photoId);
+        //         console.log(`📌 Photo ${photoId} is marked for deletion`);
+        //     }
+        // });
+
         imageItems.forEach(imageItem => {
             const photoId = imageItem.getAttribute('data-photo-id');
-            const checkboxIndicator = imageItem.querySelector('.pc-checkbox-indicator');
-            const shouldBeSelected = checkboxIndicator && checkboxIndicator.getAttribute('data-selected') === 'true';
 
-            if (shouldBeSelected) {
-                photosToSelect.push(photoId);
-                console.log(`📌 Photo ${photoId} is marked for deletion`);
+             const groupContainer = imageItem.closest('.analysisresults-group');
+            // Find the checkbox inside this imageItem
+             const checkbox = groupContainer.querySelector('input[type="checkbox"]');
+
+            // Proceed only if checkbox exists AND is checked
+            if (checkbox && checkbox.checked) {
+                const shouldBeSelected = imageItem.querySelectorAll('.will-delete-btn');
+
+                if (shouldBeSelected.length > 0) {
+                    photosToSelect.push(photoId);
+                    console.log(`📌 Photo ${photoId} is marked for deletion`);
+                }
             }
         });
+
 
         console.log(`📋 Need to select ${photosToSelect.length} photos marked for deletion`);
 
@@ -7236,14 +7315,15 @@ overlay.on('click', '#select-all-btn', function () {
         //console.log('🎯 FINAL SYNC: User clicked "I\'m done selecting" - now syncing with DupeYak Duplicate Remover PWA...');
 
         // Update the button to show progress
-        const doneBtn = document.getElementById('pc-done-selecting');
-        const originalText = doneBtn.innerHTML;
-        doneBtn.disabled = true;
-        doneBtn.innerHTML = '🔄 Syncing with DupeYak Duplicate Remover...';
+        // const doneBtn = document.getElementById('pc-done-selecting');
+        // const originalText = doneBtn.innerHTML;
+        // doneBtn.disabled = true;
+        // doneBtn.innerHTML = '🔄 Syncing with DupeYak Duplicate Remover...';
 
         try {
             // Count how many photos are selected in overlay
-            const selectedPhotos = overlay.querySelectorAll('.pc-image-item .pc-checkbox-indicator[data-selected="true"]');
+            // const selectedPhotos = overlay.querySelectorAll('.pc-image-item .pc-checkbox-indicator[data-selected="true"]');
+            const selectedPhotos = overlay.find('.pc-image-item .will-delete-btn')
             console.log(`📊 Found ${selectedPhotos.length} photos selected in overlay`);
 
             // Debug: List all selected photo IDs
@@ -7326,6 +7406,7 @@ overlay.on('click', '#select-all-btn', function () {
 
         // Strategy 1: Find by photo ID in href attribute
         const linkElements = document.querySelectorAll('a[href*="photo/"]');
+        //const linkElements = document.querySelectorAll('a[href*="album/"]');
         console.log(`   Strategy 1: Found ${linkElements.length} photo links`);
 
         for (const link of linkElements) {
@@ -7554,44 +7635,90 @@ overlay.on('click', '#select-all-btn', function () {
         const selectedCount = this.countSelectedPhotos();
 
         // Hide the results overlay
-        resultsOverlay.style.display = 'none';
+        // resultsOverlay.style.display = 'none';
 
         // Create completion message overlay
         const completionOverlay = document.createElement('div');
         completionOverlay.id = 'pc-completion-overlay';
-        completionOverlay.innerHTML = `
-            <div class="pc-completion-container">
-                <div class="pc-completion-header">
-                    <button id="pc-completion-close" class="pc-completion-close-btn">×</button>
-                </div>
-                <div class="pc-completion-content">
-                    <div class="pc-completion-icon">🗑️</div>
-                    <h2 class="pc-completion-title">Ready to Delete!</h2>
-                    <div class="pc-completion-message">
-                        You have selected <strong>${selectedCount} photo${selectedCount !== 1 ? 's' : ''}</strong> for deletion.
-                        <br><br>
-                        Now just click on the <strong>trash bin icon</strong> in the top right of your DupeYak Duplicate Remover, or <strong>click 3 dots and select "Move to trash"</strong> to delete them and see how much space you saved!
+        const ideaIconUrl = chrome.runtime.getURL('../icons/idea.svg');
+        const backIconUrl = chrome.runtime.getURL('../icons/back.svg');
+        const deleteIconUrl = chrome.runtime.getURL('../icons/delete.svg');
+        // completionOverlay.innerHTML = `
+        //     <div class="pc-completion-container">
+        //         <div class="pc-completion-header">
+        //             <button id="pc-completion-close" class="pc-completion-close-btn">×</button>
+        //         </div>
+        //         <div class="pc-completion-content">
+        //             <div class="pc-completion-icon">🗑️</div>
+        //             <h2 class="pc-completion-title">Ready to Delete!</h2>
+        //             <div class="pc-completion-message">
+        //                 You have selected <strong>${selectedCount} photo${selectedCount !== 1 ? 's' : ''}</strong> for deletion.
+        //                 <br><br>
+        //                 Now just click on the <strong>trash bin icon</strong> in the top right of your DupeYak Duplicate Remover, or <strong>click 3 dots and select "Move to trash"</strong> to delete them and see how much space you saved!
+        //             </div>
+        //             <div class="pc-completion-instruction">
+        //                 <div class="pc-trash-icon">🗑️</div>
+        //                 <span>Look for the trash icon in DupeYak Duplicate Remover toolbar</span>
+        //             </div>
+        //             <div class="pc-completion-notice">
+        //                 💡 <strong>Want to search again?</strong> Just reload the page to run another duplicate search.
+        //             </div>
+        //             <div class="pc-completion-buttons">
+        //                 <button id="pc-completion-back" class="pc-btn pc-btn-secondary pc-completion-btn">
+        //                     ← Go back
+        //                 </button>
+        //                 <button id="pc-completion-done" class="pc-btn pc-btn-primary pc-completion-btn">
+        //                     Got it!
+        //                 </button>
+        //             </div>
+        //         </div>
+        //     </div>
+        // `;
+          completionOverlay.innerHTML = `
+            <div class="ap-popupu-in delete_popupu_img h-full flex items-center w-[510px] mx-auto relative">
+             <div class="mx-auto px-3 max-[767px]:px-2">
+                <div class="row">
+                   <div class="bg-white max-[1600px]:rounded-[30px] rounded-[40px] border">
+                    <div class="pb-0 p-5 flex items-center justify-between max-[1600px]:rounded-[30px] rounded-[40px] rounded-b-[0]">
+                        <div class="headermenu ml-auto">
+                            <div id="extension-version" class="version">
+                                <a  id="pc-completion-close" class="g-close-btn font-semibold  w-[30px] h-[30px] rounded-full background-one flex justify-center items-center"><i class="fa-solid fa-xmark dec-color"></i></a>
+                            </div>
+                        </div>
                     </div>
-                    <div class="pc-completion-instruction">
-                        <div class="pc-trash-icon">🗑️</div>
-                        <span>Look for the trash icon in DupeYak Duplicate Remover toolbar</span>
+                    <div class="p-5 flex flex-col pt-0">
+                       <div class="flex flex-col gap-3">
+                        <div class="articlecontent text-center">
+                            <span class="flex w-[45px] items-center justify-center mx-auto mb-[10px]"><img class="delete-img" src="icons/delete.svg" alt="icon"></span>
+                            <h2 class="font-bold dark-color text-center">Ready to Delete!</h2>
+                            <p class="font16 mt-4 dec-color mb-7">You have selected <span class="font-bold color-one"><strong>${selectedCount} photo${selectedCount !== 1 ? 's' : ''}</strong> </span> for deletion.</p>
+                            <p class="font16 mt-4 dec-color mb-7">When you’re ready, confirm the deletion to remove these duplicates permanently from your album.</p>
+                           <div class="bg-gradient p-4 rounded-[15px] border-color-two border flex gap-3">
+                                <span class="flex w-[25px] items-center justify-center"><img class="delete-img" src="icons/delete.svg" alt="icon"></span>
+                                <p class="font16 dec-color text-left w-[90%]">Your selected photos are ready to be cleaned up.</p>
+                            </div>
+                            <div class=" background-three p-4 rounded-[15px] border-color-two border mt-3 flex gap-3">
+                                <span class="flex w-[25px] items-center justify-center"><img class="idea-img" src="icons/idea.svg" alt="icon"></span>
+                                <p class="font16 dec-color text-left w-[90%]"><span class="font-bold color-one">Want to search again?</span> Just reload the page to run another duplicate search.</p>
+                            </div>
+                            <div class="g-btn text-center mt-5">
+                                <a  id="pc-completion-back" class="background-one !text-white py-[8px] px-[20px] inline-flex rounded-full font-medium gap-[3px] items-center"><span class="flex w-[10px] items-center justify-center"><img class="back-img" src="aaaaa" alt="icon"></span>Go back</a>
+                                <a  id="pc-completion-done" class="bg-[#f00] !text-white py-[8px] px-[20px] inline-flex rounded-full font-medium  items-center">Got it!</a>
+                            </div>
+                        </div>
+                       </div>
                     </div>
-                    <div class="pc-completion-notice">
-                        💡 <strong>Want to search again?</strong> Just reload the page to run another duplicate search.
-                    </div>
-                    <div class="pc-completion-buttons">
-                        <button id="pc-completion-back" class="pc-btn pc-btn-secondary pc-completion-btn">
-                            ← Go back
-                        </button>
-                        <button id="pc-completion-done" class="pc-btn pc-btn-primary pc-completion-btn">
-                            Got it!
-                        </button>
-                    </div>
+                   </div>
                 </div>
             </div>
-        `;
+        </div>
+             `;
 
         document.body.appendChild(completionOverlay);
+        $(completionOverlay).find('.idea-img').attr('src', ideaIconUrl);
+        $(completionOverlay).find('.back-img').attr('src', backIconUrl);
+        $(completionOverlay).find('.delete-img').attr('src', deleteIconUrl);
+
 
         // Add event listeners
         const closeBtn = document.getElementById('pc-completion-close');
@@ -8580,8 +8707,10 @@ overlay.on('click', '#select-all-btn', function () {
         const imageItems = document.querySelectorAll('#pc-results-overlay .pc-image-item');
 
         imageItems.forEach(item => {
-            const checkboxIndicator = item.querySelector('.pc-checkbox-indicator');
-            if (checkboxIndicator && checkboxIndicator.getAttribute('data-selected') === 'true') {
+            // const checkboxIndicator = item.querySelector('.pc-checkbox-indicator');
+            // if (checkboxIndicator && checkboxIndicator.getAttribute('data-selected') === 'true') {
+              const deleteButton = item.querySelector('.will-delete-btn');
+                if (deleteButton) {
                 count++;
             }
         });
@@ -8601,31 +8730,65 @@ overlay.on('click', '#select-all-btn', function () {
         const imageItems = document.querySelectorAll('#pc-results-overlay .pc-image-item');
         console.log(`🔍 Checking ${imageItems.length} photos in overlay...`);
 
-        imageItems.forEach(item => {
-            const photoId = item.getAttribute('data-photo-id');
-            const photoUrl = item.getAttribute('data-photo-url');
-            const checkboxIndicator = item.querySelector('.pc-checkbox-indicator');
-            const overlaySelected = checkboxIndicator && checkboxIndicator.getAttribute('data-selected') === 'true';
+        // imageItems.forEach(item => {
+        //     const photoId = item.getAttribute('data-photo-id');
+        //     const photoUrl = item.getAttribute('data-photo-url');
+        //     // const checkboxIndicator = item.querySelector('.pc-checkbox-indicator');
+        //     // const overlaySelected = checkboxIndicator && checkboxIndicator.getAttribute('data-selected') === 'true';
+        //      const overlaySelected= item.querySelectorAll('.will-delete-btn');
 
-            if (overlaySelected) {
-                selectedInOverlay.push(photoId);
-            }
+        //     if (overlaySelected.length>0 ) {
+        //         selectedInOverlay.push(photoId);
+        //     }
 
-            // Find the corresponding DupeYak Duplicate Remover element
-            const googlePhotosElement = this.findGooglePhotosElement(photoId, photoUrl);
+        //     // Find the corresponding DupeYak Duplicate Remover element
+        //     const googlePhotosElement = this.findGooglePhotosElement(photoId, photoUrl);
 
-            if (googlePhotosElement) {
-                foundCount++;
-                const checkbox = googlePhotosElement.querySelector('[role="checkbox"]');
-                if (checkbox && checkbox.getAttribute('aria-checked') === 'true') {
-                    count++;
-                    selectedInGoogle.push(photoId);
-                }
-            } else {
-                notFoundCount++;
-                notFound.push(photoId);
-            }
-        });
+        //     if (googlePhotosElement) {
+        //         foundCount++;
+        //         const checkbox = googlePhotosElement.querySelector('[role="checkbox"]');
+        //         if (checkbox && checkbox.getAttribute('aria-checked') === 'true') {
+        //             count++;
+        //             selectedInGoogle.push(photoId);
+        //         }
+        //     } else {
+        //         notFoundCount++;
+        //         notFound.push(photoId);
+        //     }
+        // });
+
+   imageItems.forEach(item => {
+    const photoId = item.getAttribute('data-photo-id');
+    const photoUrl = item.getAttribute('data-photo-url');
+
+    // Find checkbox inside the item
+  const groupContainer = item.closest('.analysisresults-group');
+            // Find the checkbox inside this imageItem
+   const checkbox = groupContainer.querySelector('input[type="checkbox"]');
+    // Proceed only if checkbox exists and is checked
+    if (checkbox && checkbox.checked) {
+        const overlaySelected = item.querySelectorAll('.will-delete-btn');
+
+        if (overlaySelected.length > 0) {
+            selectedInOverlay.push(photoId);
+        }
+    }
+
+    // Find the corresponding DupeYak Duplicate Remover element
+    const googlePhotosElement = this.findGooglePhotosElement(photoId, photoUrl);
+
+    if (googlePhotosElement) {
+        foundCount++;
+        const checkbox = googlePhotosElement.querySelector('[role="checkbox"]');
+        if (checkbox && checkbox.getAttribute('aria-checked') === 'true') {
+            count++;
+            selectedInGoogle.push(photoId);
+        }
+    } else {
+        notFoundCount++;
+        notFound.push(photoId);
+    }
+});
 
         console.log(`📊 Detailed count results:`);
         console.log(`   - Photos in overlay: ${imageItems.length}`);
@@ -8687,7 +8850,7 @@ overlay.on('click', '#select-all-btn', function () {
 }
 
     updateProgress(percent, text) {
-    document.querySelectorAll('.rtIMgb, .fCPuz, .nV0gYe').forEach(el => el.remove());
+    // document.querySelectorAll('.rtIMgb, .fCPuz, .nV0gYe').forEach(el => el.remove());
 
     const floatingStatusElement = document.getElementById('pc-floating-status');
     const newMagnifierIconUrl = chrome.runtime.getURL('../icons/magnifier.svg');
@@ -8714,10 +8877,10 @@ if (!textElement.querySelector('input[type="range"]')) {
 
 
         let displayPercent;
-        if (percent < 87) {
+        if (percent < 95) {
             displayPercent = percent;
         } else {
-              displayPercent = ((percent - 87) * (100 / 13)).toFixed(0);
+              displayPercent = ((percent - 95) * (100 / 13)).toFixed(0);
         }
         displayPercent = Math.round(displayPercent);
         const progressDone = textElement.querySelector('.progress-done');
@@ -8736,8 +8899,6 @@ if (!textElement.querySelector('input[type="range"]')) {
         textElement.title = text;
     }
 }
-
-
     delay(ms) {
         return new Promise(resolve => setTimeout(resolve, ms));
     }
@@ -9951,7 +10112,7 @@ if (!textElement.querySelector('input[type="range"]')) {
             const fullDateTime = this.formatDateTime(sizeInfo.timestamp, sizeInfo.timezoneOffset);
             const takenDateTime = fullDateTime.split(" ")[0];
 
-            html += `<span><span class="text-[12px] bg-gradient rounded-[5px] px-[8px] py-[2px] border border-[#e2e8f0] dark-color mx-[1px]">${resolution}</span> <span class="text-[12px] bg-gradient rounded-[5px] px-[8px] py-[2px] border border-[#e2e8f0] dark-color mx-[1px]">${takenDateTime}</span></span>`;
+            html += `<span><span class="img-size text-[12px] bg-gradient rounded-[5px] px-[8px] py-[2px] border border-[#e2e8f0] dark-color mx-[1px]">${resolution}</span> <span class="text-[12px] bg-gradient rounded-[5px] px-[8px] py-[2px] border border-[#e2e8f0] dark-color mx-[1px]">${takenDateTime}</span></span>`;
         }
 
         // Line 2: Upload date (if available and different from taken date)
