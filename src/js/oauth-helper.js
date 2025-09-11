@@ -1,5 +1,4 @@
-// OAuth Helper for DupeYak Duplicate Remover
-// Handles OAuth flow with polling approach to avoid browser redirect restrictions
+
 console.log('✅ oauth-helper.js loaded');
 class OAuthHelper {
     
@@ -10,7 +9,7 @@ class OAuthHelper {
     }
 
     // Start OAuth flow with polling approach
-    async startAuthFlow() {
+    async launchAuthFlow() {
         try {
             console.log('🔐 Starting OAuth flow with polling approach...');
 
@@ -36,11 +35,11 @@ class OAuthHelper {
             chrome.tabs.create({ url: authUrl });
 
             // Step 3: Start polling for results
-            const result = await this.pollForAuthResult(sessionId);
+            const result = await this.waitForAuthResult(sessionId);
 
             if (result.success) {
                 console.log('✅ OAuth completed successfully');
-                return await this.handleOAuthSuccess(result.userInfo);
+                return await this.handleAuthSuccess(result.userInfo);
             } else {
                 throw new Error(result.error || 'OAuth failed');
             }
@@ -52,7 +51,7 @@ class OAuthHelper {
     }
 
     // Poll worker for OAuth results
-    async pollForAuthResult(sessionId) {
+    async waitForAuthResult(sessionId) {
         console.log('🔄 Starting to poll for OAuth results...');
 
         for (let attempt = 0; attempt < this.maxPollAttempts; attempt++) {
@@ -110,7 +109,7 @@ class OAuthHelper {
     }
 
     // Handle successful OAuth
-    async handleOAuthSuccess(userInfo) {
+    async handleAuthSuccess(userInfo) {
         try {
             console.log('🔄 Processing OAuth success...');
 
@@ -147,7 +146,7 @@ class OAuthHelper {
     }
 
     // Get stored user info
-    async getUserInfo() {
+    async fetchUserProfile() {
         return new Promise((resolve) => {
             chrome.storage.local.get(['userEmail', 'userId', 'authTimestamp'], (result) => {
                 if (result.userEmail && result.userId) {
@@ -165,7 +164,7 @@ class OAuthHelper {
 
     // Check if user is authenticated
     async isAuthenticated() {
-        const userInfo = await this.getUserInfo();
+        const userInfo = await this.fetchUserProfile();
         return userInfo !== null;
     }
 

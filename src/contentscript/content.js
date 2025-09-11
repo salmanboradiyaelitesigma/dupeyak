@@ -1812,9 +1812,6 @@ class PhotoExtractor {
     }
     clearPreviousResults() {
         this.photos = [];
-        this.videos = [];
-        this.videosFound = 0;
-
         this.scanComplete = false;
 
         this.photoScrollPositions.clear();
@@ -2088,7 +2085,7 @@ class PhotoExtractor {
         }
         const countElement = document.getElementById('pc-photo-count');
         if (countElement) {
-            if (this.photos.length === 0 && this.videos.length === 0) {
+            if (this.photos.length === 0) {
                 countElement.innerHTML = 'Scanning';
             } else {
             }
@@ -2600,35 +2597,6 @@ class PhotoExtractor {
                 );
             }
             if (imageUrl) {
-                if (isVideo) {
-                    const existingVideo = this.videos.find(v =>
-                        v.element === linkElement ||
-                        (imageUrl && v.url === imageUrl)
-                    );
-
-                    if (!existingVideo) {
-                        const videoId = this.generatePhotoId(linkElement || element, index);
-                        const currentScrollPosition = this.getCurrentScrollPosition();
-
-                        this.videos.push({
-                            id: videoId,
-                            url: imageUrl,
-                            element: linkElement || element,
-                            ariaLabel: ariaLabel || 'Unknown',
-                            href: linkElement ? linkElement.getAttribute('href') || '' : '',
-                            processed: false,
-                            scrollPosition: currentScrollPosition
-                        });
-                        this.videosFound++;
-                        this.photoScrollPositions.set(videoId, currentScrollPosition);
-
-                        if (!silent) {
-                        }
-                    }
-                    continue; 
-                }
-            }
-            if (imageUrl) {
                 const existingPhoto = this.photos.find(p =>
                     p.url === imageUrl ||
                     (linkElement && p.element === linkElement)
@@ -2691,7 +2659,7 @@ class PhotoExtractor {
 
         const countElement = document.getElementById('pc-photo-count');
         if (countElement) {
-            if (this.photos.length === 0 && this.videos.length === 0 && !this.isProcessing) {
+                if (this.photos.length === 0 && !this.isProcessing) {
                 countElement.innerHTML = 'Idle';
             } else {
             }
@@ -2706,8 +2674,7 @@ class PhotoExtractor {
         const countElement = document.getElementById('pc-photo-count');
         if (countElement) {
             const photoCount = this.processedPhotosCount || this.photos.length;
-            const videoCount = this.videos.length;
-            countElement.innerHTML = `✅ ${photoCount} photos processed<br/>✅ ${videoCount} videos processed`;
+            countElement.innerHTML = `✅ ${photoCount} photos processed<br/>`;
             countElement.className = '';
             countElement.style.color = '#4CAF50';
             countElement.style.fontStyle = 'normal';
@@ -2726,8 +2693,8 @@ class PhotoExtractor {
     }
 
     async analyzePhotos() {
-        if (this.photos.length < 2 && this.videos.length < 2) {
-            alert('Need at least 2 photos or videos to analyze');
+             if (this.photos.length < 2 ) {
+            alert('Need at least 2 photos  to analyze');
             return;
         }
 
@@ -2739,7 +2706,7 @@ class PhotoExtractor {
         try {
             const sessionId = this.frontendSessionManager.createSession();
 
-            this.updateProgress(5, 'Processing photos and videos with frontend hash computation...');
+            this.updateProgress(5, 'Processing photos  with frontend hash computation...');
             await this.uploadImagesToSession(sessionId);
 
             this.updateProgress(85, 'Running frontend similarity analysis...');
@@ -3200,12 +3167,6 @@ class PhotoExtractor {
     async uploadImageToSession(sessionId, imageId, base64Data) {
         let mediaItem = this.photos.find(p => p.id === imageId);
         let mediaType = 'photo';
-
-        if (!mediaItem) {
-            mediaItem = this.videos.find(v => v.id === imageId);
-            mediaType = 'video';
-        }
-
         if (mediaItem) {
             mediaItem.capturedImageData = base64Data;
         }
@@ -3651,7 +3612,7 @@ class PhotoExtractor {
     }
 
 
-    getTempElementInfo(elementId) {
+    fetchTempElementData(elementId) {
         const element = document.getElementById(elementId);
         if (element) {
             const rect = element.getBoundingClientRect();
@@ -3695,7 +3656,6 @@ class PhotoExtractor {
         const lockIconUrl = chrome.runtime.getURL('../icons/icon/lock.svg');
         const cameraIconUrl = chrome.runtime.getURL('../icons/icon/camera.svg');
         const logo_IconUrl = chrome.runtime.getURL('../icons/logo.png');
-        const d_imageIconUrl = chrome.runtime.getURL('../icons/d-image.jpg');
          overlay.html ( `
     <div class="analysis-pesults-popup fixed top-0 left-0  w-full h-full before-overlay">
         <div class="ap-popupu-in h-full flex items-center w-[1250px] mx-auto relative">
@@ -3761,21 +3721,15 @@ class PhotoExtractor {
                      <div class="p-[24px] px-[0px]">
                                 ${(() => {
                             const photoGroups = [];
-                            const videoGroups = [];
+                            // const videoGroups = [];
                             results.similar_groups.forEach((group, index) => {
                                 const firstItemId = group.image_ids[0];
-                                const isVideoGroup = this.videos.some(v => v.id === firstItemId);
-
-                                if (isVideoGroup) {
-                                videoGroups.push({ ...group, originalIndex: index });
-                                } else {
                                 photoGroups.push({ ...group, originalIndex: index });
-                                }
                             });
 
                             
     const generateArticles = (groups, mediaType) => {
-        const mediaArray = mediaType === "video" ? this.videos : this.photos;
+        const mediaArray = this.photos;
 
         return groups.map((group, gIndex) => {
         const similarityPercent = Math.round(group.similarity_score * 100);
@@ -3979,7 +3933,6 @@ class PhotoExtractor {
 
                             return `
                                 <div class="">
-                                ${generateArticles(videoGroups, 'video')}
                                 ${generateArticles(photoGroups, 'photo')}
                                 </div>
                             `;
@@ -3997,7 +3950,6 @@ class PhotoExtractor {
         overlay.find('.lock-img').attr('src',lockIconUrl)
         overlay.find('.camera-img').attr('src',cameraIconUrl)
         overlay.find('.logo_-img').attr('src',logo_IconUrl)
-        overlay.find('.d_img-img').attr('src',d_imageIconUrl)
         
         $('body').append(overlay);
 
@@ -5843,14 +5795,8 @@ if (!textElement.querySelector('input[type="range"]')) {
         try {
             let mediaItem = this.photos.find(p => p.id === photoId);
             let mediaType = 'photo';
-
             if (!mediaItem) {
-                mediaItem = this.videos.find(v => v.id === photoId);
-                mediaType = 'video';
-            }
-
-            if (!mediaItem) {
-                console.warn(` Media item ${photoId} not found in photos or videos array`);
+                console.warn(` Media item ${photoId} not found in photos array`);
                 element.textContent = '';
                 return;
             }
@@ -6111,10 +6057,10 @@ function handleUrlSwitch() {
 setupUrlWatcher();
 
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-    if (request.action === 'getTempElementInfo') {
+    if (request.action === 'fetchTempElementData') {
         const extractor = window.photoCleanerInstance;
         if (extractor) {
-            const elementInfo = extractor.getTempElementInfo(request.elementId);
+            const elementInfo = extractor.fetchTempElementData(request.elementId);
             sendResponse(elementInfo);
         } else {
             sendResponse(null);
