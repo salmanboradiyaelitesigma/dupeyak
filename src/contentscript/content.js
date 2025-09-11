@@ -1402,9 +1402,8 @@ class PhotoExtractor {
         this.init();
     }
     async init() {
-        // await this.loadPaidStatus();
-        this.initializeFaceDetection();
-        this.initializeFullPanel();
+        this.initFaceScan();
+        this.initMainPanel();
     }
     refreshPanel() {
         // Remove existing panel and recreate it
@@ -1412,7 +1411,7 @@ class PhotoExtractor {
         if (existingPanel.length) {
             existingPanel.remove();
         }
-        this.initializeFullPanel();
+        this.initMainPanel();
     }
     async openExtensionPage() {
 
@@ -1429,7 +1428,7 @@ class PhotoExtractor {
             alert('Failed to open extension page. Please manually open the extension from your browser toolbar to purchase.');
         }
     }
-    async initializeFaceDetection() {
+    async initFaceScan() {
         try {
             if (typeof faceapi === 'undefined') {
                 await this.waitForFaceApi();
@@ -1461,7 +1460,7 @@ class PhotoExtractor {
         });
     }
 
-    initializeFullPanel() {
+    initMainPanel() {
          if ($('#photo-cleaner-panel').length) {
             return;
         }
@@ -1471,9 +1470,9 @@ class PhotoExtractor {
             triggerButton.remove();
         }
 
-        const viewportCheck = this.checkViewportSize();
+        const viewportCheck = this.checkViewportBounds();
         if (!viewportCheck.adequate) {
-            this.showViewportResizeMessage(viewportCheck);
+            this.showResizeNotice(viewportCheck);
             return;
         }
         const newMagnifierIconUrl = chrome.runtime.getURL('../icons/magnifier.svg');
@@ -1600,7 +1599,7 @@ class PhotoExtractor {
     if (!this.isProcessing) {
         this.isPaused = false;
         this.resumeFromPause = false;
-        this.startFullWorkflow();
+        this.launchMainFlow();
         this.togglePlayPauseUI(true); 
     } else {
         if (this.isPaused) {
@@ -1630,12 +1629,11 @@ class PhotoExtractor {
 
             if (isFullWorkflow) {
                 setTimeout(() => {
-                    this.startFullWorkflow();
+                    this.launchMainFlow();
                 }, 1000);
             } else {
-                // This is after a page reload for scanning only - start scanning
                 setTimeout(() => {
-                    this.startScanning();
+                    this.beginScanFlow();
                 }, 1000);
             }
         } else {
@@ -1665,7 +1663,7 @@ class PhotoExtractor {
         if (statusElement.length) {
             statusElement.remove();
         }
-        this.showWindowWarning(false);
+        this.showWindowAlert(false);
         this.disconnectObserver();
 
         this.photos = [];
@@ -1693,7 +1691,7 @@ class PhotoExtractor {
                 if (mutation.addedNodes.length > 0) {
                     clearTimeout(this.updateTimeout);
                     this.updateTimeout = setTimeout(() => {
-                        this.updatePhotoCount();
+                        this.refreshImageCount();
                     }, 1000);
                 }
             });
@@ -1716,7 +1714,7 @@ class PhotoExtractor {
         }
     }
 
-    async startScanning() {
+    async beginScanFlow() {
         if (this.isProcessing && !this.resumeFromPause) return;
         const urlParams = new URLSearchParams(window.location.search);
         const isAutoRestart = urlParams.has('pc_scan_start');
@@ -1781,7 +1779,7 @@ class PhotoExtractor {
 
         this.isProcessing = true;
         this.isScanning = true; 
-        this.showWindowWarning(true); 
+        this.showWindowAlert(true); 
         this.scanComplete = false; 
         this.scrollAttempts = 0;
 
@@ -1797,7 +1795,7 @@ class PhotoExtractor {
 
        scanBtn.find('.btn-label').text('⏳ Scanning...');
 
-        await this.scanWithScroll();
+        await this.scanWithScrollFlow();
 
         this.disconnectObserver();
 
@@ -1805,10 +1803,10 @@ class PhotoExtractor {
             scanBtn.find('.btn-label').text('🔍 Scan for Duplicates').parent().prop('disabled', false);
             this.isProcessing = false;
             this.isScanning = false; 
-            this.showWindowWarning(false); 
+            this.showWindowAlert(false); 
         } else {
             this.isScanning = false;
-            this.showWindowWarning(false); 
+            this.showWindowAlert(false); 
         }
 
     }
@@ -1829,11 +1827,11 @@ class PhotoExtractor {
         chrome.storage.local.remove(['analysisResults', 'photos', 'timestamp']);
 
         if (!this.isScanning) {
-            this.updatePhotoCount();
+            this.refreshImageCount();
         }
 
         if (!this.isScanning) {
-            this.showProgress(false);
+            this.showProgressBar(false);
         }
 
         const scanBtn = $('#pc-scan');
@@ -1848,10 +1846,10 @@ class PhotoExtractor {
         }
     }
 
-    async scanWithScroll() {
+    async scanWithScrollFlow() {
         await this.delay(2000);
 
-        const scrollInfo = this.initializeScrollTracking();
+        const scrollInfo = this.initScrollWatcher();
         let totalScrolls = 0;
         let consecutiveCyclesWithoutProgress = 0;
         const MAX_CYCLES_WITHOUT_PROGRESS = 3;
@@ -1870,16 +1868,16 @@ class PhotoExtractor {
             totalScrolls++;
 
             const beforeCount = this.photos.length;
-            this.extractPhotos();
+            this.extractImages();
             const afterExtraction = this.photos.length;
             const newPhotosThisCycle = afterExtraction - beforeCount;
 
-            const needsBacktrack = await this.checkAndHandleIncompleteBackgrounds();
+            const needsBacktrack = await this.fixBrokenBackgrounds();
             if (needsBacktrack) {
-                this.extractPhotos(); 
+                this.extractImages(); 
             }
 
-            const scrollResult = await this.performScroll();
+            const scrollResult = await this.doScrollStep();
             const scrolled = scrollResult && (scrollResult === true || scrollResult.scrolled === true);
             const scrollDelta = scrollResult && typeof scrollResult === 'object' ? scrollResult.scrollDelta : undefined;
 
@@ -1893,7 +1891,7 @@ class PhotoExtractor {
                         break;
                     }
                     await this.delay(3000);
-                    const retryScrollResult = await this.performScroll();
+                    const retryScrollResult = await this.doScrollStep();
                     const retryScrolled = retryScrollResult && (retryScrollResult === true || retryScrollResult.scrolled === true);
                     if (!retryScrolled) {
                         break;
@@ -1908,7 +1906,7 @@ class PhotoExtractor {
             if (!scrolled) {
                 await this.delay(3000);
 
-                const retryScrollResult = await this.performScroll();
+                const retryScrollResult = await this.doScrollStep();
                 const retryScrolled = retryScrollResult && (retryScrollResult === true || retryScrollResult.scrolled === true);
                 if (!retryScrolled) {
                     break;
@@ -1919,7 +1917,7 @@ class PhotoExtractor {
                 await this.waitForPhotosToLoad();
             }
 
-            this.updateScanProgress(scrollInfo);
+            this.updateScanStatus(scrollInfo);
         }
 
         const scanBtn = $('#pc-scan')
@@ -1949,7 +1947,7 @@ class PhotoExtractor {
 
         this.updateCleanupProgress('Finding missed photos...');
         await this.delay(2000);
-        this.extractPhotos(true);
+        this.extractImages(true);
 
         const afterExtraction = this.photos.length;
         const newPhotosFound = afterExtraction - beforeCleanup;
@@ -1959,7 +1957,7 @@ class PhotoExtractor {
         this.updateCleanupProgress('🔄 Removing duplicates...');
 
         const beforeDedup = this.photos.length;
-        this.removeDuplicatePhotos();
+        this.removeDuplicateImages();
         const afterDedup = this.photos.length;
         const duplicatesRemoved = beforeDedup - afterDedup;
 
@@ -1968,7 +1966,7 @@ class PhotoExtractor {
         this.updateCleanupProgress('🧽 Removing duplicates...');
 
         const beforeFinalDedup = this.photos.length;
-        this.removeDuplicatePhotos();
+        this.removeDuplicateImages();
         const afterFinalDedup = this.photos.length;
         const finalDuplicatesRemoved = beforeFinalDedup - afterFinalDedup;
 
@@ -1983,7 +1981,7 @@ class PhotoExtractor {
         }
     }
 
-    removeDuplicatePhotos() {
+    removeDuplicateImages() {
         const seen = new Set();
         const uniquePhotos = [];
 
@@ -2047,7 +2045,7 @@ class PhotoExtractor {
 
 
 
-    initializeScrollTracking() {
+    initScrollWatcher() {
         const scrollableContainer = this.findScrollableContainer();
 
         if (scrollableContainer) {
@@ -2073,7 +2071,7 @@ class PhotoExtractor {
         }
     }
 
-    updateScanProgress(scrollInfo) {
+    updateScanStatus(scrollInfo) {
         let currentScroll, scrollPercentage;
 
         if (scrollInfo.type === 'container' && scrollInfo.container) {
@@ -2100,7 +2098,7 @@ class PhotoExtractor {
         }
     }
 
-    async performScroll() {
+    async doScrollStep() {
         const scrollableContainer = this.findScrollableContainer();
 
         if (scrollableContainer) {
@@ -2377,7 +2375,7 @@ class PhotoExtractor {
         while (Date.now() - startTime < maxWaitTime) {
             await this.delay(checkInterval);
 
-            this.extractPhotos(false, true); 
+            this.extractImages(false, true); 
             const currentPhotoCount = this.photos.length;
             const newPhotosFound = currentPhotoCount - lastPhotoCount;
 
@@ -2428,7 +2426,7 @@ class PhotoExtractor {
         return this.photos.length;
     }
 
-    async checkAndHandleIncompleteBackgrounds() {
+    async fixBrokenBackgrounds() {
         const photosWithBackgrounds = await this.checkPhotosHaveBackgrounds();
         const backgroundLoadRatio = photosWithBackgrounds.checked > 0 ?
             photosWithBackgrounds.loaded / photosWithBackgrounds.checked : 1;
@@ -2535,7 +2533,7 @@ class PhotoExtractor {
         return false;
     }
 
-    extractPhotos(thorough = false, silent = false) {
+    extractImages(thorough = false, silent = false) {
         const beforeCount = this.photos.length;
 
         if (!silent) {
@@ -2665,7 +2663,7 @@ class PhotoExtractor {
         const afterCount = this.photos.length;
         const newPhotosFound = afterCount - beforeCount;
         if (!this.isScanning && !silent) {
-            this.updatePhotoCount();
+            this.refreshImageCount();
         }
     }
 
@@ -2683,7 +2681,7 @@ class PhotoExtractor {
         }
     }
 
-    updatePhotoCount() {
+    refreshImageCount() {
         if (this.scanComplete) {
             return;
         }
@@ -2735,14 +2733,14 @@ class PhotoExtractor {
 
         this.groupsAlreadyCounted = false;
 
-        this.showProgress(true);
+        this.showProgressBar(true);
         this.updateProgress(0, 'Creating frontend analysis session...');
 
         try {
             const sessionId = this.frontendSessionManager.createSession();
 
             this.updateProgress(5, 'Processing photos and videos with frontend hash computation...');
-            await this.uploadPhotosToFrontendSession(sessionId);
+            await this.uploadImagesToSession(sessionId);
 
             this.updateProgress(85, 'Running frontend similarity analysis...');
             this.frontendSessionManager.progressCallback = (percent, message) => {
@@ -2756,24 +2754,24 @@ class PhotoExtractor {
             this.processedPhotosCount = transformedResults.total_images || this.photos.length;
 
             await this.delay(500);
-            this.showProgress(false);
+            this.showProgressBar(false);
 
               $('body').removeClass('pc-overlay-active');
-            this.showResults(transformedResults);
+            this.showScanResults(transformedResults);
 
         } catch (error) {
             console.error('Error analyzing photos with frontend:', error);
-            this.showProgress(false);
+            this.showProgressBar(false);
         }
     }
 
-    async uploadPhotosToFrontendSession(sessionId) {
+    async uploadImagesToSession(sessionId) {
 
         const layout = this.calculateOptimalBatchLayout();
         const batchSize = layout.batchSize;
 
         let uploaded = 0;
-        this.showScreenshotArea(layout);
+        this.showCaptureArea(layout);
 
         for (let i = 0; i < this.photos.length; i += batchSize) {
             const batch = this.photos.slice(i, i + batchSize);
@@ -2785,7 +2783,7 @@ class PhotoExtractor {
             );
 
             try {
-                const batchResults = await this.processBatchScreenshotsForFrontend(sessionId, batch, i, layout);
+                const batchResults = await this.processCaptureBatchForFrontend(sessionId, batch, i, layout);
                 uploaded += batchResults;
 
                 if (i + batchSize < this.photos.length) {
@@ -2796,7 +2794,7 @@ class PhotoExtractor {
             }
         }
 
-        this.hideScreenshotArea();
+        this.hideCaptureArea();
         return uploaded;
     }
     transformFrontendResults(frontendResults, sessionId) {
@@ -2819,7 +2817,7 @@ class PhotoExtractor {
         };
     }
 
-    async processBatchScreenshotsForFrontend(sessionId, photoBatch, startIndex, layout) {
+    async processCaptureBatchForFrontend(sessionId, photoBatch, startIndex, layout) {
         const container = document.getElementById('pc-screenshot-container');
         if (!container) {
             throw new Error('Screenshot container not found');
@@ -2849,9 +2847,9 @@ class PhotoExtractor {
         // Wait for all images to be fully rendered
         await this.delay(800);
 
-        await this.respectScreenshotRateLimit();
+        await this.respectCaptureDelay();
 
-        const batchScreenshot = await this.captureBatchScreenshot();
+        const batchScreenshot = await this.captureBatchShot();
 
         let uploaded = 0;
         for (let i = 0; i < screenshotSlots.length; i++) {
@@ -2863,7 +2861,7 @@ class PhotoExtractor {
             }
 
             try {
-                const croppedImage = await this.cropImageFromBatch(batchScreenshot, slot.bounds);
+                const croppedImage = await this.cropCapturedImage(batchScreenshot, slot.bounds);
 
                 if (croppedImage) {
 
@@ -2928,7 +2926,7 @@ class PhotoExtractor {
         };
     }
 
-    showScreenshotArea(layout) {
+    showCaptureArea(layout) {
         this.closeInitialPopup()
         const screenshotArea = document.getElementById('pc-screenshot-area');
         if (screenshotArea) {
@@ -2972,8 +2970,8 @@ class PhotoExtractor {
         }
     }
 
-    hideScreenshotArea() {
-        this.showWindowWarning(false);
+    hideCaptureArea() {
+        this.showWindowAlert(false);
 
         const screenshotArea = document.getElementById('pc-screenshot-area');
         if (screenshotArea) {
@@ -2981,7 +2979,7 @@ class PhotoExtractor {
         }
     }
 
-    async processBatchScreenshots(sessionId, photoBatch, startIndex, layout) {
+    async processCaptureBatch(sessionId, photoBatch, startIndex, layout) {
         const container = document.getElementById('pc-screenshot-container');
         if (!container) {
             throw new Error('Screenshot container not found');
@@ -3007,9 +3005,9 @@ class PhotoExtractor {
 
         await this.delay(800); 
 
-        await this.respectScreenshotRateLimit();
+        await this.respectCaptureDelay();
 
-        const batchScreenshot = await this.captureBatchScreenshot();
+        const batchScreenshot = await this.captureBatchShot();
 
         let uploaded = 0;
         for (let i = 0; i < screenshotSlots.length; i++) {
@@ -3021,7 +3019,7 @@ class PhotoExtractor {
             }
 
             try {
-                const croppedImage = await this.cropImageFromBatch(batchScreenshot, slot.bounds);
+                const croppedImage = await this.cropCapturedImage(batchScreenshot, slot.bounds);
 
                 if (croppedImage) {
                     this.debugSaveImage(croppedImage, `debug_image_${startIndex + i + 1}_${photo.id}`);
@@ -3098,7 +3096,7 @@ class PhotoExtractor {
     async loadImageInSlot(slot) {
         return new Promise((resolve, reject) => {
             try {
-                const fullResUrl = this.getFullResolutionUrl(slot.photo.element);
+                const fullResUrl = this.getHighResUrl(slot.photo.element);
                 if (!fullResUrl) {
                     reject(new Error(`Could not extract URL for ${slot.photo.id}`));
                     return;
@@ -3126,7 +3124,7 @@ class PhotoExtractor {
         });
     }
 
-    async captureBatchScreenshot() {
+    async captureBatchShot() {
         return new Promise((resolve, reject) => {
             chrome.runtime.sendMessage({
                 action: 'capturePhoto',
@@ -3146,7 +3144,7 @@ class PhotoExtractor {
         });
     }
 
-    async cropImageFromBatch(batchScreenshotDataUrl, bounds) {
+    async cropCapturedImage(batchScreenshotDataUrl, bounds) {
         try {
             const canvas = document.createElement('canvas');
             const ctx = canvas.getContext('2d');
@@ -3248,7 +3246,7 @@ class PhotoExtractor {
         return new Blob([bytes], { type: mimeType });
     }
 
-    async finalizeSession(sessionId) {
+    async closeSession(sessionId) {
         this.updateProgress(85, 'Finalizing session and starting analysis...');
 
         const response = await fetch(`${this.serverUrl}/session/${sessionId}/finalize`, {
@@ -3359,9 +3357,9 @@ class PhotoExtractor {
 
             img.onload = async () => {
                 try {
-                    await this.waitForImageFullRender(img, container);
+                    await this.waitForImageRender(img, container);
 
-                    await this.respectScreenshotRateLimit();
+                    await this.respectCaptureDelay();
 
                     chrome.runtime.sendMessage({
                         action: 'capturePhoto',
@@ -3403,7 +3401,7 @@ class PhotoExtractor {
         });
     }
 
-    async waitForImageFullRender(img, container) {
+    async waitForImageRender(img, container) {
 
         await new Promise(resolve => {
             let frameCount = 0;
@@ -3423,10 +3421,10 @@ class PhotoExtractor {
 
         await this.delay(sizeBasedDelay);
 
-        await this.waitForImageVisible(img, container);
+        await this.waitForPhotoVisible(img, container);
     }
 
-    async waitForImageVisible(img, container) {
+    async waitForPhotoVisible(img, container) {
         let attempts = 0;
         const maxAttempts = 10;
 
@@ -3447,7 +3445,7 @@ class PhotoExtractor {
         console.warn(`Image visibility check timed out after ${maxAttempts} attempts`);
     }
 
-    async respectScreenshotRateLimit() {
+    async respectCaptureDelay() {
         const now = Date.now();
         const timeSinceLastScreenshot = now - this.lastScreenshotTime;
         const minInterval = 600; 
@@ -3460,7 +3458,7 @@ class PhotoExtractor {
         this.lastScreenshotTime = Date.now();
     }
 
-    getFullResolutionUrl(bgElement) {
+    getHighResUrl(bgElement) {
         try {
             if (!bgElement) {
                 return null;
@@ -3472,7 +3470,7 @@ class PhotoExtractor {
 
                 const dataLatestBg = element.getAttribute('data-latest-bg');
                 if (dataLatestBg && dataLatestBg.trim() !== '') {
-                    return this.convertToFullResolution(dataLatestBg);
+                    return this.toHighResImage(dataLatestBg);
                 }
 
                 const style = element.getAttribute('style');
@@ -3493,7 +3491,7 @@ class PhotoExtractor {
 
                             if (imageUrl !== 'none' && imageUrl.length > 5) {
                                 const firstUrl = imageUrl.split(',')[0].trim();
-                                return this.convertToFullResolution(firstUrl);
+                                return this.toHighResImage(firstUrl);
                             } else {
                             }
                         }
@@ -3519,7 +3517,7 @@ class PhotoExtractor {
 
                         if (imageUrl !== 'none' && imageUrl.length > 5) {
                             const firstUrl = imageUrl.split(',')[0].trim();
-                            return this.convertToFullResolution(firstUrl);
+                            return this.toHighResImage(firstUrl);
                         }
                     }
                 }
@@ -3533,7 +3531,7 @@ class PhotoExtractor {
         }
     }
 
-    convertToFullResolution(thumbnailUrl) {
+    toHighResImage(thumbnailUrl) {
         try {
             const baseUrlMatch = thumbnailUrl.match(/^(.+)=w\d+-h\d+(-[^?]+)?(\?.*)?$/);
             if (baseUrlMatch) {
@@ -3670,7 +3668,7 @@ class PhotoExtractor {
 
 
 
-    showResults(results) {
+    showScanResults(results) {
         if (!results.success) {
             alert('Analysis failed: ' + (results.error || 'Unknown error'));
             return;
@@ -3682,13 +3680,13 @@ class PhotoExtractor {
             photos: this.photos,
             timestamp: Date.now()
         });
-        this.createResultsOverlay(results);
+        this.buildResultsOverlay(results);
     }
 
-    createResultsOverlay(results) {
+    buildResultsOverlay(results) {
         const existingOverlay =  $('#pc-results-overlay');
         if (existingOverlay.length) {
-            this.cleanupViewportObserver();
+            this.cleanupViewportWatch();
             existingOverlay.remove();
         }
 
@@ -3858,7 +3856,7 @@ class PhotoExtractor {
                     tempRank = (10 - idx * step).toFixed(1); 
                 }
 
-              const fullSizeUrl = this.convertToFullResolution(mediaItem.url);
+              const fullSizeUrl = this.toHighResImage(mediaItem.url);
               const quality = results.quality_array.find((q) =>
                 q.name.startsWith(id)
               );
@@ -4157,7 +4155,7 @@ overlay.on('click', '.toggle-delete-btn, .keep-btn', function(e) {
 
 
         $('#pc-results-close_').on('click', () => {
-            this.cleanupViewportObserver();
+            this.cleanupViewportWatch();
             overlay.remove();
         });
 
@@ -4167,7 +4165,7 @@ overlay.on('click', '.toggle-delete-btn, .keep-btn', function(e) {
         });
         
         $('#process-selected-groups').on('click', async () => {
-            await this.finalizeSelectionAndSync(overlay);
+            await this.finishSelectionSync(overlay);
         });
 
         $(document).on('click', '.toggle-group-btn', function () {
@@ -4340,7 +4338,7 @@ overlay.on('click', '.toggle-delete-btn, .keep-btn', function(e) {
             const newThreshold = Math.round(parseFloat($thresholdSlider.val()) * 100);
 
             $reanalyzeBtn.prop('disabled', true).text('Re-analyzing...');
-            this.showProgress(true);
+            this.showProgressBar(true);
             this.updateProgress(0, 'Starting re-analysis...');
 
             try {
@@ -4362,16 +4360,16 @@ overlay.on('click', '.toggle-delete-btn, .keep-btn', function(e) {
 
                     await new Promise(resolve => setTimeout(resolve, 500));
 
-                    this.showProgress(false);
+                    this.showProgressBar(false);
                     $('#overlay').remove(); 
-                    this.createResultsOverlay(updatedResults);
+                    this.buildResultsOverlay(updatedResults);
                 }
             } catch (error) {
                 console.error('❌ Error during re-analysis:', error);
                 this.updateProgress(0, 'Re-analysis failed! Please try again.');
 
                 setTimeout(() => {
-                    this.showProgress(false);
+                    this.showProgressBar(false);
                     alert('Error during re-analysis. Please try again.');
                     $reanalyzeBtn.prop('disabled', false).text('Re-analyze');
                 }, 2000);
@@ -4384,10 +4382,10 @@ overlay.on('click', '.toggle-delete-btn, .keep-btn', function(e) {
             }
         });
     }
-        this.loadImageSizes(overlay);
+        this.loadImageFileSizes(overlay);
     }
 
-    async synchronizeAllPhotoStates() {
+    async syncImageStates() {
         const overlay = document.getElementById('pc-results-overlay');
         if (!overlay) {
             console.warn('No overlay found for synchronization');
@@ -4414,10 +4412,10 @@ overlay.on('click', '.toggle-delete-btn, .keep-btn', function(e) {
         if (photosToSelect.length === 0) {
             return;
         }
-        await this.scrollBasedPhotoSelection(photosToSelect);
+        await this.scrollSelectImages(photosToSelect);
     }
 
-    async scrollBasedPhotoSelection(photoIdsToSelect) {
+    async scrollSelectImages(photoIdsToSelect) {
         const photosWithPositions = [];
         const photosWithoutPositions = [];
         for (const photoId of photoIdsToSelect) {
@@ -4436,12 +4434,12 @@ overlay.on('click', '.toggle-delete-btn, .keep-btn', function(e) {
         let selectedCount = 0;
         if (photosWithPositions.length > 0) {
             for (const photoData of photosWithPositions) {
-                await this.jumpToScrollPosition(photoData.scrollPosition);
+                await this.jumpToScrollPoint(photoData.scrollPosition);
                 await this.delay(300);
-                const visiblePhotos = this.findVisiblePhotosByIds([photoData.id]);
+                const visiblePhotos = this.findVisibleImages([photoData.id]);
                 if (visiblePhotos.length > 0) {
                     const photoElement = visiblePhotos[0];
-                    const success = await this.selectPhotoById(photoData.id, photoElement.element);
+                    const success = await this.pickImageById(photoData.id, photoElement.element);
                     if (success) {
                         foundPhotos.add(photoData.id);
                         selectedCount++;
@@ -4457,7 +4455,7 @@ overlay.on('click', '.toggle-delete-btn, .keep-btn', function(e) {
         if (photosWithoutPositions.length > 0) {
             photosWithoutPositions.forEach(photoId => {
             });
-            await this.retryMissingPhotos(photosWithoutPositions, foundPhotos);
+            await this.retryLostImages(photosWithoutPositions, foundPhotos);
             selectedCount = foundPhotos.size;
         }
 
@@ -4469,7 +4467,7 @@ overlay.on('click', '.toggle-delete-btn, .keep-btn', function(e) {
         }
         const finalSelected = document.querySelectorAll('[role="checkbox"][aria-checked="true"]').length;
     }
-    async jumpToScrollPosition(targetPosition) {
+    async jumpToScrollPoint(targetPosition) {
         const scrollContainer = this.findScrollableContainer();
         if (scrollContainer) {
             scrollContainer.scrollTop = targetPosition;
@@ -4478,7 +4476,7 @@ overlay.on('click', '.toggle-delete-btn, .keep-btn', function(e) {
         }
     }
 
-    async retryMissingPhotos(photoIdsToSelect, foundPhotos) {
+    async retryLostImages(photoIdsToSelect, foundPhotos) {
         if (photoIdsToSelect.length === 0) return;
         const scrollContainer = this.findScrollableContainer();
         const maxScroll = scrollContainer ?
@@ -4493,12 +4491,12 @@ overlay.on('click', '.toggle-delete-btn, .keep-btn', function(e) {
         ];
 
         for (const position of retryPositions) {
-            await this.jumpToScrollPosition(position);
+            await this.jumpToScrollPoint(position);
             await this.delay(500); 
-            const visiblePhotos = this.findVisiblePhotosByIds(photoIdsToSelect);
+            const visiblePhotos = this.findVisibleImages(photoIdsToSelect);
             for (const photoData of visiblePhotos) {
                 if (!foundPhotos.has(photoData.id)) {
-                    const success = await this.selectPhotoById(photoData.id, photoData.element);
+                    const success = await this.pickImageById(photoData.id, photoData.element);
                     if (success) {
                         foundPhotos.add(photoData.id);
                     }
@@ -4528,7 +4526,7 @@ overlay.on('click', '.toggle-delete-btn, .keep-btn', function(e) {
         }
     }
 
-    findVisiblePhotosByIds(targetPhotoIds) {
+    findVisibleImages(targetPhotoIds) {
         const visiblePhotos = [];
         const linkElements = document.querySelectorAll('a[href*="photo/"]');
 
@@ -4575,7 +4573,7 @@ overlay.on('click', '.toggle-delete-btn, .keep-btn', function(e) {
         return visiblePhotos;
     }
 
-    async selectPhotoById(photoId, photoElement) {
+    async pickImageById(photoId, photoElement) {
         try {
             const checkbox = photoElement.querySelector('[role="checkbox"]');
 
@@ -4607,7 +4605,7 @@ overlay.on('click', '.toggle-delete-btn, .keep-btn', function(e) {
         }
     }
 
-    async scrollDownForMorePhotos() {
+    async scrollForMoreImages() {
         const scrollContainer = this.findScrollableContainer();
 
         if (scrollContainer) {
@@ -4624,7 +4622,7 @@ overlay.on('click', '.toggle-delete-btn, .keep-btn', function(e) {
         }
     }
 
-    async finalizeSelectionAndSync(overlay) {
+    async finishSelectionSync(overlay) {
 
         try {
             const selectedPhotos = overlay.find('.pc-image-item .will-delete-btn')
@@ -4634,12 +4632,12 @@ overlay.on('click', '.toggle-delete-btn, .keep-btn', function(e) {
             });
 
             if (selectedPhotos.length === 0) {
-                this.showCompletionMessage(overlay);
+                this.showFinishMessage(overlay);
                 return;
             }
-            await this.synchronizeAllPhotoStates();
-            const finalCount = this.countSelectedPhotosDetailed();
-            this.showCompletionMessage(overlay);
+            await this.syncImageStates();
+            const finalCount = this.countPickedImagesDetailed();
+            this.showFinishMessage(overlay);
 
         } catch (error) {
             console.error('Error during final sync:', error);
@@ -4679,7 +4677,7 @@ overlay.on('click', '.toggle-delete-btn, .keep-btn', function(e) {
         }
     }
 
-    findGooglePhotosElement(photoId, photoUrl) {
+    findPhotosContainer(photoId, photoUrl) {
         const linkElements = document.querySelectorAll('a[href*="photo/"]');
 
         for (const link of linkElements) {
@@ -4726,7 +4724,7 @@ overlay.on('click', '.toggle-delete-btn, .keep-btn', function(e) {
         return null;
     }
 
-    async scrollToFindPhoto(photoId) {
+    async scrollToFindImage(photoId) {
 
         const scrollContainer = this.findScrollableContainer();
         if (scrollContainer) {
@@ -4739,7 +4737,7 @@ overlay.on('click', '.toggle-delete-btn, .keep-btn', function(e) {
                 await this.delay(300); 
 
                 // Check if we found the photo
-                const found = this.findGooglePhotosElement(photoId, null);
+                const found = this.findPhotosContainer(photoId, null);
                 if (found) {
                     return true;
                 }
@@ -4759,7 +4757,7 @@ overlay.on('click', '.toggle-delete-btn, .keep-btn', function(e) {
             const photoUrl = item.attr('data-photo-url');
             const checkboxIndicator = item.find('.pc-checkbox-indicator');
 
-            const googlePhotosElement = this.findGooglePhotosElement(photoId, photoUrl);
+            const googlePhotosElement = this.findPhotosContainer(photoId, photoUrl);
 
             if (googlePhotosElement) {
                 const checkbox = googlePhotosElement.find('[role="checkbox"]');
@@ -4769,8 +4767,8 @@ overlay.on('click', '.toggle-delete-btn, .keep-btn', function(e) {
             }
         });
     }
-    showCompletionMessage(resultsOverlay) {
-        const selectedCount = this.countSelectedPhotos();
+    showFinishMessage(resultsOverlay) {
+        const selectedCount = this.countPickedImages();
         const completionOverlay = document.createElement('div');
         completionOverlay.id = 'pc-completion-overlay';
         const ideaIconUrl = chrome.runtime.getURL('../icons/idea.svg');
@@ -4826,7 +4824,7 @@ overlay.on('click', '.toggle-delete-btn, .keep-btn', function(e) {
         const backBtn = document.getElementById('pc-completion-back');
 
         const removeOverlay = () => {
-            this.cleanupViewportObserver();
+            this.cleanupViewportWatch();
 
             completionOverlay.remove();
             resultsOverlay.remove();
@@ -4852,7 +4850,7 @@ overlay.on('click', '.toggle-delete-btn, .keep-btn', function(e) {
         doneBtn.addEventListener('click', removeOverlay);
         backBtn.addEventListener('click', goBack);
     }
-    countSelectedPhotos() {
+    countPickedImages() {
         let count = 0;
         const imageItems = document.querySelectorAll('#pc-results-overlay .pc-image-item');
         imageItems.forEach(item => {
@@ -4864,7 +4862,7 @@ overlay.on('click', '.toggle-delete-btn, .keep-btn', function(e) {
         return count;
     }
 
-    countSelectedPhotosDetailed() {
+    countPickedImagesDetailed() {
         let count = 0;
         let foundCount = 0;
         let notFoundCount = 0;
@@ -4886,7 +4884,7 @@ overlay.on('click', '.toggle-delete-btn, .keep-btn', function(e) {
             selectedInOverlay.push(photoId);
         }
     }
-    const googlePhotosElement = this.findGooglePhotosElement(photoId, photoUrl);
+    const googlePhotosElement = this.findPhotosContainer(photoId, photoUrl);
 
     if (googlePhotosElement) {
         foundCount++;
@@ -4912,7 +4910,7 @@ overlay.on('click', '.toggle-delete-btn, .keep-btn', function(e) {
         return count;
     }
 
-    showProgress(show) {
+    showProgressBar(show) {
         const progressTextElement = document.getElementById('pc-progress-text');
         const photoCountElement = document.getElementById('pc-photo-count');
 
@@ -4925,7 +4923,7 @@ overlay.on('click', '.toggle-delete-btn, .keep-btn', function(e) {
         }
     }
 
-    showWindowWarning(show) {
+    showWindowAlert(show) {
     let warningElement = $('#pc-window-warning');
 
     if (show) {
@@ -5038,7 +5036,7 @@ if (!textElement.querySelector('input[type="range"]')) {
         }
     }
 
-    checkViewportSize() {
+    checkViewportBounds() {
         const minWidth = 1200;
         const minHeight = 500;
         const currentWidth = window.innerWidth;
@@ -5053,7 +5051,7 @@ if (!textElement.querySelector('input[type="range"]')) {
         };
     }
 
-    showViewportResizeMessage(viewportInfo) {
+    showResizeNotice(viewportInfo) {
         const existingMessage = document.getElementById('pc-resize-message');
         if (existingMessage) {
             existingMessage.remove();
@@ -5093,7 +5091,7 @@ if (!textElement.querySelector('input[type="range"]')) {
         document.body.appendChild(message);
         document.getElementById('pc-resize-check').addEventListener('click', () => {
             message.remove();
-            this.initializeFullPanel(); 
+            this.initMainPanel(); 
         });
 
         document.getElementById('pc-resize-close').addEventListener('click', () => {
@@ -5101,11 +5099,11 @@ if (!textElement.querySelector('input[type="range"]')) {
             this.addMinimalButton();
         });
         const resizeHandler = () => {
-            const newCheck = this.checkViewportSize();
+            const newCheck = this.checkViewportBounds();
             if (newCheck.adequate) {
                 message.remove();
                 window.removeEventListener('resize', resizeHandler);
-                this.initializeFullPanel();
+                this.initMainPanel();
             } else {
                 const currentSizeEl = message.querySelector('.pc-size-current');
                 if (currentSizeEl) {
@@ -5116,11 +5114,11 @@ if (!textElement.querySelector('input[type="range"]')) {
 
         window.addEventListener('resize', resizeHandler);
     }
-    async startFullWorkflow() {
+    async launchMainFlow() {
         if (this.isProcessing) return;
-        const viewportCheck = this.checkViewportSize();
+        const viewportCheck = this.checkViewportBounds();
         if (!viewportCheck.adequate) {
-            this.showViewportResizeMessage(viewportCheck);
+            this.showResizeNotice(viewportCheck);
             return;
         }
 
@@ -5130,7 +5128,7 @@ if (!textElement.querySelector('input[type="range"]')) {
             this.similarityThreshold = similarityThreshold;
 
             this.isFullWorkflow = true;
-            const scanResult = await this.startScanning();
+            const scanResult = await this.beginScanFlow();
             if (scanResult === 'NEW_WINDOW_OPENED') {
                 return;
             }
@@ -5160,7 +5158,7 @@ if (!textElement.querySelector('input[type="range"]')) {
             this.isFullWorkflow = false;
             this.isProcessing = false;
             this.isScanning = false;
-            this.showWindowWarning(false); 
+            this.showWindowAlert(false); 
 
             const scanButtonEl = $('#pc-scan');
             if (scanButtonEl.length) {
@@ -5170,7 +5168,7 @@ if (!textElement.querySelector('input[type="range"]')) {
             alert('Error during scanning/analysis: ' + error.message);
         }
     }
-    async getOriginalImageSize(photo) {
+    async getOriginalSize(photo) {
         try {
             // Check cache first using photo ID
             if (this.imageSizeCache && this.imageSizeCache[photo.id]) {
@@ -5183,18 +5181,18 @@ if (!textElement.querySelector('input[type="range"]')) {
                     return cachedInfo;
                 }
             }
-            const mediaKey = await this.extractMediaKeyFromPhoto(photo);
+            const mediaKey = await this.getMediaKeyFromImage(photo);
             if (!mediaKey) {
                 console.warn(`⚠️ Could not extract media key for photo ${photo.id}`);
                 return null;
             }
 
             const [extendedInfo, batchInfo] = await Promise.all([
-                this.getItemInfoExt(mediaKey),
-                this.getBatchMediaInfo([mediaKey])
+                this.getItemDetails(mediaKey),
+                this.getBatchDetails([mediaKey])
             ]);
             if (extendedInfo && extendedInfo.size) {
-                const sizeFormatted = this.formatFileSize(extendedInfo.size);
+                const sizeFormatted = this.formatSizeLabel(extendedInfo.size);
                 const sizeInfo = {
                     formatted: sizeFormatted,
                     bytes: extendedInfo.size,
@@ -5228,7 +5226,7 @@ if (!textElement.querySelector('input[type="range"]')) {
         }
     }
 
-    async extractMediaKeyFromPhoto(photo) {
+    async getMediaKeyFromImage(photo) {
         try {
             if (photo.id && photo.id.length > 20) {
                 return photo.id;
@@ -5249,15 +5247,15 @@ if (!textElement.querySelector('input[type="range"]')) {
                     }
                 }
             }
-            const urlKey = await this.extractMediaKeyFromUrl(photo.url);
+            const urlKey = await this.getMediaKeyFromUrl(photo.url);
             if (urlKey) {
                 return urlKey;
             }
-            const bgKey = await this.extractMediaKeyFromBackgroundImage(photo.url);
+            const bgKey = await this.getMediaKeyFromBg(photo.url);
             if (bgKey) {
                 return bgKey;
             }
-            const alternativeKey = await this.tryAlternativeMediaKeyFormats(photo);
+            const alternativeKey = await this.tryOtherKeyFormats(photo);
             if (alternativeKey) {
                 return alternativeKey;
             }
@@ -5270,7 +5268,7 @@ if (!textElement.querySelector('input[type="range"]')) {
         }
     }
 
-    async extractMediaKeyFromUrl(imageUrl) {
+    async getMediaKeyFromUrl(imageUrl) {
         try {
             const urlMatch = imageUrl.match(/\/([A-Za-z0-9_-]{20,})=w\d+-h\d+/);
             if (urlMatch && urlMatch[1]) {
@@ -5292,7 +5290,7 @@ if (!textElement.querySelector('input[type="range"]')) {
         }
     }
 
-    async extractMediaKeyFromBackgroundImage(imageUrl) {
+    async getMediaKeyFromBg(imageUrl) {
         try {
             const elements = document.querySelectorAll('*');
             for (const element of elements) {
@@ -5316,7 +5314,7 @@ if (!textElement.querySelector('input[type="range"]')) {
         }
     }
 
-    async tryAlternativeMediaKeyFormats(photo) {
+    async tryOtherKeyFormats(photo) {
         try {
             let cleanId = photo.id.replace(/^(photo|img|item)[-_]?/i, '');
             cleanId = cleanId.replace(/[-_]?(thumb|preview)$/i, '');
@@ -5348,9 +5346,9 @@ if (!textElement.querySelector('input[type="range"]')) {
         }
     }
 
-    async getItemInfoExt(mediaKey) {
+    async getItemDetails(mediaKey) {
         try {
-            const authData = await this.getGooglePhotosAuthData();
+            const authData = await this.getPhotosAuthInfo();
             if (!authData) {
                 throw new Error('Could not extract DupeYak Duplicate Remover authentication data');
             }
@@ -5404,9 +5402,9 @@ if (!textElement.querySelector('input[type="range"]')) {
         }
     }
 
-    async getBatchMediaInfo(mediaKeyArray) {
+    async getBatchDetails(mediaKeyArray) {
         try {
-            const authData = await this.getGooglePhotosAuthData();
+            const authData = await this.getPhotosAuthInfo();
             if (!authData) {
                 throw new Error('Could not extract DupeYak Duplicate Remover authentication data');
             }
@@ -5462,22 +5460,22 @@ if (!textElement.querySelector('input[type="range"]')) {
         }
     }
 
-    async getGooglePhotosAuthData() {
+    async getPhotosAuthInfo() {
         try {
             if (this.authDataCache) {
                 return this.authDataCache;
             }
-            const authData = await this.extractAuthFromDomScripts();
+            const authData = await this.extractAuthFromScripts();
             if (authData) {
                 this.authDataCache = authData; 
                 return authData;
             }
-            const networkAuthData = await this.extractAuthFromNetworkRequests();
+            const networkAuthData = await this.extractAuthFromRequests();
             if (networkAuthData) {
                 this.authDataCache = networkAuthData; 
                 return networkAuthData;
             }
-            const fallbackAuthData = await this.extractAuthDataFallback();
+            const fallbackAuthData = await this.fallbackAuthExtract();
             if (fallbackAuthData) {
                 this.authDataCache = fallbackAuthData; 
                 return fallbackAuthData;
@@ -5492,7 +5490,7 @@ if (!textElement.querySelector('input[type="range"]')) {
         }
     }
 
-    async extractAuthFromDomScripts() {
+    async extractAuthFromScripts() {
         try {
             const scripts = document.querySelectorAll('script');
 
@@ -5523,7 +5521,7 @@ if (!textElement.querySelector('input[type="range"]')) {
         }
     }
 
-    async extractAuthFromNetworkRequests() {
+    async extractAuthFromRequests() {
         try {
             return new Promise((resolve) => {
                 let authData = null;
@@ -5571,7 +5569,7 @@ if (!textElement.querySelector('input[type="range"]')) {
         }
     }
 
-    async extractAuthDataFallback() {
+    async fallbackAuthExtract() {
         try {
             const metaElements = document.querySelectorAll('meta[name*="csrf"], meta[name*="token"], meta[content*="token"]');
 
@@ -5707,7 +5705,7 @@ if (!textElement.querySelector('input[type="range"]')) {
         }
     }
 
-    formatDateTime(timestamp, timezoneOffset) {
+    formatDateLabel(timestamp, timezoneOffset) {
         try {
             if (!timestamp) return '';
             const timestampMs = timestamp < 10000000000 ? timestamp * 1000 : timestamp;
@@ -5733,7 +5731,7 @@ if (!textElement.querySelector('input[type="range"]')) {
         }
     }
 
-    formatFileSize(bytes) {
+    formatSizeLabel(bytes) {
         if (bytes === 0) return '0 B';
 
         const k = 1024;
@@ -5743,16 +5741,16 @@ if (!textElement.querySelector('input[type="range"]')) {
         return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
     }
 
-    clearAuthCache() {
+    clearAuthStore() {
         this.authDataCache = null;
     }
 
-    async loadImageSizes(overlay) {
-        this.cleanupViewportObserver();
-        this.setupViewportObserver(overlay);
+    async loadImageFileSizes(overlay) {
+        this.cleanupViewportWatch();
+        this.setupViewportWatch(overlay);
     }
 
-    setupViewportObserver(overlay) {
+    setupViewportWatch(overlay) {
         const imageItems = overlay[0].querySelectorAll('.pc-image-item');
 
         if (imageItems.length === 0) {
@@ -5765,9 +5763,9 @@ if (!textElement.querySelector('input[type="range"]')) {
                 const imageSizeElement = imageItem.querySelector('.pc-image-size');
 
                 if (entry.isIntersecting) {
-                    this.startViewportTimer(imageSizeElement, photoId);
+                    this.initViewportTimer(imageSizeElement, photoId);
                 } else {
-                    this.cancelViewportTimer(photoId);
+                    this.stopViewportTimer(photoId);
                 }
             });
         }, {
@@ -5782,8 +5780,8 @@ if (!textElement.querySelector('input[type="range"]')) {
 
     }
 
-    startViewportTimer(element, photoId) {
-        this.cancelViewportTimer(photoId);
+    initViewportTimer(element, photoId) {
+        this.stopViewportTimer(photoId);
 
         if (!element) {
             console.warn(`⚠️ No image size element found for photo ${photoId}`);
@@ -5798,7 +5796,7 @@ if (!textElement.querySelector('input[type="range"]')) {
 
         if (this.imageSizeCache && this.imageSizeCache[photoId]) {
             const sizeInfo = this.imageSizeCache[photoId];
-            this.displaySizeInfo(element, sizeInfo);
+            this.showSizeInfo(element, sizeInfo);
             return;
         }
 
@@ -5808,13 +5806,13 @@ if (!textElement.querySelector('input[type="range"]')) {
         element.style.fontStyle = 'italic';
 
         const timer = setTimeout(async () => {
-            await this.loadImageSizeForElement(element, photoId);
+            await this.getElementImageSize(element, photoId);
         }, 500);
 
         this.viewportTimers.set(photoId, timer);
     }
 
-    cancelViewportTimer(photoId) {
+    stopViewportTimer(photoId) {
         const timer = this.viewportTimers.get(photoId);
         if (timer) {
             clearTimeout(timer);
@@ -5822,7 +5820,7 @@ if (!textElement.querySelector('input[type="range"]')) {
         }
     }
 
-    async loadImageSizeForElement(element, photoId) {
+    async getElementImageSize(element, photoId) {
         const currentContent = element.innerHTML?.trim();
         if (currentContent &&
             (currentContent.includes('color: #666') || currentContent.includes('pc-size-info')) &&
@@ -5832,7 +5830,7 @@ if (!textElement.querySelector('input[type="range"]')) {
 
         if (this.imageSizeCache && this.imageSizeCache[photoId]) {
             const sizeInfo = this.imageSizeCache[photoId];
-            this.displaySizeInfo(element, sizeInfo);
+            this.showSizeInfo(element, sizeInfo);
             return;
         }
 
@@ -5856,10 +5854,10 @@ if (!textElement.querySelector('input[type="range"]')) {
                 element.textContent = '';
                 return;
             }
-            const sizeInfo = await this.getOriginalImageSize(mediaItem);
+            const sizeInfo = await this.getOriginalSize(mediaItem);
 
             if (sizeInfo) {
-                this.displaySizeInfo(element, sizeInfo);
+                this.showSizeInfo(element, sizeInfo);
             } else {
                 element.innerHTML = '';
                 element.style.fontStyle = 'normal';
@@ -5873,7 +5871,7 @@ if (!textElement.querySelector('input[type="range"]')) {
         }
     }
 
-    displaySizeInfo(element, sizeInfo) {
+    showSizeInfo(element, sizeInfo) {
         const imageItem = element.closest('.pc-image-item');
         const photoLabel = imageItem?.querySelector('p');
         if (typeof sizeInfo === 'string') {
@@ -5883,7 +5881,7 @@ if (!textElement.querySelector('input[type="range"]')) {
         let html = '';
         if (sizeInfo.resWidth && sizeInfo.resHeight && sizeInfo.timestamp) {
             const resolution = `${sizeInfo.resWidth}x${sizeInfo.resHeight}`;
-            const fullDateTime = this.formatDateTime(sizeInfo.timestamp, sizeInfo.timezoneOffset);
+            const fullDateTime = this.formatDateLabel(sizeInfo.timestamp, sizeInfo.timezoneOffset);
             const takenDateTime = fullDateTime.split(" ")[0];
 
             html += `<span><span class="img-size text-[12px] bg-gradient rounded-[5px] px-[8px] py-[2px] border border-[#e2e8f0] dark-color mx-[1px]">${resolution}</span> <span class="text-[12px] bg-gradient rounded-[5px] px-[8px] py-[2px] border border-[#e2e8f0] dark-color mx-[1px]">${takenDateTime}</span></span>`;
@@ -5894,7 +5892,7 @@ if (!textElement.querySelector('input[type="range"]')) {
             storageText += `not taking space`;
             storageColor = '#28a745';
         } else if (sizeInfo.takesUpSpace === true && sizeInfo.spaceTaken) {
-            const spaceTakenFormatted = this.formatFileSize(sizeInfo.spaceTaken);
+            const spaceTakenFormatted = this.formatSizeLabel(sizeInfo.spaceTaken);
             storageText += `takes ${spaceTakenFormatted}`;
             storageColor = '#ff6b35';
         }
@@ -5909,7 +5907,7 @@ if (!textElement.querySelector('input[type="range"]')) {
         element.style.fontStyle = 'normal';
     }
 
-    cleanupViewportObserver() {
+    cleanupViewportWatch() {
         // Clean up existing observer
         if (this.viewportObserver) {
             this.viewportObserver.disconnect();
@@ -5926,7 +5924,7 @@ if (!textElement.querySelector('input[type="range"]')) {
         this.imageSizeLoaders.clear();
     }
 
-    convertToFullResolution(thumbnailUrl) {
+    toHighResImage(thumbnailUrl) {
         try {
             const baseUrlMatch = thumbnailUrl.match(/^(.+)=w\d+-h\d+(-[^?]+)?(\?.*)?$/);
             if (baseUrlMatch) {
@@ -5977,7 +5975,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true;
 });
 
-function initializeExtension() {
+function initExtension() {
     const currentUrl = window.location.href;
     const isGooglePhotos = currentUrl.includes('photos.google.com/');
     const isValidPage = isValidGooglePhotosPage(currentUrl);
@@ -5985,7 +5983,7 @@ function initializeExtension() {
     if (!isGooglePhotos) {
         return;
     }
-    cleanupExistingExtension();
+    cleanupExtension();
 
     if (isValidPage) {
         window.photoCleanerInstance = new PhotoExtractor();
@@ -5994,10 +5992,10 @@ function initializeExtension() {
             instance: () => window.photoCleanerInstance
         };
     } else {
-        showInfoMessage();
+        showInfoNote();
     }
 }
-function cleanupExistingExtension() {
+function cleanupExtension() {
     if (window.photoCleanerInstance) {
         if (typeof window.photoCleanerInstance.closePanel === 'function') {
             window.photoCleanerInstance.closePanel();
@@ -6020,7 +6018,7 @@ function cleanupExistingExtension() {
         }
     });
 }
-function showInfoMessage() {
+function showInfoNote() {
     if ($('#pc-info-message').length) {
         return;
     }
@@ -6055,15 +6053,15 @@ function showInfoMessage() {
 }
 
 $(document).ready(function () {
-    initializeExtension();
+    initExtension();
 });
 let lastUrl = location.href;
-function setupUrlChangeDetection() {
+function setupUrlWatcher() {
     const observer = new MutationObserver(() => {
         const url = location.href;
         if (url !== lastUrl) {
             lastUrl = url;
-            handleUrlChange();
+            handleUrlSwitch();
         }
     });
 
@@ -6077,7 +6075,7 @@ function setupUrlChangeDetection() {
             const url = location.href;
             if (url !== lastUrl) {
                 lastUrl = url;
-                handleUrlChange();
+                handleUrlSwitch();
             }
         }, 100);
     };
@@ -6088,7 +6086,7 @@ function setupUrlChangeDetection() {
             const url = location.href;
             if (url !== lastUrl) {
                 lastUrl = url;
-                handleUrlChange();
+                handleUrlSwitch();
             }
         }, 100);
     };
@@ -6097,20 +6095,20 @@ function setupUrlChangeDetection() {
             const url = location.href;
             if (url !== lastUrl) {
                 lastUrl = url;
-                handleUrlChange();
+                handleUrlSwitch();
             }
         }, 100);
     });
 }
 
-function handleUrlChange() {
+function handleUrlSwitch() {
     clearTimeout(window.urlChangeTimer);
     window.urlChangeTimer = setTimeout(() => {
-        initializeExtension();
+        initExtension();
     }, 500); 
 }
 
-setupUrlChangeDetection();
+setupUrlWatcher();
 
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     if (request.action === 'getTempElementInfo') {
