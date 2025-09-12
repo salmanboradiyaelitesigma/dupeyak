@@ -34,7 +34,7 @@
    "name": "DupeYak Duplicate Remover",
    "permissions": [ "activeTab", "storage", "unlimitedStorage", "tabs", "windows", "identity","downloads" ],
 
-   "version": "1.0.15",
+   "version": "1.0.16",
    "web_accessible_resources": [{
   "matches": ["<all_urls>"],
   "resources": [

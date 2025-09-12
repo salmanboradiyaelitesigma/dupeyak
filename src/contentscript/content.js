@@ -4117,7 +4117,15 @@ overlay.on('click', '.toggle-delete-btn, .keep-btn', function(e) {
         });
         
         $('#process-selected-groups').on('click', async () => {
-            await this.finishSelectionSync(overlay);
+            // await this.finishSelectionSync(overlay);
+              const $btn = $('#process-selected-groups');
+              $btn.prop('disabled', true).text('Processing...');
+
+            try {
+                await this.finishSelectionSync(overlay);
+            } finally {
+                $btn.prop('disabled', false).text('Process Selected Groups');
+            }
         });
 
         $(document).on('click', '.toggle-group-btn', function () {

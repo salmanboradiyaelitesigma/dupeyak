@@ -31,7 +31,6 @@ class BackgroundService {
     }
 
     initEventHooks() {
-        console.log('1>>');
         chrome.action.onClicked.addListener(async (tab) => {
             const newTab = await chrome.tabs.create({
                 url: chrome.runtime.getURL('html/extension-page.html'),
@@ -63,7 +62,6 @@ class BackgroundService {
     }
 
     onExtensionInstall(details) {
-        console.log('2>>');
         if (details.reason === 'install') {
 
             chrome.storage.local.set({
@@ -79,7 +77,6 @@ class BackgroundService {
     }
 
     onTabStatusChange(tabId, changeInfo, tab) {
-        console.log('3>>');
         if (changeInfo.status !== 'complete') return;
 
         if (tab.url && tab.url.includes('photos.google.com')) {
@@ -90,7 +87,6 @@ class BackgroundService {
     }
 
     setIconForPhotos(tabId, url) {
-        console.log('4>>');
         chrome.action.setBadgeText({
             tabId: tabId,
             text: '●'
@@ -116,8 +112,6 @@ class BackgroundService {
     }
 
     resetDefaultIcon(tabId) {
-        console.log('5>>');
-        // Clear badge when not on Google Photos
         chrome.action.setBadgeText({
             tabId: tabId,
             text: ''
@@ -130,7 +124,6 @@ class BackgroundService {
     }
 
     async onInternalMessage(message, sender, sendResponse) {
-         console.log('6>>');
         try {
             switch (message.action) {
                 case 'logAnalysis':
@@ -193,7 +186,6 @@ class BackgroundService {
     }
 
     async onExternalMessage(message, sender, sendResponse) {
-         console.log('7>>');
         try {
 
             switch (message.action) {
@@ -216,7 +208,6 @@ class BackgroundService {
     }
 
     async launchExtensionPopup() {
-         console.log('8>>');
         try {
             const [activeTab] = await chrome.tabs.query({ active: true, currentWindow: true });
 
@@ -232,7 +223,6 @@ class BackgroundService {
     }
 
     async openExtensionTab(message, sendResponse) {
-         console.log('9>>');
         try {
             const tab = await chrome.tabs.create({
                 url: chrome.runtime.getURL('/html/extension-page.html'),
@@ -254,7 +244,6 @@ class BackgroundService {
 
 
     async onDownloadInvoice(message, sendResponse) {
-         console.log('10>>');
         try {
             const userInfo = await this.oauthHelper.fetchUserProfile();
             if (!userInfo) {
@@ -292,7 +281,6 @@ class BackgroundService {
     }
 
     async onCreateAuthHash(message, sendResponse) {
-         console.log('11>>');
         try {
             const { accountId, extensionId } = message;
             if (!accountId || !extensionId) {
@@ -308,7 +296,6 @@ class BackgroundService {
     }
 
     async createAuthHash(accountId, extensionId) {
-         console.log('11>>');
         const data = extensionId + accountId;
         const encoder = new TextEncoder();
         const dataBuffer = encoder.encode(data);
@@ -319,7 +306,6 @@ class BackgroundService {
     }
 
     async recordAnalysisResult(results) {
-         console.log('12>>');
         try {
             const timestamp = Date.now();
 
@@ -340,7 +326,6 @@ class BackgroundService {
     }
 
     async onCapturePhoto(request, sender, sendResponse) {
-         console.log('13>>');
         try {
             let elementInfo = null;
             if (request.elementId) {
@@ -374,7 +359,6 @@ class BackgroundService {
     }
 
     async fetchTempElementData(elementId, tabId) {
-        console.log('14>>');
         return new Promise((resolve) => {
             chrome.tabs.sendMessage(tabId, {
                 action: 'fetchTempElementData',
@@ -386,7 +370,6 @@ class BackgroundService {
     }
 
     async cropImageToTarget(screenshotDataUrl, elementInfo) {
-        console.log('15>>');
         try {
             const response = await fetch(screenshotDataUrl);
             const blob = await response.blob();
@@ -414,7 +397,6 @@ class BackgroundService {
     }
 
     async onAuthenticate(message, sendResponse) {
-        console.log('16>>');
         try {
             const result = await this.oauthHelper.launchAuthFlow();
             sendResponse(result);
@@ -425,9 +407,7 @@ class BackgroundService {
     }
 
     async onStartOAuth(message, sendResponse) {
-        console.log('17>>');
         try {
-            console.log('🔐 Starting OAuth flow from background...');
             const result = await this.oauthHelper.launchAuthFlow();
             sendResponse(result);
         } catch (error) {
@@ -437,9 +417,7 @@ class BackgroundService {
     }
 
     async handleAuthSuccess(message, sendResponse) {
-        console.log('18>>');
         try {
-            console.log('🔄 Handling OAuth success in background...');
             const result = await this.oauthHelper.handleAuthSuccess(message.userInfo);
             sendResponse(result);
         } catch (error) {
@@ -449,7 +427,6 @@ class BackgroundService {
     }
 
     async onFetchUserInfo(message, sendResponse) {
-        console.log('19>>');
         try {
             const userInfo = await this.oauthHelper.fetchUserProfile();
             const isAuthenticated = await this.oauthHelper.isAuthenticated();
@@ -465,9 +442,7 @@ class BackgroundService {
     }
 
     async onUserSignOut(message, sendResponse) {
-        console.log('20>>');
         try {
-            console.log('🚪 Signing out user...');
             const result = await this.oauthHelper.signOut();
             sendResponse(result);
         } catch (error) {
@@ -477,7 +452,6 @@ class BackgroundService {
     }
 
     async onVerifySignature(message, sendResponse) {
-        console.log('21>>');
         try {
 
             const { email, id, timestamp, signature } = message;
@@ -497,7 +471,6 @@ class BackgroundService {
         }
     }
     async createSignature(data) {
-        console.log('22>>');
         const secret = `${chrome.runtime.id}:333200186065-sedmupk2gh8vkve4c8673su04vhqfnc0.apps.googleusercontent.com`;
 
         const encoder = new TextEncoder();
