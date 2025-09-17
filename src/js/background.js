@@ -1,25 +1,6 @@
 
 import OAuthHelper from './oauth-helper.js'; 
 
-// const DEBUG_ENABLED = false;
-
-// Store original console methods
-// const originalConsole = {
-//     log: console.log,
-//     warn: console.warn,
-//     error: console.error,
-//     info: console.info,
-//     debug: console.debug
-// };
-
-// Override console methods based on debug flag
-// if (!DEBUG_ENABLED) {
-//     console.log = function () { };
-//     console.info = function () { };
-//     console.debug = function () { };
-//     // Keep console.warn and console.error for important messages
-// }
-
 class BackgroundService {
     constructor() {
         this.oauthHelper = new OAuthHelper();
@@ -33,7 +14,7 @@ class BackgroundService {
     initEventHooks() {
         chrome.action.onClicked.addListener(async (tab) => {
             const newTab = await chrome.tabs.create({
-                url: chrome.runtime.getURL('html/extension-page.html'),
+                url: chrome.runtime.getURL('html/tool-page.html'),
                 active: true
             });
 
@@ -65,7 +46,6 @@ class BackgroundService {
         if (details.reason === 'install') {
 
             chrome.storage.local.set({
-                serverUrl: 'http://localhost:8095',
                 similarityThreshold: 85,
                 installDate: Date.now()
             });
@@ -225,7 +205,7 @@ class BackgroundService {
     async openExtensionTab(message, sendResponse) {
         try {
             const tab = await chrome.tabs.create({
-                url: chrome.runtime.getURL('/html/extension-page.html'),
+                 url: chrome.runtime.getURL('/html/tool-page.html'),
                 active: true 
             });
 

@@ -6,7 +6,7 @@ module.exports = (env, argv) => {
 
   return {
     entry: {
-      extension_page: './src/js/extension-page.js',
+      extension_page: './src/js/tool-page.js',
       oauth_helper: './src/js/oauth-helper.js',
       content: './src/contentscript/content.js',
       background: './src/js/background.js'

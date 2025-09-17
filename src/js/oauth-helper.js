@@ -4,16 +4,14 @@ class OAuthHelper {
     
     constructor() {
         this.apiBaseUrl = 'https://api.gpdrm.com';
-        this.pollInterval = 1000; // Poll every second
-        this.maxPollAttempts = 300; // 5 minutes max
+        this.pollInterval = 1000; 
+        this.maxPollAttempts = 300; 
     }
 
-    // Start OAuth flow with polling approach
     async launchAuthFlow() {
         try {
             console.log('🔐 Starting OAuth flow with polling approach...');
 
-            // Step 1: Request worker to create OAuth session
             const sessionResponse = await fetch(`${this.apiBaseUrl}/oauth/create-session`, {
                 method: 'POST',
                 headers: {
@@ -31,10 +29,8 @@ class OAuthHelper {
             const { sessionId, authUrl } = await sessionResponse.json();
             console.log('📝 OAuth session created:', sessionId);
 
-            // Step 2: Open auth URL in new tab
             chrome.tabs.create({ url: authUrl });
 
-            // Step 3: Start polling for results
             const result = await this.waitForAuthResult(sessionId);
 
             if (result.success) {
@@ -50,7 +46,6 @@ class OAuthHelper {
         }
     }
 
-    // Poll worker for OAuth results
     async waitForAuthResult(sessionId) {
         console.log('🔄 Starting to poll for OAuth results...');
 
@@ -87,7 +82,6 @@ class OAuthHelper {
                         error: result.error
                     };
                 } else if (result.status === 'pending') {
-                    // Still waiting, continue polling
                     console.log(`⏳ Polling attempt ${attempt + 1}/${this.maxPollAttempts}...`);
                     await this.sleep(this.pollInterval);
                     continue;
@@ -101,19 +95,16 @@ class OAuthHelper {
             }
         }
 
-        // Polling timed out
         return {
             success: false,
             error: 'OAuth timeout - please try again'
         };
     }
 
-    // Handle successful OAuth
     async handleAuthSuccess(userInfo) {
         try {
             console.log('🔄 Processing OAuth success...');
 
-            // Store user info in extension storage
             await new Promise((resolve) => {
                 chrome.storage.local.set({
                     userEmail: userInfo.email,
@@ -124,14 +115,12 @@ class OAuthHelper {
 
             console.log('✅ User info stored:', userInfo.email);
 
-            // Notify extension page if it's open
             try {
                 chrome.runtime.sendMessage({
                     action: 'authenticationComplete',
                     userInfo: userInfo
                 });
             } catch (e) {
-                // Extension page might not be open, that's ok
             }
 
             return {
@@ -145,7 +134,6 @@ class OAuthHelper {
         }
     }
 
-    // Get stored user info
     async fetchUserProfile() {
         return new Promise((resolve) => {
             chrome.storage.local.get(['userEmail', 'userId', 'authTimestamp'], (result) => {
@@ -162,13 +150,11 @@ class OAuthHelper {
         });
     }
 
-    // Check if user is authenticated
     async isAuthenticated() {
         const userInfo = await this.fetchUserProfile();
         return userInfo !== null;
     }
 
-    // Sign out user
     async signOut() {
         try {
             console.log('🚪 Signing out user...');
@@ -190,15 +176,9 @@ class OAuthHelper {
         }
     }
 
-    // Utility function to sleep
     sleep(ms) {
         return new Promise(resolve => setTimeout(resolve, ms));
     }
 }
-
-// Export for use in other scripts
-// if (typeof module !== 'undefined' && module.exports) {
-//     module.exports = OAuthHelper;
-// } 
 
 export default OAuthHelper;

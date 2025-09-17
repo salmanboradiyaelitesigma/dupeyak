@@ -2991,7 +2991,7 @@ class PhotoExtractor {
                 if (croppedImage) {
                     this.debugSaveImage(croppedImage, `debug_image_${startIndex + i + 1}_${photo.id}`);
 
-                    await this.uploadImageToSession(sessionId, photo.id, croppedImage);
+                    // await this.uploadImageToSession(sessionId, photo.id, croppedImage);
                     uploaded++;
                 } else {
                     console.warn(`❌ Failed to crop image ${startIndex + i + 1}: ${photo.id}`);
@@ -3164,36 +3164,6 @@ class PhotoExtractor {
         }
     }
 
-    async uploadImageToSession(sessionId, imageId, base64Data) {
-        let mediaItem = this.photos.find(p => p.id === imageId);
-        let mediaType = 'photo';
-        if (mediaItem) {
-            mediaItem.capturedImageData = base64Data;
-        }
-
-        const blob = await this.base64ToBlob(base64Data, 'image/jpeg');
-
-        const formData = new FormData();
-        formData.append('image', blob, `${imageId}.jpg`);
-        formData.append('image_id', imageId);
-
-        const response = await fetch(`${this.serverUrl}/session/${sessionId}/add-image`, {
-            method: 'POST',
-            body: formData
-        });
-
-        if (!response.ok) {
-            throw new Error(`Failed to upload image ${imageId}: ${response.status}`);
-        }
-
-        const result = await response.json();
-        if (!result.success) {
-            console.error(`❌ Upload failed for ${imageId}:`, result.error);
-            throw new Error(result.error || `Failed to upload image ${imageId}`);
-        }
-        return result;
-    }
-
     async base64ToBlob(base64Data, mimeType) {
         const base64 = base64Data.includes(',') ? base64Data.split(',')[1] : base64Data;
 
@@ -3206,79 +3176,6 @@ class PhotoExtractor {
 
         return new Blob([bytes], { type: mimeType });
     }
-
-    async closeSession(sessionId) {
-        this.updateProgress(85, 'Finalizing session and starting analysis...');
-
-        const response = await fetch(`${this.serverUrl}/session/${sessionId}/finalize`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                similarity_threshold: this.similarityThreshold || 85
-            })
-        });
-
-        if (!response.ok) {
-            throw new Error(`Failed to finalize session: ${response.status}`);
-        }
-
-        const result = await response.json();
-        if (!result.success) {
-            throw new Error(result.error || 'Failed to finalize session');
-        }
-        return result;
-    }
-
-    async waitForAnalysisCompletion(sessionId) {
-        const maxWaitTime = 5 * 60 * 1000; // 5 minutes
-        const startTime = Date.now();
-        const pollInterval = 2000; // 2 seconds
-
-        while (Date.now() - startTime < maxWaitTime) {
-            const response = await fetch(`${this.serverUrl}/session/${sessionId}/status`);
-
-            if (!response.ok) {
-                throw new Error(`Failed to get session status: ${response.status}`);
-            }
-
-            const result = await response.json();
-            if (!result.success) {
-                throw new Error(result.error || 'Failed to get session status');
-            }
-
-            const status = result.status;
-
-            if (status.analysis_status === 'pending') {
-                this.updateProgress(87, 'Starting similarity analysis...');
-            } else if (status.analysis_status === 'analyzing') {
-                if (status.analysis_progress) {
-                    this.updateProgress(
-                        87 + (status.analysis_progress * 0.13), 
-                        `Analyzing similarities: ${status.analysis_progress.toFixed(4)}% (${status.processed_images}/${status.total_images} comparisons)`
-                    );
-                } else {
-                    this.updateProgress(87, 'Analyzing photo similarities...');
-                }
-            } else if (status.analysis_status === 'completed') {
-                return {
-                    success: true,
-                    total_images: status.total_images,
-                    comparisons: status.total_comparisons,
-                    similar_groups: status.similar_groups,
-                    quality_array: status.allResults
-                };
-            } else if (status.analysis_status === 'error') {
-                throw new Error(status.error || 'Analysis failed on server');
-            }
-
-            await this.delay(pollInterval);
-        }
-
-        throw new Error('Analysis timeout - server took too long to complete');
-    }
-
     async captureImageWithTempElement(imageUrl, photoId) {
         return new Promise((resolve, reject) => {
             const container = document.createElement('div');
@@ -4127,8 +4024,9 @@ overlay.on('click', '.toggle-delete-btn, .keep-btn', function(e) {
                 $btn.prop('disabled', false).text('Process Selected Groups');
             }
         });
-
-        $(document).on('click', '.toggle-group-btn', function () {
+            $(document)
+            .off('click', '.toggle-group-btn') 
+            .on('click', '.toggle-group-btn', function () {
             const $btn = $(this);
             const $group = $btn.closest('.analysisresults-group');
             const $body = $group.find('.group-body');
