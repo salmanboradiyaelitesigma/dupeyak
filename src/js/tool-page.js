@@ -127,7 +127,7 @@ function buildSignInView() {
     return `
         <div class="signin-container">
             <h2 class="signin-title">Welcome to DupeYak Duplicate Remover</h2>
-            <p class="signin-subtitle">Sign in with your Google account to get started, buy PRO or restore your license</p>
+            <p class="signin-subtitle">Sign in with your Google account to get started</p>
             <button class="btn btn-primary" id="sign-in-btn">
                 🔐 Sign in with Google
             </button>
@@ -229,15 +229,11 @@ async function onUserSignOut() {
             chrome.storage.local.remove([
                 'userEmail',
                 'userId',
-                'isPaidVersion',
-                'lastPaidStatusCheck',
-                'paymentData'
             ], resolve);
         });
         await refreshAuthUI({});
         bindEventHandlers();
         setAppTitle(false);
-        // notifyContentScript();
 
         displaySuccess('Successfully signed out!');
     } catch (error) {
@@ -318,36 +314,23 @@ chrome.storage.onChanged.addListener((changes, namespace) => {
         }
     }
 });
-chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
-    if (message.action === 'authenticationComplete') {
-        const userData = await fetchUserData();
-        await refreshAuthUI(userData);
-        bindEventHandlers();
-        if (userData.userEmail && userData.userId) {
-        }
+// chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
+//     if (message.action === 'authenticationComplete') {
+//         const userData = await fetchUserData();
+//         await refreshAuthUI(userData);
+//         bindEventHandlers();
+//         if (userData.userEmail && userData.userId) {
+//         }
 
-        displaySuccess('Authentication completed successfully!');
+//         displaySuccess('Authentication completed successfully!');
 
-        const signInBtn = $('#sign-in-btn');
-        if (signInBtn) {
-            signInBtn.disabled = false;
-            signInBtn.innerHTML = '🔐 Sign in with Google';
-        }
-    }
-});
-
-// function notifyContentScript() {
-//     chrome.tabs.query({}, (tabs) => {
-//         tabs.forEach(tab => {
-//             if (tab.url && tab.url.includes('photos.google.com')) {
-//                 chrome.tabs.sendMessage(tab.id, {
-//                     action: 'paymentStatusUpdated'
-//                 }).catch(() => {
-//                 });
-//             }
-//         });
-//     });
-// } 
+//         const signInBtn = $('#sign-in-btn');
+//         if (signInBtn) {
+//             signInBtn.disabled = false;
+//             signInBtn.innerHTML = '🔐 Sign in with Google';
+//         }
+//     }
+// });
 
 var extensionPageCore = {
     addEvents: function (params) {

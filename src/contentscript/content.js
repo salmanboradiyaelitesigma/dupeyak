@@ -1413,21 +1413,21 @@ class PhotoExtractor {
         }
         this.initMainPanel();
     }
-    async openExtensionPage() {
+    // async openExtensionPage() {
 
-        try {
-            const response = await chrome.runtime.sendMessage({
-                action: 'openExtensionPage'
-            });
+    //     try {
+    //         const response = await chrome.runtime.sendMessage({
+    //             action: 'openToolPage'
+    //         });
 
-            if (response && response.success) {
-            } else {
-                alert('Failed to open extension page. Please manually open the extension from your browser toolbar to purchase.');
-            }
-        } catch (error) {
-            alert('Failed to open extension page. Please manually open the extension from your browser toolbar to purchase.');
-        }
-    }
+    //         if (response && response.success) {
+    //         } else {
+    //             alert('Failed to open tool page. Please manually open the tool from your browser toolbar to purchase.');
+    //         }
+    //     } catch (error) {
+    //         alert('Failed to open tool page. Please manually open the tool from your browser toolbar to purchase.');
+    //     }
+    // }
     async initFaceScan() {
         try {
             if (typeof faceapi === 'undefined') {
@@ -1586,7 +1586,7 @@ class PhotoExtractor {
     if (!userData.userEmail || !userData.userId) {
         
         chrome.runtime.sendMessage({
-            action: 'openExtensionPage',
+            action: 'openToolPage',
         }, (response) => {
             if (chrome.runtime.lastError) {
                 reject(new Error('Batch screenshot failed: ' + chrome.runtime.lastError.message));
@@ -3094,7 +3094,7 @@ class PhotoExtractor {
     async captureBatchShot() {
         return new Promise((resolve, reject) => {
             chrome.runtime.sendMessage({
-                action: 'capturePhoto',
+                action: 'onCapture',
                 photoId: 'batch-screenshot'
             }, (response) => {
                 if (chrome.runtime.lastError) {
@@ -3220,7 +3220,7 @@ class PhotoExtractor {
                     await this.respectCaptureDelay();
 
                     chrome.runtime.sendMessage({
-                        action: 'capturePhoto',
+                        action: 'onCapture',
                         elementId: container.id,
                         photoId: photoId
                     }, (response) => {
@@ -5807,7 +5807,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         if (window.photoCleanerInstance) {
             sendResponse({
                 success: true,
-                isPaidVersion: window.photoCleanerInstance.isPaidVersion,
                 todaySimilarGroupsShown: window.photoCleanerInstance.todaySimilarGroupsShown,
                 dailySimilarGroupsLimit: window.photoCleanerInstance.dailySimilarGroupsLimit,
                 todayReAnalysisCount: window.photoCleanerInstance.todayReAnalysisCount,

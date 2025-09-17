@@ -22,7 +22,7 @@
       "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self'"
    },
    "description": "DupeYak Duplicate Remover",
-   "host_permissions": [ "https://photos.google.com/*", "https://www.googleapis.com/*", "https://api.gpdrm.com/*", "https://accounts.google.com/*", "\u003Call_urls>" ],
+   "host_permissions": [ "https://photos.google.com/*", "https://www.googleapis.com/*", "https://accounts.google.com/*", "\u003Call_urls>" ],
    "icons": {
       "128": "icons/new128.png",
       "16": "icons/new16.png",
