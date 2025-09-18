@@ -3736,7 +3736,6 @@ class PhotoExtractor {
                         </ul>`
                     : ""}
                   <span class="h-[1px] flex items-center justify-center w-full bg-[#DBF7FE] my-[8px]"></span>
-                  <p class="">Overall Score: ${quality.overallScore.toFixed(2)}%</p>
                 `
                 : "";
 

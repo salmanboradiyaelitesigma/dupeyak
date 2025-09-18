@@ -6,8 +6,7 @@ module.exports = (env, argv) => {
 
   return {
     entry: {
-      extension_page: './src/js/tool-page.js',
-      // oauth_helper: './src/js/oauth-helper.js',
+      tool_page: './src/js/tool-page.js',
       content: './src/contentscript/content.js',
       background: './src/js/background.js'
     },
@@ -22,7 +21,7 @@ module.exports = (env, argv) => {
     plugins: [
       new CopyPlugin({
         patterns: [
-          { from: 'public', to: '.' }, // Copy HTML, manifest, icons, etc.
+          { from: 'public', to: '.' }, 
         ],
       }),
     ],
